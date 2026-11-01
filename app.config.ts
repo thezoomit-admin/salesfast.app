@@ -44,7 +44,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     typedRoutes: true,
   },
   extra: {
-    apiUrl: process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:6001/api',
+    apiUrl:
+      process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:6001/api',
     eas: {
       projectId: process.env.EAS_PROJECT_ID,
     },
