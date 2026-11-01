@@ -72,7 +72,10 @@ export default function LeadsScreen() {
         />
         <FlatList
           horizontal
-          data={[{ id: 0, name: 'All' }, ...(statuses.data ?? [])]}
+          data={[
+            { id: 0, name: 'All' },
+            ...(Array.isArray(statuses.data) ? statuses.data : []),
+          ]}
           keyExtractor={(item) => String(item.id)}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filters}
