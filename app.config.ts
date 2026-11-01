@@ -70,11 +70,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     typedRoutes: true,
   },
   extra: {
+    // Installed APKs (EAS) use staging. Local Expo Go can override via .env.
     apiUrl:
-      process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.0.163:6001/api',
+      process.env.EXPO_PUBLIC_API_URL ??
+      'https://salesfastapi-dev.thezoomit.com/api',
     eas: {
       projectId:
         process.env.EAS_PROJECT_ID ?? '37dc35d5-a2b1-476e-bb6c-721668bc7473',
     },
   },
 });
+
