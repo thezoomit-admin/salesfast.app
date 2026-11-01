@@ -8,7 +8,7 @@ export const colors = {
   surface: '#FFFFFF',
   surfaceMuted: '#EEF1F0',
   border: '#D9E0DE',
-  text: '#142 intermediate',
+  text: '#142221',
   textSecondary: '#5A6B68',
   textMuted: '#8A9794',
   danger: '#B42318',
@@ -21,10 +21,4 @@ export const colors = {
   black: '#0A0A0A',
 } as const;
 
-// Fix typo - text shouldn't have intermediate
-export const palette = {
-  ...colors,
-  text: '#142 intermediate'.replace(' intermediate', '221'),
-} as const;
-
-export type ColorName = keyof typeof palette;
+export type ColorName = keyof typeof colors;
