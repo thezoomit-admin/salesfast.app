@@ -22,9 +22,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    // Dev API is http:// — required for Expo Go → local backend.
-    usesCleartextTraffic: true,
     permissions: ['READ_CALL_LOG'],
+    // Dev API is http:// — required for device → local backend.
+    // Expo Android typings omit this field on some SDK versions.
+    ...({ usesCleartextTraffic: true } as object),
   },
   web: {
     bundler: 'metro',
