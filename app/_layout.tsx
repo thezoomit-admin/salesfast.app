@@ -73,7 +73,19 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
               name="leads/[id]"
-              options={{ headerShown: true, title: 'Lead details', headerTintColor: colors.brand }}
+              options={{
+                headerShown: true,
+                title: 'Lead details',
+                headerTintColor: colors.brand,
+              }}
+            />
+            <Stack.Screen
+              name="call-sync/setup"
+              options={{
+                headerShown: true,
+                title: 'Call sync setup',
+                headerTintColor: colors.brand,
+              }}
             />
           </Stack>
         </AuthGate>
