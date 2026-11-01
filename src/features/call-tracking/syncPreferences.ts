@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { isCallLogModuleAvailable } from 'android-call-log';
+
 const KEY = 'sf_mobile_call_sync_prefs_v1';
 
 export type CallSyncPrefs = {
@@ -9,6 +11,9 @@ export type CallSyncPrefs = {
   enabled: boolean;
   /** Temporary pause without wiping consent. */
   paused: boolean;
+  /** Only calls at/after this instant are considered (privacy window). */
+  syncFromAt: string | null;
+  lastSyncedAt: string | null;
   updatedAt: string | null;
 };
 
@@ -16,12 +21,15 @@ export type CallSyncStatus =
   | 'not_configured'
   | 'configured'
   | 'paused'
+  | 'needs_dev_build'
   | 'unavailable_web';
 
 const DEFAULT_PREFS: CallSyncPrefs = {
   consentedAt: null,
   enabled: false,
   paused: false,
+  syncFromAt: null,
+  lastSyncedAt: null,
   updatedAt: null,
 };
 
@@ -85,7 +93,7 @@ export function resolveCallSyncStatus(prefs: CallSyncPrefs): {
         status: 'unavailable_web',
         label: 'configured (Android only)',
         message:
-          'Preference saved. Automatic call-log sync runs on the Android app after Phase 0. Manual dialing works here.',
+          'Preference saved. Automatic call-log sync runs on the Android app.',
         canAutoSync: false,
       };
     }
@@ -93,7 +101,7 @@ export function resolveCallSyncStatus(prefs: CallSyncPrefs): {
       status: 'not_configured',
       label: 'not configured',
       message:
-        'Set up call sync preferences. Automatic sync requires the Android app; web can only save your preference.',
+        'Set up call sync preferences. Automatic sync requires the Android app.',
       canAutoSync: false,
     };
   }
@@ -118,11 +126,22 @@ export function resolveCallSyncStatus(prefs: CallSyncPrefs): {
     };
   }
 
+  if (!isCallLogModuleAvailable()) {
+    return {
+      status: 'needs_dev_build',
+      label: 'needs Android build',
+      message:
+        'Consent is saved, but Expo Go cannot read call logs. Install the Realist CRM development build to sync automatically.',
+      canAutoSync: false,
+    };
+  }
+
   return {
     status: 'configured',
-    label: 'configured',
-    message:
-      'Call sync preference is on. Automatic call-log reading activates after the Phase 0 device spike passes. Manual dialing is available now.',
-    canAutoSync: false,
+    label: 'active',
+    message: prefs.lastSyncedAt
+      ? `Call sync is on. Last sync ${new Date(prefs.lastSyncedAt).toLocaleString()}.`
+      : 'Call sync is on. Matched lead calls upload when you open the app or tap Sync now.',
+    canAutoSync: true,
   };
 }

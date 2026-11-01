@@ -24,6 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     predictiveBackGestureEnabled: false,
     // Dev API is http:// — required for Expo Go → local backend.
     usesCleartextTraffic: true,
+    permissions: ['READ_CALL_LOG'],
   },
   web: {
     bundler: 'metro',
@@ -41,6 +42,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-secure-store',
+    'expo-dev-client',
   ],
   experiments: {
     typedRoutes: true,

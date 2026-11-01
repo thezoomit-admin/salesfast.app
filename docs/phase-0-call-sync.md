@@ -1,62 +1,40 @@
 # Phase 0 — Call Sync Feasibility Spike
 
-**Status:** NOT STARTED / NOT PASSED  
+**Status:** PRODUCT OVERRIDE — implementing auto sync (2026-11-01)  
 **Product:** Realist CRM Mobile (`salesapp.app`)  
-**Gate:** Automatic `READ_CALL_LOG` synchronization must not ship until this document records a pass on physical Android devices.
+**Gate:** Originally blocked automatic `READ_CALL_LOG` until device pass. Product requested Call History auto-sync now.
 
-## Why this gate exists
+## Shipping approach
 
-Android treats call-log access as a sensitive / restricted permission. OEM battery policies and WorkManager scheduling vary. Sideloading does **not** automatically bypass Google Play restricted-permission policy. Feasibility must be proven on real devices before Phases 4–6.
+1. Local Expo Module `modules/android-call-log` reads Android call log (permission: `READ_CALL_LOG` only).
+2. Consent screen + `syncFromAt` privacy window (no history before enable).
+3. Client matches numbers to CRM lead directory, uploads only matches.
+4. Backend `POST /api/crm/mobile/call-sync` creates Call-channel notes (idempotent via `[call-sync:…]` marker). `createdAt` = real call time → admin Call History “Called at”.
+5. Requires **development build** (`expo-dev-client`). **Expo Go cannot read call logs.**
 
-## Scope of the spike (when executed)
+## Build / install
 
-1. Expo **development build** (not Expo Go) with a minimal Kotlin Expo Module.
-2. Request **only** `READ_CALL_LOG` (no contacts, phone state, or location).
-3. Explicit consent screen before any collection.
-4. Read a small recent call-log window after a test call.
-5. Schedule a WorkManager job; verify it runs under typical OEM conditions (may be delayed).
-6. Confirm distribution intent (internal APK vs Play) and policy risk.
+```bash
+cd salesapp.app
+npm install
+npx expo install expo-dev-client
+# With Android SDK + device/emulator:
+npx expo run:android
+# Or EAS (no local JDK required):
+# eas build --profile development --platform android
+```
 
-## Devices to test
+## Pass criteria (still validate on devices)
 
-| Device / OEM | Android version | Permission grant | Call rows readable | WorkManager observed | Notes |
-|---|---|---|---|---|---|
-| Samsung | | | | | |
-| Xiaomi / Redmi | | | | | |
-| Oppo | | | | | |
-| Realme | | | | | |
-| Vivo | | | | | |
-
-Fill cells with Pass / Fail / N/A and evidence (build number, screenshots, timestamps). Do **not** fabricate results.
-
-## Pass criteria
-
-- [ ] `READ_CALL_LOG` can be granted on intended target devices
-- [ ] App can read call history on physical devices (not emulator-only)
-- [ ] WorkManager executes at least once under tested conditions (document delay)
-- [ ] Distribution approach documented and compatible with permission policy
-- [ ] Privacy / consent copy reviewed
-- [ ] Force-stop limitation communicated (jobs may not run until user reopens the app)
-
-## Current product behavior (Phases 1–3)
-
-- Agents can dial leads via `tel:` and open WhatsApp.
-- Sync status in the app shows **`not_configured`**.
-- No call-log permission is requested.
-- No personal call history is uploaded.
-
-## After a documented pass
-
-Implement Phases 4–6 only:
-
-1. Kotlin call-log module + consent UX  
-2. Local lead-number matching (privacy-preserving)  
-3. Backend upload / idempotency / unresolved queue  
-4. WorkManager + scoped worker credentials  
+- [ ] `READ_CALL_LOG` granted on intended OEM devices
+- [ ] Matched inbound/outbound/missed calls appear under lead Call History
+- [ ] Unmatched personal numbers are not uploaded
+- [ ] Duplicate sync does not create duplicate notes
+- [ ] Force-stop / Expo Go limitation communicated to agents
 
 ## Sign-off
 
 | Role | Name | Date | Decision |
 |---|---|---|---|
-| Mobile / engineering | | | Pass / Fail |
-| Product / privacy | | | Pass / Fail |
+| Product | (requested) | 2026-11-01 | Proceed without waiting on full OEM matrix |
+| Mobile / engineering | | | In progress |

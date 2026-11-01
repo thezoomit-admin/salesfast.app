@@ -31,12 +31,16 @@ export function useCallSyncStatus() {
     return next;
   }, []);
 
-  const resolved = resolveCallSyncStatus(prefs ?? {
-    consentedAt: null,
-    enabled: false,
-    paused: false,
-    updatedAt: null,
-  });
+  const resolved = resolveCallSyncStatus(
+    prefs ?? {
+      consentedAt: null,
+      enabled: false,
+      paused: false,
+      syncFromAt: null,
+      lastSyncedAt: null,
+      updatedAt: null,
+    }
+  );
 
   return {
     prefs,

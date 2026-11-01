@@ -4,13 +4,18 @@ import { Alert, Platform, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
+import { isCallLogModuleAvailable } from 'android-call-log';
+
+import { runCallSync } from '@/features/call-tracking/runCallSync';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { colors, radii, spacing, typography } from '@/theme';
 
 export default function CallSyncSetupScreen() {
   const router = useRouter();
-  const { prefs, loading, update, label, message, status } = useCallSyncStatus();
+  const { prefs, loading, update, label, message, status, refresh } =
+    useCallSyncStatus();
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [accepted, setAccepted] = useState(false);
 
   const alreadyConfigured = !!prefs?.consentedAt && !!prefs?.enabled;
@@ -29,18 +34,24 @@ export default function CallSyncSetupScreen() {
     }
     setSaving(true);
     try {
+      const now = new Date().toISOString();
       await update({
-        consentedAt: prefs?.consentedAt ?? new Date().toISOString(),
+        consentedAt: prefs?.consentedAt ?? now,
+        syncFromAt: prefs?.syncFromAt ?? now,
         enabled: true,
         paused: false,
       });
+      const nativeReady =
+        Platform.OS === 'android' && isCallLogModuleAvailable();
       Alert.alert(
         'Call sync configured',
         Platform.OS === 'web'
-          ? 'Preference saved. Open the Android app for automatic sync after Phase 0.'
-          : 'Setup complete. Automatic call-log reading will start after the Phase 0 device spike is approved.'
+          ? 'Preference saved. Open the Android development build for automatic sync.'
+          : nativeReady
+            ? 'Setup complete. Matched lead calls will sync when you open the app or tap Sync now.'
+            : 'Consent saved. Expo Go cannot read call logs — install the Realist CRM development build, then tap Sync now.'
       );
-      router.back();
+      await refresh();
     } finally {
       setSaving(false);
     }
@@ -66,6 +77,22 @@ export default function CallSyncSetupScreen() {
     }
   };
 
+  const syncNow = async () => {
+    setSyncing(true);
+    try {
+      const result = await runCallSync({ force: true });
+      await refresh();
+      Alert.alert(result.ok ? 'Sync finished' : 'Sync blocked', result.message);
+    } catch (e) {
+      Alert.alert(
+        'Sync failed',
+        e instanceof Error ? e.message : 'Could not sync call history'
+      );
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <Screen scroll>
       <Text style={styles.title}>Call synchronization</Text>
@@ -83,7 +110,7 @@ export default function CallSyncSetupScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>What we process</Text>
         <Text style={styles.bullet}>• Phone number, call type, time, duration</Text>
-        <Text style={styles.bullet}>• Only calls that match your assigned CRM leads</Text>
+        <Text style={styles.bullet}>• Only calls that match your CRM leads</Text>
         <Text style={styles.bullet}>• No call audio, SMS, or contacts access</Text>
         <Text style={styles.bullet}>
           • Sync starts from the moment you enable it (no old personal history)
@@ -123,6 +150,12 @@ export default function CallSyncSetupScreen() {
             />
           </View>
           <Button
+            title="Sync now"
+            loading={syncing}
+            disabled={saving || status === 'unavailable_web'}
+            onPress={syncNow}
+          />
+          <Button
             title="Re-save configuration"
             variant="secondary"
             loading={saving}
@@ -138,8 +171,9 @@ export default function CallSyncSetupScreen() {
       )}
 
       <Text style={styles.footnote}>
-        Automatic READ_CALL_LOG sync remains behind the Phase 0 feasibility gate.
-        Completing this screen configures your preference and consent on this device.
+        Automatic sync needs the Realist CRM Android development build (not Expo
+        Go). After install, enable sync here and tap Sync now — matched lead
+        calls appear under Call History.
       </Text>
     </Screen>
   );
