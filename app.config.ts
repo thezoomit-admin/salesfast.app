@@ -3,8 +3,9 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Realist CRM',
-  slug: 'realist-crm',
+  slug: 'salesfast',
   version: '1.0.0',
+  owner: 'ibnabdullah01',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'realistcrm',
@@ -52,7 +53,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     apiUrl:
       process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.0.163:6001/api',
     eas: {
-      projectId: process.env.EAS_PROJECT_ID,
+      projectId:
+        process.env.EAS_PROJECT_ID ?? '37dc35d5-a2b1-476e-bb6c-721668bc7473',
     },
   },
 });

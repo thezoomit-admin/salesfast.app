@@ -1,0 +1,9 @@
+expo.modules.androidcalllog.android-call-log-pngs-0 D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\build\generated\res\pngs\debug
+expo.modules.androidcalllog.android-call-log-updated_navigation_xml-1 D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\build\generated\updated_navigation_xml\debug
+expo.modules.androidcalllog.android-call-log-mergeDebugResources-2 D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+expo.modules.androidcalllog.android-call-log-mergeDebugResources-3 D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+expo.modules.androidcalllog.android-call-log-debug-4 D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\build\intermediates\merged_res\debug\mergeDebugResources
+expo.modules.androidcalllog.android-call-log-debug-5 D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\build\intermediates\packaged_res\debug\packageDebugResources
+expo.modules.androidcalllog.android-call-log-debug-6 D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\debug\res
+expo.modules.androidcalllog.android-call-log-main-7 D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\res
+gradleHome-0 C:\Users\Ibn Abdullah\AppData\Local\Temp\cursor-sandbox-cache\431bb9df9d034ef7aa86d60c9dd83ee0\gradle
