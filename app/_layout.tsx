@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
-import { AuthProvider, useAuth } from '@/src/features/auth/AuthContext';
-import { colors } from '@/src/theme';
+import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
+import { colors } from '@/theme';
 
 export { ErrorBoundary } from 'expo-router';
 

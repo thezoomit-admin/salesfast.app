@@ -12,11 +12,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getErrorMessage } from '@/src/api/client';
-import { LeadListItemCard } from '@/src/components/leads/LeadListItemCard';
-import { EmptyState, ErrorState } from '@/src/components/ui/StateViews';
-import { fetchLeadStatuses, fetchMyLeads } from '@/src/features/leads/leadsApi';
-import { colors, radii, spacing, typography } from '@/src/theme';
+import { getErrorMessage } from '@/api/client';
+import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { EmptyState, ErrorState } from '@/components/ui/StateViews';
+import { fetchLeadStatuses, fetchMyLeads } from '@/features/leads/leadsApi';
+import { colors, radii, spacing, typography } from '@/theme';
 
 function useDebounced<T>(value: T, delay = 350) {
   const [debounced, setDebounced] = useState(value);

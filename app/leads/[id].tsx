@@ -14,21 +14,21 @@ import {
 } from 'react-native';
 import { z } from 'zod';
 
-import { getErrorMessage } from '@/src/api/client';
-import { Button } from '@/src/components/ui/Button';
-import { Screen } from '@/src/components/ui/Screen';
-import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/StateViews';
-import { TextField } from '@/src/components/ui/TextField';
+import { getErrorMessage } from '@/api/client';
+import { Button } from '@/components/ui/Button';
+import { Screen } from '@/components/ui/Screen';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import { TextField } from '@/components/ui/TextField';
 import {
   addLeadNote,
   fetchLeadById,
   fetchLeadStatuses,
   fetchNoteChannels,
   updateLeadStatus,
-} from '@/src/features/leads/leadsApi';
-import { colors, radii, spacing, typography } from '@/src/theme';
-import { formatDateTime } from '@/src/utils/dates';
-import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/src/utils/phone';
+} from '@/features/leads/leadsApi';
+import { colors, radii, spacing, typography } from '@/theme';
+import { formatDateTime } from '@/utils/dates';
+import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 const noteSchema = z.object({
   note: z.string().min(1, 'Note is required'),

@@ -2,15 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { getErrorMessage } from '@/src/api/client';
-import { KpiCard } from '@/src/components/ui/KpiCard';
-import { Screen } from '@/src/components/ui/Screen';
-import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/StateViews';
-import { APP_NAME } from '@/src/constants/config';
-import { useAuth } from '@/src/features/auth/AuthContext';
-import { fetchMobileDashboard } from '@/src/features/dashboard/dashboardApi';
-import { colors, radii, spacing, typography } from '@/src/theme';
-import { formatDate, formatRelative } from '@/src/utils/dates';
+import { getErrorMessage } from '@/api/client';
+import { KpiCard } from '@/components/ui/KpiCard';
+import { Screen } from '@/components/ui/Screen';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import { APP_NAME } from '@/constants/config';
+import { useAuth } from '@/features/auth/AuthContext';
+import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
+import { colors, radii, spacing, typography } from '@/theme';
+import { formatDate, formatRelative } from '@/utils/dates';
 
 export default function HomeScreen() {
   const { user } = useAuth();

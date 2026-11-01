@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, spacing, typography } from '@/src/theme';
+import { colors, radii, spacing, typography } from '@/theme';
 
 export function KpiCard({
   label,

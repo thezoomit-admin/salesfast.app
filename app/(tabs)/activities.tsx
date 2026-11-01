@@ -3,11 +3,11 @@ import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getErrorMessage } from '@/src/api/client';
-import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/StateViews';
-import { fetchMobileDashboard } from '@/src/features/dashboard/dashboardApi';
-import { colors, radii, spacing, typography } from '@/src/theme';
-import { formatDateTime } from '@/src/utils/dates';
+import { getErrorMessage } from '@/api/client';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
+import { colors, radii, spacing, typography } from '@/theme';
+import { formatDateTime } from '@/utils/dates';
 
 export default function ActivitiesScreen() {
   const router = useRouter();

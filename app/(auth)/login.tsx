@@ -4,13 +4,13 @@ import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 
-import { getErrorMessage } from '@/src/api/client';
-import { Button } from '@/src/components/ui/Button';
-import { Screen } from '@/src/components/ui/Screen';
-import { TextField } from '@/src/components/ui/TextField';
-import { APP_NAME } from '@/src/constants/config';
-import { useAuth } from '@/src/features/auth/AuthContext';
-import { colors, radii, spacing, typography } from '@/src/theme';
+import { getErrorMessage } from '@/api/client';
+import { Button } from '@/components/ui/Button';
+import { Screen } from '@/components/ui/Screen';
+import { TextField } from '@/components/ui/TextField';
+import { APP_NAME } from '@/constants/config';
+import { useAuth } from '@/features/auth/AuthContext';
+import { colors, radii, spacing, typography } from '@/theme';
 
 const schema = z.object({
   identifier: z.string().min(3, 'Email or phone is required'),

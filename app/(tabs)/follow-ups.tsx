@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getErrorMessage } from '@/src/api/client';
-import { LeadListItemCard } from '@/src/components/leads/LeadListItemCard';
-import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/StateViews';
-import { fetchMyLeads } from '@/src/features/leads/leadsApi';
-import { colors, radii, spacing, typography } from '@/src/theme';
-import { endOfLocalDayIso, startOfLocalDayIso } from '@/src/utils/dates';
+import { getErrorMessage } from '@/api/client';
+import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import { fetchMyLeads } from '@/features/leads/leadsApi';
+import { colors, radii, spacing, typography } from '@/theme';
+import { endOfLocalDayIso, startOfLocalDayIso } from '@/utils/dates';
 
 type TabKey = 'today' | 'overdue' | 'upcoming';
 

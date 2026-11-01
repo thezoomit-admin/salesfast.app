@@ -1,13 +1,20 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
 
-import { colors } from '@/src/theme';
+import { colors } from '@/theme';
 
 function TabIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
 }) {
-  return <FontAwesome size={22} style={{ marginBottom: -2 }} {...props} />;
+  return (
+    <FontAwesome
+      size={22}
+      style={{ marginBottom: -2 }}
+      name={props.name}
+      color={props.color}
+    />
+  );
 }
 
 export default function TabLayout() {
@@ -27,35 +34,45 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <TabIcon name="home" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="home" color={String(color)} />
+          ),
         }}
       />
       <Tabs.Screen
         name="leads"
         options={{
           title: 'Leads',
-          tabBarIcon: ({ color }) => <TabIcon name="users" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="users" color={String(color)} />
+          ),
         }}
       />
       <Tabs.Screen
         name="follow-ups"
         options={{
           title: 'Follow-ups',
-          tabBarIcon: ({ color }) => <TabIcon name="calendar" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="calendar" color={String(color)} />
+          ),
         }}
       />
       <Tabs.Screen
         name="activities"
         options={{
           title: 'Activities',
-          tabBarIcon: ({ color }) => <TabIcon name="list" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="list" color={String(color)} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <TabIcon name="user" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <TabIcon name="user" color={String(color)} />
+          ),
         }}
       />
     </Tabs>

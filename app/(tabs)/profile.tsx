@@ -1,10 +1,10 @@
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { Button } from '@/src/components/ui/Button';
-import { Screen } from '@/src/components/ui/Screen';
-import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/src/constants/config';
-import { useAuth } from '@/src/features/auth/AuthContext';
-import { colors, radii, spacing, typography } from '@/src/theme';
+import { Button } from '@/components/ui/Button';
+import { Screen } from '@/components/ui/Screen';
+import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/constants/config';
+import { useAuth } from '@/features/auth/AuthContext';
+import { colors, radii, spacing, typography } from '@/theme';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();

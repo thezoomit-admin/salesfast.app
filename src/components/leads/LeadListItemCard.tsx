@@ -1,9 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, spacing, typography } from '@/src/theme';
-import type { LeadListItem } from '@/src/types/api';
-import { formatDate, formatRelative } from '@/src/utils/dates';
-import { formatPhoneDisplay } from '@/src/utils/phone';
+import { colors, radii, spacing, typography } from '@/theme';
+import type { LeadListItem } from '@/types/api';
+import { formatDate, formatRelative } from '@/utils/dates';
+import { formatPhoneDisplay } from '@/utils/phone';
 
 type Props = {
   lead: LeadListItem;
