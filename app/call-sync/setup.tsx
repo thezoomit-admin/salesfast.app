@@ -37,7 +37,8 @@ export default function CallSyncSetupScreen() {
       const now = new Date().toISOString();
       await update({
         consentedAt: prefs?.consentedAt ?? now,
-        syncFromAt: prefs?.syncFromAt ?? now,
+        // Epoch = no cutoff; older matched lead calls may sync too.
+        syncFromAt: new Date(0).toISOString(),
         enabled: true,
         paused: false,
       });
@@ -113,7 +114,7 @@ export default function CallSyncSetupScreen() {
         <Text style={styles.bullet}>• Only calls that match your CRM leads</Text>
         <Text style={styles.bullet}>• No call audio, SMS, or contacts access</Text>
         <Text style={styles.bullet}>
-          • Sync starts from the moment you enable it (no old personal history)
+          • Recent call history is scanned; only numbers that match CRM leads upload
         </Text>
       </View>
 

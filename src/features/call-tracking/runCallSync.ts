@@ -81,19 +81,9 @@ export async function runCallSync(options?: {
     return empty('Call log permission was denied.');
   }
 
-  // Prefer explicit window; fall back to consent time for older installs.
-  const syncFromRaw = prefs.syncFromAt || prefs.consentedAt;
-  const syncFromMs = syncFromRaw ? Date.parse(syncFromRaw) : NaN;
-  const minDateMs = Number.isFinite(syncFromMs)
-    ? syncFromMs
-    : Date.now() - 24 * 60 * 60 * 1000;
-  if (!prefs.syncFromAt) {
-    await saveCallSyncPrefs({
-      syncFromAt: new Date(minDateMs).toISOString(),
-    });
-  }
-
-  const rows = await getRecentCalls(150, minDateMs);
+  // Match against recent device call history (no enable-time cutoff).
+  // Native module caps at 300 rows; unmatched personal numbers are never uploaded.
+  const rows = await getRecentCalls(300, 0);
   const directory = await fetchCallMatchDirectory();
   const keySet = new Set(directory.entries.map((e) => e.phoneKey));
 
@@ -115,7 +105,7 @@ export async function runCallSync(options?: {
     await saveCallSyncPrefs({ lastSyncedAt: new Date().toISOString() });
     return {
       ok: true,
-      message: `No matched lead calls since sync started (${directory.count} lead numbers watched).`,
+      message: `No matched lead calls in recent history (${directory.count} lead numbers watched).`,
       scanned: rows.length,
       matched: 0,
       created: 0,
