@@ -1,31 +1,171 @@
-import { StyleSheet } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+import { getErrorMessage } from '@/src/api/client';
+import { KpiCard } from '@/src/components/ui/KpiCard';
+import { Screen } from '@/src/components/ui/Screen';
+import { EmptyState, ErrorState, LoadingState } from '@/src/components/ui/StateViews';
+import { APP_NAME } from '@/src/constants/config';
+import { useAuth } from '@/src/features/auth/AuthContext';
+import { fetchMobileDashboard } from '@/src/features/dashboard/dashboardApi';
+import { colors, radii, spacing, typography } from '@/src/theme';
+import { formatDate, formatRelative } from '@/src/utils/dates';
 
-export default function TabOneScreen() {
+export default function HomeScreen() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const query = useQuery({
+    queryKey: ['mobile-dashboard'],
+    queryFn: fetchMobileDashboard,
+  });
+
+  if (query.isLoading) {
+    return (
+      <Screen>
+        <LoadingState label="Loading dashboard…" />
+      </Screen>
+    );
+  }
+
+  if (query.isError) {
+    return (
+      <Screen>
+        <ErrorState
+          message={getErrorMessage(query.error)}
+          onRetry={() => query.refetch()}
+        />
+      </Screen>
+    );
+  }
+
+  const data = query.data;
+  if (!data) {
+    return (
+      <Screen>
+        <EmptyState title="No dashboard data" />
+      </Screen>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/index.tsx" />
-    </View>
+    <Screen
+      scroll
+      refreshing={query.isRefetching}
+      onRefresh={() => query.refetch()}
+    >
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>{APP_NAME}</Text>
+        <Text style={styles.title}>Hello, {user?.name?.split(' ')[0] || 'Agent'}</Text>
+        <Text style={styles.subtitle}>Your assigned pipeline at a glance.</Text>
+      </View>
+
+      <View style={styles.kpiGrid}>
+        <KpiCard label="Assigned leads" value={data.kpis.totalAssigned} tone="accent" />
+        <KpiCard label="New (7 days)" value={data.kpis.newLeads} />
+        <KpiCard label="Pending follow-ups" value={data.kpis.pendingFollowUps} />
+        <KpiCard
+          label="Overdue"
+          value={data.kpis.overdueFollowUps}
+          tone={data.kpis.overdueFollowUps > 0 ? 'warning' : 'default'}
+        />
+        <KpiCard label="Today's follow-ups" value={data.kpis.todayFollowUps} />
+      </View>
+
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Call synchronization</Text>
+        <Text style={styles.panelBody}>{data.callSync.message}</Text>
+        <View style={styles.syncBadge}>
+          <Text style={styles.syncBadgeText}>
+            Status: {data.callSync.status.replaceAll('_', ' ')}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Upcoming follow-ups</Text>
+        {data.upcomingFollowUps.length === 0 ? (
+          <Text style={styles.panelBody}>No pending follow-ups.</Text>
+        ) : (
+          data.upcomingFollowUps.slice(0, 5).map((item) => (
+            <Pressable
+              key={item.id}
+              style={styles.row}
+              onPress={() => router.push(`/leads/${item.leadId}`)}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{item.leadName}</Text>
+                <Text style={styles.rowMeta}>{formatDate(item.dueAt)}</Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          ))
+        )}
+      </View>
+
+      <View style={styles.panel}>
+        <Text style={styles.panelTitle}>Recent lead updates</Text>
+        {data.recentLeads.length === 0 ? (
+          <Text style={styles.panelBody}>No recent leads.</Text>
+        ) : (
+          data.recentLeads.slice(0, 5).map((lead) => (
+            <Pressable
+              key={lead.id}
+              style={styles.row}
+              onPress={() => router.push(`/leads/${lead.id}`)}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{lead.name}</Text>
+                <Text style={styles.rowMeta}>
+                  {lead.status?.name || 'No status'} · {formatRelative(lead.updatedAt)}
+                </Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </Pressable>
+          ))
+        )}
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  header: { gap: spacing.xs, marginBottom: spacing.sm },
+  eyebrow: { ...typography.label, color: colors.brandMuted },
+  title: { ...typography.display, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textSecondary },
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  panel: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  panelTitle: { ...typography.subtitle, color: colors.text },
+  panelBody: { ...typography.body, color: colors.textSecondary },
+  syncBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.warningSoft,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  syncBadgeText: { ...typography.caption, color: colors.warning },
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
+  rowTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
+  rowMeta: { ...typography.caption, color: colors.textMuted },
+  chevron: { fontSize: 22, color: colors.textMuted },
 });
