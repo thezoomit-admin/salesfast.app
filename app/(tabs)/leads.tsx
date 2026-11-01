@@ -125,8 +125,13 @@ export default function LeadsScreen() {
           }
           ListFooterComponent={
             leads.isFetchingNextPage ? (
-              <ActivityIndicator color={colors.brand} style={{ margin: spacing.lg }} />
-            ) : null
+              <ActivityIndicator
+                color={colors.brand}
+                style={{ margin: spacing.lg }}
+              />
+            ) : (
+              <View />
+            )
           }
           renderItem={({ item }) => (
             <LeadListItemCard

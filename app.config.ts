@@ -9,7 +9,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/images/icon.png',
   scheme: 'realistcrm',
   userInterfaceStyle: 'light',
-  newArchEnabled: true,
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.zoomit.realistcrm',
