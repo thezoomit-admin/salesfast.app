@@ -16,7 +16,10 @@ export function LeadListItemCard({ lead, onPress }: Props) {
   const statusColor = lead.leadStatus?.color || colors.brand;
 
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    >
       <View style={styles.row}>
         <View style={styles.main}>
           <Text style={styles.name} numberOfLines={1}>
@@ -25,7 +28,10 @@ export function LeadListItemCard({ lead, onPress }: Props) {
           <Text style={styles.phone}>{formatPhoneDisplay(phone)}</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: `${statusColor}22` }]}>
-          <Text style={[styles.badgeText, { color: statusColor }]} numberOfLines={1}>
+          <Text
+            style={[styles.badgeText, { color: statusColor }]}
+            numberOfLines={1}
+          >
             {lead.leadStatus?.name || 'No status'}
           </Text>
         </View>

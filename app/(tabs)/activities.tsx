@@ -22,7 +22,7 @@ export default function ActivitiesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Activities</Text>
         <Text style={styles.subtitle}>
-          Recent notes from your assigned leads. Automatic call sync arrives after Phase 0.
+          Recent notes from your assigned leads. Matched calls sync from the Android build.
         </Text>
       </View>
 

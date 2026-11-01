@@ -6,6 +6,7 @@ import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
+import { CallSyncBootstrap } from '@/features/call-tracking/CallSyncBootstrap';
 import { colors } from '@/theme';
 
 export { ErrorBoundary } from 'expo-router';
@@ -68,12 +69,25 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AuthGate>
+          <CallSyncBootstrap />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
               name="leads/[id]"
-              options={{ headerShown: true, title: 'Lead details', headerTintColor: colors.brand }}
+              options={{
+                headerShown: true,
+                title: 'Lead details',
+                headerTintColor: colors.brand,
+              }}
+            />
+            <Stack.Screen
+              name="call-sync/setup"
+              options={{
+                headerShown: true,
+                title: 'Call sync setup',
+                headerTintColor: colors.brand,
+              }}
             />
           </Stack>
         </AuthGate>

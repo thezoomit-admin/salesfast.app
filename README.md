@@ -2,12 +2,14 @@
 
 Android-first React Native (Expo) client for SalesFast / Realist CRM.
 
-## Phases 1–3 (current)
+## Features
 
 - Secure mobile login (`/api/auth/mobile/*`) with SecureStore tokens
 - Agent dashboard, leads, follow-ups, activities, profile
 - Manual call / WhatsApp from lead details
-- **No automatic call-log sync** until [Phase 0](docs/phase-0-call-sync.md) passes
+- **Automatic call sync** → lead Call History (Android development build + `READ_CALL_LOG`)
+
+See [Phase 0 / call sync](docs/phase-0-call-sync.md).
 
 ## Setup
 
@@ -28,22 +30,27 @@ npx expo start
 
 Set `EXPO_PUBLIC_API_URL` in `.env` or `app.config.ts` `extra.apiUrl`.
 
-### Backend routes added
+### Backend routes
 
 - `POST /api/auth/mobile/login`
 - `POST /api/auth/mobile/refresh`
 - `POST /api/auth/mobile/logout`
 - `POST /api/auth/mobile/register-device`
 - `GET /api/crm/mobile/dashboard`
+- `GET /api/crm/mobile/call-sync/match-directory`
+- `POST /api/crm/mobile/call-sync`
 
-Web cookie auth is unchanged.
+## Call sync (required for auto Call History)
 
-## Development builds
-
-Call-log modules (Phase 4+) require an Expo Development Build, not Expo Go. Phases 1–3 run in Expo Go for UI/API work.
+Expo Go **cannot** read Android call logs. Use a development build:
 
 ```bash
-npx expo start
-# or later:
 npx expo run:android
+# or EAS development build, then:
+npx expo start --dev-client
 ```
+
+1. Enable call sync in the app (consent).
+2. Grant `READ_CALL_LOG`.
+3. Open the app or tap **Sync now** after a lead calls you.
+4. Matched calls appear on that lead’s **Call History** tab in admin.

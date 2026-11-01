@@ -17,7 +17,9 @@ export type LeadListParams = {
 };
 
 export async function fetchMyLeads(params: LeadListParams = {}) {
-  const { data } = await api.get<ApiResponse<LeadListItem[]>>('/crm/leads', {
+  const { data } = await api.get<
+    ApiResponse<LeadListItem[] | { data: LeadListItem[]; meta?: Record<string, number> }>
+  >('/crm/leads', {
     params: {
       mine: true,
       page: params.page ?? 1,
@@ -29,10 +31,17 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
       followupTo: params.followupTo || undefined,
     },
   });
-  return {
-    items: data.data ?? [],
-    meta: data.meta ?? {},
-  };
+  const payload = data.data;
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.data)
+      ? payload.data
+      : [];
+  const meta =
+    data.meta ??
+    (!Array.isArray(payload) && payload?.meta ? payload.meta : {}) ??
+    {};
+  return { items, meta };
 }
 
 export async function fetchLeadById(id: number | string) {
@@ -69,18 +78,35 @@ export async function addLeadNote(
   return data.data;
 }
 
+function asArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (
+    value &&
+    typeof value === 'object' &&
+    Array.isArray((value as { data?: unknown }).data)
+  ) {
+    return (value as { data: T[] }).data;
+  }
+  return [];
+}
+
 export async function fetchLeadStatuses() {
-  const { data } = await api.get<ApiResponse<LeadStatus[]>>(
-    '/crm/lead-statuses'
+  // select=true returns a plain ACTIVE status array (not paginated { data, meta }).
+  const { data } = await api.get<ApiResponse<LeadStatus[] | { data: LeadStatus[] }>>(
+    '/crm/lead-statuses',
+    { params: { select: true } }
   );
-  return data.data ?? [];
+  return asArray<LeadStatus>(data.data);
 }
 
 export async function fetchNoteChannels() {
   const { data } = await api.get<
-    ApiResponse<Array<{ id: number; name: string; status?: string }>>
-  >('/crm/note-channels');
-  return (data.data ?? []).filter(
+    ApiResponse<
+      | Array<{ id: number; name: string; status?: string }>
+      | { data: Array<{ id: number; name: string; status?: string }> }
+    >
+  >('/crm/note-channels', { params: { select: true } });
+  return asArray<{ id: number; name: string; status?: string }>(data.data).filter(
     (c) => !c.status || String(c.status).toUpperCase() === 'ACTIVE'
   );
 }

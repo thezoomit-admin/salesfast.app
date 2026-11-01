@@ -1,13 +1,24 @@
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { colors, radii, spacing, typography } from '@/theme';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const router = useRouter();
+  const callSync = useCallSyncStatus();
+
+  useFocusEffect(
+    useCallback(() => {
+      void callSync.refresh();
+    }, [callSync.refresh])
+  );
 
   const confirmSignOut = () => {
     Alert.alert('Sign out', 'End this session on this device?', [
@@ -36,11 +47,20 @@ export default function ProfileScreen() {
 
       <View style={styles.card}>
         <Text style={styles.section}>Device & sync</Text>
+        <Text style={styles.meta}>Status: {callSync.label}</Text>
+        <Text style={styles.meta}>{callSync.message}</Text>
+        <Button
+          title={
+            callSync.status === 'not_configured'
+              ? 'Configure call sync'
+              : 'Manage call sync'
+          }
+          variant="secondary"
+          onPress={() => router.push('/call-sync/setup')}
+        />
         <Text style={styles.meta}>
-          Call synchronization is not configured. Automatic call-log sync requires a
-          successful Phase 0 feasibility spike.
+          App: {APP_NAME} v{APP_VERSION}
         </Text>
-        <Text style={styles.meta}>App: {APP_NAME} v{APP_VERSION}</Text>
         <Text style={styles.meta} numberOfLines={2}>
           API: {API_BASE_URL}
         </Text>
@@ -59,9 +79,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   name: { ...typography.subtitle, color: colors.text },
   meta: { ...typography.body, color: colors.textSecondary },
-  section: { ...typography.subtitle, color: colors.text, marginBottom: spacing.xs },
+  section: {
+    ...typography.subtitle,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
 });

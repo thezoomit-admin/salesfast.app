@@ -1,13 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import { Button } from '@/components/ui/Button';
 import { KpiCard } from '@/components/ui/KpiCard';
 import { Screen } from '@/components/ui/Screen';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
 import { APP_NAME } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
+import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
 import { colors, radii, spacing, typography } from '@/theme';
 import { formatDate, formatRelative } from '@/utils/dates';
@@ -15,10 +18,17 @@ import { formatDate, formatRelative } from '@/utils/dates';
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const callSync = useCallSyncStatus();
   const query = useQuery({
     queryKey: ['mobile-dashboard'],
     queryFn: fetchMobileDashboard,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      void callSync.refresh();
+    }, [callSync.refresh])
+  );
 
   if (query.isLoading) {
     return (
@@ -74,12 +84,35 @@ export default function HomeScreen() {
 
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Call synchronization</Text>
-        <Text style={styles.panelBody}>{data.callSync.message}</Text>
-        <View style={styles.syncBadge}>
-          <Text style={styles.syncBadgeText}>
-            Status: {data.callSync.status.replaceAll('_', ' ')}
+        <Text style={styles.panelBody}>{callSync.message}</Text>
+        <View
+          style={[
+            styles.syncBadge,
+            callSync.status === 'configured' || callSync.status === 'unavailable_web'
+              ? styles.syncBadgeOk
+              : null,
+          ]}
+        >
+          <Text
+            style={[
+              styles.syncBadgeText,
+              callSync.status === 'configured' || callSync.status === 'unavailable_web'
+                ? styles.syncBadgeTextOk
+                : null,
+            ]}
+          >
+            Status: {callSync.label}
           </Text>
         </View>
+        <Button
+          title={
+            callSync.status === 'not_configured'
+              ? 'Configure call sync'
+              : 'Manage call sync'
+          }
+          variant="secondary"
+          onPress={() => router.push('/call-sync/setup')}
+        />
       </View>
 
       <View style={styles.panel}>
@@ -156,7 +189,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
+  syncBadgeOk: {
+    backgroundColor: colors.successSoft,
+  },
   syncBadgeText: { ...typography.caption, color: colors.warning },
+  syncBadgeTextOk: { color: colors.success },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
