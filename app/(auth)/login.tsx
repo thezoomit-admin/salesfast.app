@@ -8,7 +8,7 @@ import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { TextField } from '@/components/ui/TextField';
-import { APP_NAME } from '@/constants/config';
+import { API_BASE_URL, APP_NAME } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import { colors, radii, spacing, typography } from '@/theme';
 
@@ -90,6 +90,7 @@ export default function LoginScreen() {
             )}
           />
           {formError ? <Text style={styles.error}>{formError}</Text> : null}
+          <Text style={styles.apiHint}>API: {API_BASE_URL}</Text>
           <Button title="Sign in" onPress={onSubmit} loading={signingIn} />
         </View>
       </KeyboardAvoidingView>
@@ -111,4 +112,5 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   error: { ...typography.caption, color: colors.danger },
+  apiHint: { ...typography.caption, color: colors.textMuted },
 });

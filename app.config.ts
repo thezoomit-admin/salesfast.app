@@ -22,6 +22,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // Dev API is http:// — required for Expo Go → local backend.
+    usesCleartextTraffic: true,
   },
   web: {
     bundler: 'metro',
@@ -45,7 +47,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     apiUrl:
-      process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:6001/api',
+      process.env.EXPO_PUBLIC_API_URL ?? 'http://192.168.0.163:6001/api',
     eas: {
       projectId: process.env.EAS_PROJECT_ID,
     },
