@@ -1,8 +1,10 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
+const isDevClientBuild = process.env.EAS_BUILD_PROFILE === 'development';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Realist CRM',
+  name: 'Salesfast- Real estate CRM',
   slug: 'salesfast',
   version: '1.0.0',
   owner: 'ibnabdullah01',
@@ -44,7 +46,25 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-secure-store',
-    'expo-dev-client',
+    ...(isDevClientBuild ? (['expo-dev-client'] as const) : []),
+    [
+      'expo-build-properties',
+      {
+        android: {
+          // Keep APK small: one ABI + R8 + resource shrink + compress native libs
+          buildArchs: ['arm64-v8a'],
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+          enablePngCrunchInReleaseBuilds: true,
+          useLegacyPackaging: true,
+          extraProguardRules: [
+            '-keep class expo.modules.androidcalllog.** { *; }',
+            '-keep class com.facebook.react.** { *; }',
+            '-dontwarn com.facebook.react.**',
+          ].join('\n'),
+        },
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
