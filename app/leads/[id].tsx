@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   Alert,
@@ -20,7 +20,10 @@ import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
 import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
+import { LeadCallHistoryPanel } from '@/components/leads/LeadCallHistoryPanel';
+import { LeadHistoryPanel } from '@/components/leads/LeadHistoryPanel';
 import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
+import { LeadViewHistoryPanel } from '@/components/leads/LeadViewHistoryPanel';
 import { Button } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/FilterChip';
 import { Screen } from '@/components/ui/Screen';
@@ -38,6 +41,7 @@ import {
   leadMetaQuery,
   leadStatusesQuery,
   noteChannelsQuery,
+  startLeadView,
 } from '@/features/leads/leadsApi';
 import {
   formatMoney,
@@ -57,12 +61,19 @@ import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 type NoteForm = { note: string; followupAt?: string };
-type DetailTab = 'profile' | 'requirements' | 'notes';
+type MainTab = 'overview' | 'history' | 'calls' | 'views';
+type OverviewView = 'profile' | 'requirements';
 
-const TABS: { key: DetailTab; label: string }[] = [
+const MAIN_TABS: { key: MainTab; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'history', label: 'History' },
+  { key: 'calls', label: 'Call History' },
+  { key: 'views', label: 'View History' },
+];
+
+const OVERVIEW_PILLS: { key: OverviewView; label: string }[] = [
   { key: 'profile', label: 'Buyer Profile' },
   { key: 'requirements', label: 'Requirements' },
-  { key: 'notes', label: 'Notes' },
 ];
 
 const noteResolver = formResolver<NoteForm>((v) => ({
@@ -78,7 +89,8 @@ export default function LeadDetailScreen() {
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<DetailTab>('profile');
+  const [activeTab, setActiveTab] = useState<MainTab>('overview');
+  const [overviewView, setOverviewView] = useState<OverviewView>('profile');
 
   const leadQuery = useQuery({
     queryKey: ['lead', leadId],
@@ -88,6 +100,18 @@ export default function LeadDetailScreen() {
   const statusesQuery = useQuery(leadStatusesQuery);
   const channelsQuery = useQuery(noteChannelsQuery);
   const metaQuery = useQuery(leadMetaQuery);
+
+  // Match web portal: every visit lands in View History.
+  useEffect(() => {
+    if (!Number.isFinite(leadId)) return;
+    void startLeadView(leadId)
+      .then(() =>
+        queryClient.invalidateQueries({ queryKey: ['lead-views', leadId] })
+      )
+      .catch(() => {
+        // Best effort — never block the screen.
+      });
+  }, [leadId, queryClient]);
 
   const callChannelId = useMemo(
     () =>
@@ -216,7 +240,6 @@ export default function LeadDetailScreen() {
       refreshing={leadQuery.isRefetching}
       onRefresh={() => leadQuery.refetch()}
     >
-      {/* Summary card — mirrors web lead header + buyer highlight */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryHero}>
           <Text style={styles.name}>{name}</Text>
@@ -299,14 +322,14 @@ export default function LeadDetailScreen() {
         />
       </View>
 
-      {/* Tabs + content — same pattern as web Overview pills */}
+      {/* Main tabs — same as web portal */}
       <View style={styles.tabShell}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabRow}
         >
-          {TABS.map((tab) => (
+          {MAIN_TABS.map((tab) => (
             <FilterChip
               key={tab.key}
               label={tab.label}
@@ -317,40 +340,52 @@ export default function LeadDetailScreen() {
         </ScrollView>
 
         <View style={styles.tabBody}>
-          {activeTab === 'profile' ? (
-            <LeadBuyerProfilePanel lead={lead} meta={meta} />
+          {activeTab === 'overview' ? (
+            <View style={styles.overviewWrap}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.subTabRow}
+              >
+                {OVERVIEW_PILLS.map((p) => (
+                  <FilterChip
+                    key={p.key}
+                    label={p.label}
+                    active={overviewView === p.key}
+                    onPress={() => setOverviewView(p.key)}
+                  />
+                ))}
+              </ScrollView>
+              {overviewView === 'profile' ? (
+                <LeadBuyerProfilePanel lead={lead} meta={meta} />
+              ) : (
+                <LeadRequirementsPanel lead={lead} meta={meta} />
+              )}
+            </View>
           ) : null}
-          {activeTab === 'requirements' ? (
-            <LeadRequirementsPanel lead={lead} meta={meta} />
-          ) : null}
-          {activeTab === 'notes' ? (
+
+          {activeTab === 'history' ? (
             <View style={styles.notesWrap}>
               {pendingNotes.map((note) => (
-                <View key={note.clientId} style={styles.note}>
+                <View key={note.clientId} style={styles.pendingNote}>
                   <Text style={styles.pendingText}>
                     Waiting to sync · {formatDateTime(new Date(note.queuedAt))}
                   </Text>
                   <Text style={styles.noteBody}>{note.note}</Text>
                 </View>
               ))}
-              {!lead.notes?.length && !pendingNotes.length ? (
-                <EmptyState
-                  title="No notes yet"
-                  message="Add the first note for this lead."
-                />
-              ) : (
-                (lead.notes ?? []).map((note) => (
-                  <View key={note.id} style={styles.note}>
-                    <Text style={styles.noteMeta}>
-                      {note.channel?.name || 'Note'} ·{' '}
-                      {note.addedByName || 'Agent'} ·{' '}
-                      {formatDateTime(note.createdAt)}
-                    </Text>
-                    <Text style={styles.noteBody}>{note.note}</Text>
-                  </View>
-                ))
-              )}
+              <LeadHistoryPanel lead={lead} />
             </View>
+          ) : null}
+
+          {activeTab === 'calls' ? <LeadCallHistoryPanel lead={lead} /> : null}
+
+          {activeTab === 'views' ? (
+            Number.isFinite(leadId) ? (
+              <LeadViewHistoryPanel leadId={leadId} />
+            ) : (
+              <EmptyState title="Unavailable" message="Lead id is missing." />
+            )
           ) : null}
         </View>
       </View>
@@ -513,19 +548,26 @@ function createStyles(colors: ThemeColors) {
       gap: spacing.sm,
       alignItems: 'center',
     },
+    subTabRow: {
+      gap: spacing.sm,
+      alignItems: 'center',
+      paddingBottom: spacing.sm,
+    },
     tabBody: {
       backgroundColor: colors.surface,
       padding: spacing.lg,
       minHeight: 160,
     },
+    overviewWrap: { gap: spacing.md },
     notesWrap: { gap: spacing.sm },
-    note: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      paddingTop: spacing.sm,
+    pendingNote: {
+      borderWidth: 1,
+      borderColor: colors.warningSoft,
+      borderRadius: 12,
+      padding: spacing.md,
       gap: 4,
+      backgroundColor: colors.warningSoft,
     },
-    noteMeta: { ...typography.caption, color: colors.textMuted },
     pendingText: { ...typography.caption, color: colors.warning },
     noteBody: { ...typography.body, color: colors.textSecondary },
     modalBackdrop: {

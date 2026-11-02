@@ -8,6 +8,7 @@ import type {
   LeadListItem,
   LeadMeta,
   LeadStatus,
+  LeadViewHistory,
 } from '@/types/api';
 
 export type LeadListParams = {
@@ -162,6 +163,29 @@ export const leadMetaQuery = queryOptions({
   queryFn: fetchLeadMeta,
   staleTime: LOOKUP_STALE_MS,
 });
+
+export async function fetchLeadViews(leadId: number | string, limit = 30) {
+  const { data } = await api.get<ApiResponse<LeadViewHistory>>(
+    `/crm/leads/${leadId}/views`,
+    { params: { limit } }
+  );
+  return data.data;
+}
+
+/** Record a visit so View History matches the web portal. */
+export async function startLeadView(leadId: number | string) {
+  const { data } = await api.post<ApiResponse<{ id: number }>>(
+    `/crm/leads/${leadId}/views`
+  );
+  return data.data;
+}
+
+export const leadViewsQuery = (leadId: number) =>
+  queryOptions({
+    queryKey: ['lead-views', leadId],
+    queryFn: () => fetchLeadViews(leadId),
+    enabled: Number.isFinite(leadId),
+  });
 
 export const myLeadsQuery = (search: string, statusId?: number) =>
   infiniteQueryOptions({
