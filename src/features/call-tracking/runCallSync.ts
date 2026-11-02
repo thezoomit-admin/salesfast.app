@@ -6,6 +6,8 @@ import {
   isCallLogModuleAvailable,
 } from 'android-call-log';
 
+import { loadStoredUser } from '@/features/auth/authApi';
+
 import {
   fetchCallMatchDirectory,
   uploadMatchedCalls,
@@ -114,13 +116,17 @@ export async function runCallSync(options?: {
     };
   }
 
+  // Employee phone for Call History attribution (matched to User.phone server-side).
+  const storedUser = await loadStoredUser();
+  const devicePhone = storedUser?.phone?.trim() || null;
+
   // Batch in chunks of 100
   let created = 0;
   let duplicates = 0;
   let unmatched = 0;
   for (let i = 0; i < payload.length; i += 100) {
     const chunk = payload.slice(i, i + 100);
-    const result = await uploadMatchedCalls(chunk);
+    const result = await uploadMatchedCalls(chunk, devicePhone);
     created += result.created;
     duplicates += result.duplicates;
     unmatched += result.unmatched;
