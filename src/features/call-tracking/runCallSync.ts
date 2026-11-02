@@ -39,7 +39,7 @@ async function ensureCallLogPermission(): Promise<boolean> {
     {
       title: 'Call history access',
       message:
-        'Realist CRM reads call history only to match numbers with your CRM leads.',
+        'SalesFast CRM reads call history only to match numbers with your CRM leads.',
       buttonPositive: 'Allow',
       buttonNegative: 'Deny',
     }
@@ -74,7 +74,7 @@ export async function runCallSync(options?: {
 
   if (!isCallLogModuleAvailable()) {
     return empty(
-      'Expo Go cannot read call logs. Install the Realist CRM development build, then tap Sync now.'
+      'Expo Go cannot read call logs. Install the SalesFast CRM development build, then tap Sync now.'
     );
   }
 

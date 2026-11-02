@@ -41,7 +41,7 @@ export async function getRecentCalls(limit = 100, minDateMs = 0) {
   const native = getNative();
   if (!native) {
     throw new Error(
-      'Call log module unavailable. Install the Realist CRM Android development build (Expo Go cannot read call history).'
+      'Call log module unavailable. Install the SalesFast CRM Android development build (Expo Go cannot read call history).'
     );
   }
   return native.getRecentCalls(Math.min(Math.max(limit, 1), 300), minDateMs);

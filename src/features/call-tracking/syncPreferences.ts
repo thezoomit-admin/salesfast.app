@@ -134,7 +134,7 @@ export function resolveCallSyncStatus(prefs: CallSyncPrefs): {
       status: 'needs_dev_build',
       label: 'needs Android build',
       message:
-        'Consent is saved, but Expo Go cannot read call logs. Install the Realist CRM development build to sync automatically.',
+        'Consent is saved, but Expo Go cannot read call logs. Install the SalesFast CRM development build to sync automatically.',
       canAutoSync: false,
     };
   }
