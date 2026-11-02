@@ -1210,7 +1210,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       borderColor: 'transparent',
     },
     priorityDismiss: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       zIndex: 20,
     },
     closeBtn: {
