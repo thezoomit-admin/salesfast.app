@@ -56,27 +56,30 @@ export const lightColors: ThemeColors = {
   black: '#000000',
 };
 
-/** Dark surface stack — brand orange kept for CTAs / accents. */
+/**
+ * Dark surface stack — pure black page + #121212 elevated cards.
+ * Brand orange kept for CTAs / accents.
+ */
 export const darkColors: ThemeColors = {
   brand: '#F2461C',
   brandMuted: '#FF6A45',
-  brandSoft: '#3D1F16',
-  primary50: '#2A1814',
-  accent: '#E7EAED',
-  accentSoft: '#24303A',
-  background: '#0F1419',
-  surface: '#1A222C',
-  surfaceMuted: '#242D38',
-  border: '#2E3742',
+  brandSoft: '#2A1610',
+  primary50: '#1F120E',
+  accent: '#F3F4F6',
+  accentSoft: '#1A1A1A',
+  background: '#000000',
+  surface: '#121212',
+  surfaceMuted: '#1A1A1A',
+  border: '#2A2A2A',
   text: '#F3F4F6',
-  textSecondary: '#9CA3AF',
-  textMuted: '#6B7280',
+  textSecondary: '#A1A1AA',
+  textMuted: '#71717A',
   danger: '#F97066',
-  dangerSoft: '#3B1A18',
+  dangerSoft: '#2A1210',
   success: '#32D583',
-  successSoft: '#0F2E22',
+  successSoft: '#0F1F18',
   warning: '#FDB022',
-  warningSoft: '#3A2A0E',
+  warningSoft: '#241A08',
   white: '#FFFFFF',
   black: '#000000',
 };

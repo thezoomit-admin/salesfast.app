@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -10,7 +10,7 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { authColors } from '../authTheme';
+import { useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = TextInputProps & {
   /** Shown above the field (design-kit style). */
@@ -32,6 +32,8 @@ export function AuthInput({
   placeholder,
   ...rest
 }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
   const secure = password && !visible;
@@ -51,7 +53,7 @@ export function AuthInput({
         <TextInput
           {...rest}
           placeholder={placeholder}
-          placeholderTextColor={authColors.textMuted}
+          placeholderTextColor={colors.textMuted}
           secureTextEntry={secure}
           style={[styles.input, password ? styles.inputWithEye : null, style]}
           onFocus={(e) => {
@@ -74,7 +76,7 @@ export function AuthInput({
             <Ionicons
               name={visible ? 'eye-outline' : 'eye-off-outline'}
               size={18}
-              color={authColors.muted}
+              color={colors.textMuted}
             />
           </Pressable>
         ) : null}
@@ -84,55 +86,57 @@ export function AuthInput({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    marginBottom: 18,
-  },
-  label: {
-    marginBottom: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: authColors.text,
-  },
-  field: {
-    minHeight: 52,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: authColors.border,
-    backgroundColor: authColors.white,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  fieldFocused: {
-    borderColor: authColors.borderFocus,
-    borderWidth: 1.5,
-  },
-  fieldError: {
-    borderColor: authColors.danger,
-  },
-  prefix: {
-    fontSize: 15,
-    color: authColors.textSecondary,
-    marginRight: 8,
-    fontWeight: '500',
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: authColors.text,
-    paddingVertical: 14,
-  },
-  inputWithEye: {
-    paddingRight: 8,
-  },
-  eye: {
-    paddingLeft: 8,
-    paddingVertical: 4,
-  },
-  error: {
-    marginTop: 6,
-    fontSize: 12,
-    color: authColors.danger,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      marginBottom: 18,
+    },
+    label: {
+      marginBottom: 8,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    field: {
+      minHeight: 52,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    fieldFocused: {
+      borderColor: colors.brand,
+      borderWidth: 1.5,
+    },
+    fieldError: {
+      borderColor: colors.danger,
+    },
+    prefix: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      marginRight: 8,
+      fontWeight: '500',
+    },
+    input: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.text,
+      paddingVertical: 14,
+    },
+    inputWithEye: {
+      paddingRight: 8,
+    },
+    eye: {
+      paddingLeft: 8,
+      paddingVertical: 4,
+    },
+    error: {
+      marginTop: 6,
+      fontSize: 12,
+      color: colors.danger,
+    },
+  });
+}
