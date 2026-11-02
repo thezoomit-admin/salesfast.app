@@ -150,7 +150,7 @@ export default function HomeScreen() {
     },
   ];
 
-  const queue = [...data.upcomingFollowUps]
+  const queue = [...(data.upcomingFollowUps ?? [])]
     .sort((a, b) => {
       const aOver = isOverdue(a.dueAt) ? 0 : 1;
       const bOver = isOverdue(b.dueAt) ? 0 : 1;
@@ -158,6 +158,7 @@ export default function HomeScreen() {
       return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
     })
     .slice(0, 6);
+  const recentLeads = data.recentLeads ?? [];
 
   return (
     <Screen
@@ -327,10 +328,10 @@ export default function HomeScreen() {
           </Pressable>
         </View>
         <View style={styles.panel}>
-          {data.recentLeads.length === 0 ? (
+          {recentLeads.length === 0 ? (
             <Text style={styles.inlineEmpty}>No recent lead activity.</Text>
           ) : (
-            data.recentLeads.slice(0, 5).map((lead, index) => (
+            recentLeads.slice(0, 5).map((lead, index) => (
               <Pressable
                 key={lead.id}
                 style={({ pressed }) => [
@@ -338,7 +339,10 @@ export default function HomeScreen() {
                   index > 0 && styles.rowDivider,
                   pressed && styles.pressed,
                 ]}
-                onPress={() => router.push(`/leads/${lead.id}`)}
+                onPress={() => {
+                  if (!Number.isFinite(Number(lead.id))) return;
+                  router.push(`/leads/${lead.id}`);
+                }}
               >
                 <View style={styles.pipelineMark}>
                   <Text style={styles.pipelineMarkText}>

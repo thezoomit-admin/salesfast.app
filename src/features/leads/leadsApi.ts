@@ -57,7 +57,8 @@ export async function fetchLeadById(
   options: WriteOptions = {}
 ) {
   const { data } = await api.get<ApiResponse<LeadDetail>>(`/crm/leads/${id}`, {
-    params: { view: 'full' },
+    // Lean mobile payload — avoids admin `full` graph that 500s for some leads.
+    params: { view: 'mobile' },
     accountId: options.accountId,
   });
   return data.data;
