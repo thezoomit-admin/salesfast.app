@@ -131,7 +131,8 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       gap: spacing.sm,
       paddingHorizontal: spacing.lg,
-      marginBottom: spacing.md,
+      marginTop: spacing.sm,
+      marginBottom: spacing.sm,
     },
     tab: {
       flex: 1,
@@ -145,6 +146,12 @@ function createStyles(colors: ThemeColors) {
     tabActive: { backgroundColor: colors.brand, borderColor: colors.brand },
     tabText: { ...typography.caption, color: colors.textSecondary },
     tabTextActive: { color: colors.white },
-    list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
+    list: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.lg,
+      gap: spacing.md,
+      flexGrow: 1,
+    },
   });
 }

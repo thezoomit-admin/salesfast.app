@@ -78,7 +78,13 @@ export function ScreenHeader({
   ) : null;
 
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
+    <View
+      style={[
+        styles.wrap,
+        !showBack && styles.wrapTabRoot,
+        { paddingTop: insets.top + 8 },
+      ]}
+    >
       {center || centered ? (
         <View
           style={[styles.centerSlot, { top: insets.top }]}
@@ -183,6 +189,11 @@ function createStyles(colors: ThemeColors) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.brandSoft,
       zIndex: 2,
+    },
+    /** Tab roots sit directly above chips/tabs — keep the seam tight. */
+    wrapTabRoot: {
+      marginBottom: 0,
+      paddingBottom: 6,
     },
     centerSlot: {
       position: 'absolute',

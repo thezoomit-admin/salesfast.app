@@ -133,7 +133,7 @@ export default function LeadsScreen() {
         </View>
       ) : null}
 
-      <ChipScroll>
+      <ChipScroll style={styles.chips}>
         {filterChips.map((item) => {
           const active = (item.id === 0 && !statusId) || item.id === statusId;
           return (
@@ -201,7 +201,8 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       gap: spacing.sm,
       marginHorizontal: spacing.lg,
-      marginBottom: spacing.md,
+      marginTop: spacing.sm,
+      marginBottom: spacing.sm,
       minHeight: 44,
       borderRadius: radii.md,
       borderWidth: 1,
@@ -215,7 +216,17 @@ function createStyles(colors: ThemeColors) {
       fontSize: 15,
       paddingVertical: spacing.sm,
     },
-    list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
+    chips: {
+      marginTop: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    list: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.lg,
+      gap: spacing.md,
+      flexGrow: 1,
+    },
     stale: { opacity: 0.6 },
   });
 }
