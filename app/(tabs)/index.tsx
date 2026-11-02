@@ -32,64 +32,6 @@ type AlertItem = {
   href: Href;
 };
 
-type Shortcut = {
-  key: string;
-  label: string;
-  href: Href;
-  icon: IoniconName;
-  bg: string;
-  border: string;
-  fg: string;
-};
-
-const SHORTCUTS: Shortcut[] = [
-  {
-    key: 'leads',
-    label: 'Leads',
-    href: '/(tabs)/leads',
-    icon: 'people',
-    bg: '#FFE8EE',
-    border: '#F9A8C4',
-    fg: '#E11D48',
-  },
-  {
-    key: 'followups',
-    label: 'Follow-ups',
-    href: '/(tabs)/follow-ups',
-    icon: 'calendar',
-    bg: '#FEF3C7',
-    border: '#FCD34D',
-    fg: '#C2410C',
-  },
-  {
-    key: 'calls',
-    label: 'Calls',
-    href: '/(tabs)/calls',
-    icon: 'call',
-    bg: '#D1FAE5',
-    border: '#6EE7B7',
-    fg: '#0F766E',
-  },
-  {
-    key: 'activity',
-    label: 'Activity',
-    href: '/activities',
-    icon: 'list',
-    bg: '#E0F2FE',
-    border: '#7DD3FC',
-    fg: '#0284C7',
-  },
-  {
-    key: 'more',
-    label: 'More',
-    href: '/(tabs)/profile',
-    icon: 'grid',
-    bg: '#F3E8FF',
-    border: '#D8B4FE',
-    fg: '#7C3AED',
-  },
-];
-
 function greetingForHour(hour: number) {
   if (hour < 5) return 'Good night';
   if (hour < 12) return 'Good morning';
@@ -528,49 +470,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Shortcuts — pastel tiles */}
-      <View>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Shortcuts</Text>
-          <Pressable
-            onPress={() => router.navigate('/(tabs)/profile')}
-            hitSlop={6}
-            style={styles.organize}
-          >
-            <Ionicons name="options-outline" size={13} color={colors.textMuted} />
-            <Text style={styles.organizeText}>More</Text>
-          </Pressable>
-        </View>
-        <View style={styles.shortcutGrid}>
-          {SHORTCUTS.map((item) => (
-            <Pressable
-              key={item.key}
-              accessibilityRole="button"
-              onPress={() => router.navigate(item.href)}
-              style={({ pressed }) => [
-                styles.shortcutItem,
-                pressed && styles.pressed,
-              ]}
-            >
-              <View
-                style={[
-                  styles.shortcutIcon,
-                  {
-                    backgroundColor: isDark ? `26` : item.bg,
-                    borderColor: isDark ? `66` : item.border,
-                  },
-                ]}
-              >
-                <Ionicons name={item.icon} size={24} color={item.fg} />
-              </View>
-              <Text style={styles.shortcutLabel} numberOfLines={2}>
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
       {/* Upcoming list */}
       <View>
         <View style={styles.sectionHeader}>
@@ -948,22 +847,6 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       color: colors.brand,
       fontWeight: '600',
     },
-    organize: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: colors.surface,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: radii.pill,
-      borderWidth: 0.5,
-      borderColor: colors.border,
-    },
-    organizeText: {
-      ...typography.caption,
-      color: colors.textMuted,
-    },
-
     quickChip: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1031,33 +914,6 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     dueTagWarn: { backgroundColor: colors.warningSoft, color: colors.warning },
     dueTagOk: { backgroundColor: colors.brandSoft, color: colors.brand },
-
-    shortcutGrid: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-    },
-    shortcutItem: {
-      width: '19%',
-      alignItems: 'center',
-      paddingHorizontal: 2,
-    },
-    shortcutIcon: {
-      width: 52,
-      height: 52,
-      borderRadius: 16,
-      borderWidth: 1.5,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 8,
-    },
-    shortcutLabel: {
-      ...typography.caption,
-      fontSize: 11,
-      lineHeight: 14,
-      color: colors.text,
-      textAlign: 'center',
-    },
 
     listRow: {
       flexDirection: 'row',
