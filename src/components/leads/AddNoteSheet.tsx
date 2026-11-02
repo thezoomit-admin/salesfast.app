@@ -1,10 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
+  createAudioPlayer,
   RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
   useAudioRecorder,
   useAudioRecorderState,
+  type AudioPlayer,
 } from 'expo-audio';
 import * as DocumentPicker from 'expo-document-picker';
 import { HugeiconsIcon } from '@hugeicons/react-native';
@@ -144,6 +146,8 @@ export function AddNoteSheet({
   const [recording, setRecording] = useState(false);
   const recordStartedAt = useRef(0);
   const [recordSec, setRecordSec] = useState(0);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const playerRef = useRef<AudioPlayer | null>(null);
   const versionRef = useRef<number | undefined>(undefined);
 
   const channels = useMemo(() => {
@@ -192,6 +196,7 @@ export function AddNoteSheet({
     setClips([]);
     setRecording(false);
     setRecordSec(0);
+    stopPlayback();
     setRating((lead.priority as LeadPriority | null) ?? null);
     versionRef.current = lead.version ?? undefined;
     const preset =
@@ -213,6 +218,51 @@ export function AddNoteSheet({
     }, 250);
     return () => clearInterval(t);
   }, [recording]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        playerRef.current?.pause();
+        playerRef.current?.remove();
+      } catch {
+        /* ignore */
+      }
+      playerRef.current = null;
+    };
+  }, []);
+
+  function stopPlayback() {
+    try {
+      playerRef.current?.pause();
+    } catch {
+      /* ignore */
+    }
+    setPlayingId(null);
+  }
+
+  async function togglePlay(clip: VoiceClip) {
+    try {
+      await setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+      });
+      if (playingId === clip.id && playerRef.current?.playing) {
+        playerRef.current.pause();
+        setPlayingId(null);
+        return;
+      }
+      if (!playerRef.current) {
+        playerRef.current = createAudioPlayer(clip.uri);
+      } else {
+        playerRef.current.replace(clip.uri);
+      }
+      playerRef.current.play();
+      setPlayingId(clip.id);
+    } catch {
+      Alert.alert('Could not play voice note');
+      setPlayingId(null);
+    }
+  }
 
   const priorityMutation = useMutation({
     mutationFn: (next: LeadPriority) =>
@@ -262,6 +312,7 @@ export function AddNoteSheet({
 
   async function startRecording() {
     try {
+      stopPlayback();
       const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) {
         Alert.alert('Microphone permission denied');
@@ -613,30 +664,53 @@ export function AddNoteSheet({
 
               {clips.length > 0 ? (
                 <View style={styles.clipList}>
-                  {clips.map((c) => (
-                    <View key={c.id} style={styles.clipRow}>
-                      <Ionicons
-                        name="mic"
-                        size={16}
-                        color={colors.brand}
-                      />
-                      <Text style={styles.clipName} numberOfLines={1}>
-                        {c.name}
-                      </Text>
-                      <Pressable
-                        hitSlop={8}
-                        onPress={() =>
-                          setClips((prev) => prev.filter((x) => x.id !== c.id))
-                        }
-                      >
-                        <Ionicons
-                          name="close-circle"
-                          size={18}
-                          color={colors.textMuted}
-                        />
-                      </Pressable>
-                    </View>
-                  ))}
+                  {clips.map((c) => {
+                    const isPlaying = playingId === c.id;
+                    return (
+                      <View key={c.id} style={styles.clipRow}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            isPlaying ? 'Pause voice note' : 'Play voice note'
+                          }
+                          hitSlop={6}
+                          onPress={() => void togglePlay(c)}
+                          style={styles.playBtn}
+                        >
+                          <Ionicons
+                            name={isPlaying ? 'pause' : 'play'}
+                            size={16}
+                            color={colors.brand}
+                          />
+                        </Pressable>
+                        <View style={styles.clipMeta}>
+                          <Text style={styles.clipName} numberOfLines={1}>
+                            {c.name}
+                          </Text>
+                          {c.durationSec > 0 ? (
+                            <Text style={styles.clipDuration}>
+                              {formatDuration(c.durationSec)}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <Pressable
+                          hitSlop={8}
+                          onPress={() => {
+                            if (playingId === c.id) stopPlayback();
+                            setClips((prev) =>
+                              prev.filter((x) => x.id !== c.id)
+                            );
+                          }}
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={18}
+                            color={colors.textMuted}
+                          />
+                        </Pressable>
+                      </View>
+                    );
+                  })}
                 </View>
               ) : null}
 
@@ -920,17 +994,32 @@ function createStyles(colors: ThemeColors) {
     clipRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 10,
       backgroundColor: colors.primary50,
       borderRadius: radii.md,
       paddingHorizontal: 10,
       paddingVertical: 8,
     },
+    playBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 999,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.brandSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    clipMeta: { flex: 1, minWidth: 0, gap: 1 },
     clipName: {
-      flex: 1,
       fontSize: 13,
       fontWeight: '600',
       color: colors.text,
+    },
+    clipDuration: {
+      fontSize: 11,
+      color: colors.textMuted,
+      fontVariant: ['tabular-nums'],
     },
     toolbar: {
       flexDirection: 'row',

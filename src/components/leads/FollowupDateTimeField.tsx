@@ -134,7 +134,6 @@ export function FollowupDateTimeField({
           strokeWidth={1.75}
         />
         <View style={styles.fieldText}>
-          <Text style={styles.caption}>Date & time</Text>
           <Text
             style={[styles.value, !value && { color: colors.textMuted, fontWeight: '400' }]}
             numberOfLines={1}
@@ -369,7 +368,7 @@ function createStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,
-      borderRadius: radii.lg,
+      borderRadius: radii.sm,
       paddingHorizontal: 14,
       paddingVertical: 10,
     },
@@ -379,7 +378,6 @@ function createStyles(colors: ThemeColors) {
       color: colors.textMuted,
     },
     value: {
-      marginTop: 2,
       fontSize: 14,
       fontWeight: '600',
       color: colors.text,
@@ -400,7 +398,7 @@ function createStyles(colors: ThemeColors) {
     },
     card: {
       backgroundColor: colors.surface,
-      borderRadius: radii.lg,
+      borderRadius: radii.md,
       borderWidth: 1,
       borderColor: colors.border,
       padding: spacing.lg,
@@ -451,7 +449,7 @@ function createStyles(colors: ThemeColors) {
     dayBtn: {
       width: 36,
       height: 36,
-      borderRadius: radii.md,
+      borderRadius: radii.sm,
       alignItems: 'center',
       justifyContent: 'center',
     },
