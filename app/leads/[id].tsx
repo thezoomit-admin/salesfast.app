@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import {
   useMutation,
   useMutationState,
@@ -20,12 +21,18 @@ import {
 import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
+import {
+  ArrowDownDoubleIcon,
+  FlameIcon,
+  MinusSignIcon,
+} from '@/components/icons/hugeicons';
 import { LeadCallHistoryPanel } from '@/components/leads/LeadCallHistoryPanel';
 import {
   LeadDetailTabBar,
   type LeadDetailTab,
 } from '@/components/leads/LeadDetailTabBar';
 import { LeadHistoryPanel } from '@/components/leads/LeadHistoryPanel';
+import { LeadPipeline } from '@/components/leads/LeadPipeline';
 import { LeadViewHistoryPanel } from '@/components/leads/LeadViewHistoryPanel';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
@@ -43,7 +50,12 @@ import { useAuth } from '@/features/auth/AuthContext';
 import {
   leadStatusesQuery,
   noteChannelsQuery,
+  updateLeadPriority,
 } from '@/features/leads/leadsApi';
+import {
+  PRIORITIES,
+  PRIORITY_META,
+} from '@/features/leads/leadPriority';
 import {
   formatMoney,
   summarizeLead,
@@ -62,10 +74,10 @@ import {
   radii,
   spacing,
   typography,
-  useTheme,
   useThemeColors,
   type ThemeColors,
 } from '@/theme';
+import type { LeadPriority } from '@/types/api';
 import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
@@ -74,6 +86,12 @@ type NoteForm = { note: string; followupAt?: string };
 const noteResolver = formResolver<NoteForm>((v) => ({
   note: minLength(v.note, 1, 'Note is required'),
 }));
+
+const PRIORITY_ICON = {
+  LOW: ArrowDownDoubleIcon,
+  MEDIUM: MinusSignIcon,
+  HIGH: FlameIcon,
+} as const;
 
 export default function LeadDetailScreen() {
   const colors = useThemeColors();
@@ -84,7 +102,6 @@ export default function LeadDetailScreen() {
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
-  const [statusOpen, setStatusOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<LeadDetailTab>('overview');
 
   const { leadQuery, metaQuery } = useLeadDetail(leadId);
@@ -114,10 +131,6 @@ export default function LeadDetailScreen() {
     mutationKey: ADD_NOTE_MUTATION,
     scope,
   });
-  const statusMutation = useMutation<unknown, Error, UpdateStatusVars>({
-    mutationKey: UPDATE_STATUS_MUTATION,
-    scope,
-  });
   const priorityMutation = useMutation({
     mutationFn: (priority: LeadPriority) =>
       updateLeadPriority(
@@ -132,10 +145,7 @@ export default function LeadDetailScreen() {
       await queryClient.cancelQueries({ queryKey: ['lead', leadId] });
       const prev = leadQuery.data;
       if (prev) {
-        queryClient.setQueryData(['lead', leadId], {
-          ...prev,
-          priority,
-        });
+        queryClient.setQueryData(['lead', leadId], { ...prev, priority });
       }
       setPriorityOpen(false);
       return { prev };
@@ -176,16 +186,6 @@ export default function LeadDetailScreen() {
     });
   };
 
-  const changeStatus = (leadStatusId: number) => {
-    const write: UpdateStatusVars = {
-      ...newLeadWrite(accountId, leadId),
-      leadStatusId,
-      expectedVersion: leadQuery.data?.version,
-    };
-    onWriteQueued(queryClient, write.clientId, () => setStatusOpen(false));
-    statusMutation.mutate(write, { onSuccess: () => setStatusOpen(false) });
-  };
-
   const pendingNotes = useMutationState({
     filters: { mutationKey: ADD_NOTE_MUTATION, status: 'pending' },
     select: (m) => m.state.variables as AddNoteVars,
@@ -208,19 +208,10 @@ export default function LeadDetailScreen() {
     (Number.isFinite(leadId) ? `Lead #${leadId}` : 'Lead');
 
   const headerRight = (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Add note"
-      hitSlop={8}
+    <HeaderAddButton
+      label="Add note"
       onPress={() => setNoteOpen(true)}
-      style={({ pressed }) => [
-        styles.headerNoteBtn,
-        pressed && styles.pressed,
-      ]}
-    >
-      <Ionicons name="create-outline" size={16} color={colors.white} />
-      <Text style={styles.headerNoteText}>Add note</Text>
-    </Pressable>
+    />
   );
 
   if (!leadQuery.data) {
@@ -249,8 +240,9 @@ export default function LeadDetailScreen() {
   const phone = lead.buyerPersona?.phone;
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
   const sm = summarizeLead(lead, metaQuery.data);
-  const statusColor = lead.leadStatus?.color || colors.brand;
   const currentStatusId = lead.leadStatus?.id ?? null;
+  const priority = (lead.priority ?? null) as LeadPriority | null;
+  const priorityMeta = priority ? PRIORITY_META[priority] : null;
 
   const budgetLabel =
     sm.budgetMin != null || sm.budgetMax != null
@@ -295,25 +287,60 @@ export default function LeadDetailScreen() {
       {activeTab === 'overview' ? (
         <View style={styles.summaryCard}>
           <View style={styles.summaryHero}>
+            {/* Row 1: Name + Priority */}
             <View style={styles.nameRow}>
               <Text style={styles.name} numberOfLines={1}>
                 {name}
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Change status"
-                onPress={() => setStatusOpen(true)}
+                accessibilityLabel="Change priority"
+                onPress={() => setPriorityOpen(true)}
                 style={({ pressed }) => [
-                  styles.statusChip,
-                  { backgroundColor: statusColor },
+                  styles.priorityChip,
+                  priorityMeta
+                    ? {
+                        backgroundColor: priorityMeta.bg,
+                        borderColor: priorityMeta.border,
+                      }
+                    : {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
                   pressed && styles.pressed,
                 ]}
               >
-                <Text style={styles.statusChipText} numberOfLines={1}>
-                  {lead.leadStatus?.name || 'Status'}
+                {priority ? (
+                  <HugeiconsIcon
+                    icon={PRIORITY_ICON[priority]}
+                    size={13}
+                    color={priorityMeta!.color}
+                    strokeWidth={1.5}
+                  />
+                ) : null}
+                <Text
+                  style={[
+                    styles.priorityChipText,
+                    { color: priorityMeta?.color ?? colors.textMuted },
+                  ]}
+                >
+                  {priorityMeta?.label ?? 'Priority'}
                 </Text>
-                <Ionicons name="chevron-down" size={11} color="#fff" />
+                <Ionicons
+                  name="chevron-down"
+                  size={11}
+                  color={priorityMeta?.color ?? colors.textMuted}
+                />
               </Pressable>
+            </View>
+
+            {/* Row 2: Number + Call + WhatsApp + Source */}
+            <View style={styles.contactRow}>
+              {phone || whatsapp ? (
+                <Text style={styles.subLine} numberOfLines={1}>
+                  {formatPhoneDisplay(phone || whatsapp)}
+                </Text>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Call"
@@ -327,7 +354,7 @@ export default function LeadDetailScreen() {
               >
                 <Ionicons
                   name="call-outline"
-                  size={18}
+                  size={17}
                   color={phone ? colors.textSecondary : colors.textMuted}
                 />
               </Pressable>
@@ -344,41 +371,39 @@ export default function LeadDetailScreen() {
               >
                 <Ionicons
                   name="logo-whatsapp"
-                  size={18}
+                  size={17}
                   color={whatsapp ? '#25D366' : colors.textMuted}
                 />
               </Pressable>
+              {lead.leadSource?.name ? (
+                <Text style={styles.sourceText} numberOfLines={1}>
+                  · {lead.leadSource.name}
+                </Text>
+              ) : null}
             </View>
 
-            {phone || lead.leadSource?.name ? (
-              <Text style={styles.subLine} numberOfLines={1}>
-                {[
-                  phone || whatsapp
-                    ? formatPhoneDisplay(phone || whatsapp)
-                    : null,
-                  lead.leadSource?.name,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </Text>
-            ) : null}
+            {/* Row 3: Assign BY */}
+            <Text style={styles.assignLine} numberOfLines={1}>
+              Assign BY- {lead.assignedToName?.trim() || '—'}
+            </Text>
 
             {sm.occupation ? (
               <Text style={styles.occupation}>{sm.occupation}</Text>
-            ) : null}
-            {lead.assignedToName ? (
-              <Text style={styles.metaLine}>
-                Assignee · {lead.assignedToName}
-              </Text>
-            ) : null}
-            {lead.buyerPersona?.email ? (
-              <Text style={styles.metaLine}>{lead.buyerPersona.email}</Text>
             ) : null}
             {pendingStatusName ? (
               <Text style={styles.pendingText}>
                 Changing to {pendingStatusName} · waiting to sync
               </Text>
             ) : null}
+          </View>
+
+          <View style={styles.pipelineBlock}>
+            <LeadPipeline
+              statuses={statusesQuery.data ?? []}
+              currentStatusId={currentStatusId}
+              assignedToName={lead.assignedToName}
+              onStepPress={() => setNoteOpen(true)}
+            />
           </View>
 
           <View style={styles.budgetStrip}>
@@ -485,141 +510,57 @@ export default function LeadDetailScreen() {
         </View>
       </Modal>
 
-      <Modal visible={statusOpen} animationType="fade" transparent>
+      <Modal visible={priorityOpen} animationType="fade" transparent>
         <Pressable
           style={styles.dropdownBackdrop}
-          onPress={() => setStatusOpen(false)}
+          onPress={() => setPriorityOpen(false)}
         >
           <Pressable
             style={styles.dropdownCard}
             onPress={(e) => e.stopPropagation?.()}
           >
-            <Text style={styles.modalTitle}>Status</Text>
-            <ScrollView style={{ maxHeight: 360 }}>
-              {(statusesQuery.data ?? []).map((status) => {
-                const selected = status.id === currentStatusId;
-                const tone = stageBadgeStyle(
-                  status.color || colors.brand,
-                  isDark
-                );
-                return (
-                  <Pressable
-                    key={status.id}
-                    style={[
-                      styles.statusOption,
-                      selected && {
-                        backgroundColor: tone.backgroundColor,
-                        borderColor: tone.borderColor,
-                      },
-                    ]}
-                    disabled={statusMutation.isPending || selected}
-                    onPress={() => changeStatus(status.id)}
-                  >
-                    <View
-                      style={[
-                        styles.statusDot,
-                        { backgroundColor: status.color || colors.brand },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.statusOptionText,
-                        selected && { color: tone.color, fontWeight: '700' },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {status.name}
-                    </Text>
-                    {selected ? (
-                      <Ionicons
-                        name="checkmark"
-                        size={18}
-                        color={tone.color}
-                      />
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <Text style={styles.modalTitle}>Priority</Text>
+            {PRIORITIES.map((p) => {
+              const meta = PRIORITY_META[p];
+              const selected = p === priority;
+              return (
+                <Pressable
+                  key={p}
+                  style={[
+                    styles.priorityOption,
+                    selected && {
+                      backgroundColor: meta.bg,
+                      borderColor: meta.border,
+                    },
+                  ]}
+                  disabled={priorityMutation.isPending || selected}
+                  onPress={() => priorityMutation.mutate(p)}
+                >
+                  <HugeiconsIcon
+                    icon={PRIORITY_ICON[p]}
+                    size={16}
+                    color={meta.color}
+                    strokeWidth={1.5}
+                  />
+                  <Text style={[styles.priorityOptionText, { color: meta.color }]}>
+                    {meta.label}
+                  </Text>
+                  {selected ? (
+                    <Ionicons name="checkmark" size={18} color={meta.color} />
+                  ) : null}
+                </Pressable>
+              );
+            })}
           </Pressable>
         </Pressable>
       </Modal>
+
     </Screen>
   );
 }
 
-function parseRgb(hex: string): { r: number; g: number; b: number } | null {
-  const raw = hex.trim().replace('#', '');
-  const full =
-    raw.length === 3
-      ? raw
-          .split('')
-          .map((c) => c + c)
-          .join('')
-      : raw;
-  if (full.length !== 6) return null;
-  const n = Number.parseInt(full, 16);
-  if (Number.isNaN(n)) return null;
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
-
-function toHex(r: number, g: number, b: number): string {
-  const h = (c: number) =>
-    Math.max(0, Math.min(255, Math.round(c)))
-      .toString(16)
-      .padStart(2, '0');
-  return `#${h(r)}${h(g)}${h(b)}`;
-}
-
-function mix(
-  hex: string,
-  target: { r: number; g: number; b: number },
-  amount: number
-): string {
-  const rgb = parseRgb(hex);
-  if (!rgb) return hex;
-  return toHex(
-    rgb.r + (target.r - rgb.r) * amount,
-    rgb.g + (target.g - rgb.g) * amount,
-    rgb.b + (target.b - rgb.b) * amount
-  );
-}
-
-const WHITE = { r: 255, g: 255, b: 255 };
-const BLACK = { r: 0, g: 0, b: 0 };
-
-function stageBadgeStyle(statusColor: string, isDark: boolean) {
-  if (!isDark) {
-    return {
-      backgroundColor: mix(statusColor, WHITE, 0.86),
-      borderColor: mix(statusColor, WHITE, 0.72),
-      color: mix(statusColor, BLACK, 0.12),
-    };
-  }
-  return {
-    backgroundColor: mix(statusColor, BLACK, 0.72),
-    borderColor: mix(statusColor, BLACK, 0.5),
-    color: mix(statusColor, WHITE, 0.38),
-  };
-}
-
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    headerNoteBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 12,
-      height: 36,
-      borderRadius: radii.pill,
-      backgroundColor: colors.brand,
-    },
-    headerNoteText: {
-      ...typography.caption,
-      color: colors.white,
-      fontWeight: '700',
-      fontSize: 13,
-    },
     pressed: { opacity: 0.85 },
     summaryCard: {
       backgroundColor: colors.surface,
@@ -629,40 +570,58 @@ function createStyles(colors: ThemeColors) {
       overflow: 'hidden',
     },
     summaryHero: {
-      gap: spacing.sm,
+      gap: 6,
       padding: spacing.lg,
-      backgroundColor: colors.primary50,
+      backgroundColor: colors.surface,
     },
     nameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
       minWidth: 0,
+      flexWrap: 'wrap',
     },
     name: {
       ...typography.subtitle,
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: '700',
       color: colors.text,
       flexShrink: 1,
       minWidth: 0,
     },
-    statusChip: {
+    priorityChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 3,
+      gap: 4,
+      borderWidth: 1,
       borderRadius: radii.pill,
       paddingHorizontal: 8,
       paddingVertical: 3,
-      maxWidth: 120,
       flexShrink: 0,
     },
-    statusChipText: {
+    priorityChipText: {
       ...typography.caption,
-      color: '#fff',
       fontWeight: '700',
-      fontSize: 11,
-      maxWidth: 90,
+      fontSize: 12,
+    },
+    contactRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      minWidth: 0,
+      flexWrap: 'wrap',
+    },
+    subLine: {
+      ...typography.caption,
+      fontSize: 13,
+      color: colors.textSecondary,
+      fontVariant: ['tabular-nums'],
+    },
+    sourceText: {
+      ...typography.caption,
+      fontSize: 13,
+      color: colors.textMuted,
+      flexShrink: 1,
     },
     inlineAction: {
       width: 28,
@@ -672,18 +631,21 @@ function createStyles(colors: ThemeColors) {
       flexShrink: 0,
     },
     actionFaded: { opacity: 0.4 },
-    subLine: {
+    assignLine: {
       ...typography.caption,
-      fontSize: 12,
-      lineHeight: 18,
+      fontSize: 13,
       color: colors.textMuted,
-      fontVariant: ['tabular-nums'],
     },
     occupation: { ...typography.body, color: colors.textSecondary },
-    metaLine: { ...typography.caption, color: colors.textMuted },
+    pipelineBlock: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    },
     budgetStrip: {
       marginHorizontal: spacing.lg,
-      marginVertical: spacing.md,
+      marginBottom: spacing.md,
       padding: spacing.md,
       borderRadius: radii.md,
       backgroundColor: colors.primary50,
@@ -767,11 +729,11 @@ function createStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       padding: spacing.md,
-      gap: spacing.sm,
+      gap: 4,
       maxHeight: '70%',
     },
-    modalTitle: { ...typography.subtitle, color: colors.text },
-    statusOption: {
+    modalTitle: { ...typography.subtitle, color: colors.text, marginBottom: 4 },
+    priorityOption: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
@@ -782,16 +744,10 @@ function createStyles(colors: ThemeColors) {
       borderColor: 'transparent',
       marginTop: 4,
     },
-    statusDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 999,
-    },
-    statusOptionText: {
+    priorityOptionText: {
       ...typography.body,
-      color: colors.text,
       flex: 1,
-      fontWeight: '600',
+      fontWeight: '700',
       fontSize: 13,
     },
   });

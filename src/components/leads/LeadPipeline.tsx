@@ -21,7 +21,7 @@ import {
   shortPipelineLabel,
   type PipelineStatus,
 } from '@/features/leads/leadPipeline';
-import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
+import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
   statuses: PipelineStatus[];
