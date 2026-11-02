@@ -22,7 +22,12 @@ export function BrandMark({ variant = 'wordmark', size = 56 }: Props) {
 
   return (
     <View style={styles.wordmarkWrap}>
-      <Image source={fullLogo} style={styles.fullLogo} resizeMode="contain" />
+      <Image
+        source={fullLogo}
+        style={styles.fullLogo}
+        resizeMode="contain"
+        accessibilityLabel="Salesfast"
+      />
     </View>
   );
 }
@@ -33,7 +38,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fullLogo: {
-    width: 200,
-    height: 56,
+    width: 188,
+    height: 52,
   },
 });

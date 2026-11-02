@@ -1,5 +1,7 @@
-import { Mail01Icon, SmartPhone01Icon } from '@hugeicons/core-free-icons';
+import { CallIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -49,93 +51,108 @@ export default function WelcomeScreen() {
   }
 
   return (
-    <View
-      style={[
-        styles.root,
-        {
-          paddingTop: insets.top + 12,
-          paddingBottom: Math.max(insets.bottom, 20),
-        },
-      ]}
-    >
+    <View style={styles.root}>
       <StatusBar style="dark" />
+      {/* Soft brand wash — LeadIQ-style top-left gradient */}
+      <LinearGradient
+        colors={[
+          'rgba(242, 70, 28, 0.14)',
+          'rgba(251, 210, 194, 0.22)',
+          'rgba(255, 255, 255, 0.96)',
+          '#FFFFFF',
+        ]}
+        locations={[0, 0.2, 0.55, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
 
-      <View style={styles.content}>
-        <View style={styles.brandBlock}>
-          <View style={styles.logoHalo}>
-            <BrandMark variant="icon" size={76} />
+      <View
+        style={[
+          styles.inner,
+          {
+            paddingTop: insets.top + 28,
+            paddingBottom: Math.max(insets.bottom, 28),
+          },
+        ]}
+      >
+        {/* Top: full logo */}
+        <View style={styles.topLogo}>
+          <BrandMark variant="wordmark" />
+        </View>
+
+        <View style={styles.middle}>
+          <Text style={styles.welcomeLine}>Welcome to the</Text>
+          <Text style={styles.brandItalic}>Salesfast</Text>
+
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(auth)/login')}
+              style={({ pressed }) => [
+                styles.primaryBtn,
+                pressed ? styles.primaryBtnPressed : null,
+              ]}
+            >
+              <Text style={styles.primaryBtnText}>Continue With Email</Text>
+            </Pressable>
+
+            <View style={styles.orRow}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>or</Text>
+              <View style={styles.orLine} />
+            </View>
+
+            <AuthProviderButton
+              label="Continue with Phone"
+              icon={
+                <HugeiconsIcon
+                  icon={CallIcon}
+                  size={20}
+                  color={authColors.text}
+                  strokeWidth={1.8}
+                />
+              }
+              onPress={() =>
+                router.push({
+                  pathname: '/(auth)/login',
+                  params: { mode: 'phone' },
+                })
+              }
+            />
+
+            <AuthProviderButton
+              label="Continue with Google"
+              icon={<FontAwesome name="google" size={18} color="#EA4335" />}
+              onPress={() =>
+                Alert.alert('Upcoming', 'Google sign-in will be available soon.', [
+                  { text: 'OK' },
+                ])
+              }
+            />
           </View>
-          <Text style={styles.welcomeTo}>Welcome to</Text>
-          <Text style={styles.name}>Salesfast</Text>
-          <Text style={styles.tagline}>
-            Manage leads, calls, and follow-ups — all in one place.
-          </Text>
         </View>
 
-        <View style={styles.actions}>
-          <AuthProviderButton
-            label="Continue with Email"
-            icon={
-              <HugeiconsIcon
-                icon={Mail01Icon}
-                size={18}
-                color={authColors.text}
-                strokeWidth={2}
-              />
-            }
-            onPress={() => router.push('/(auth)/login')}
-          />
-          <AuthProviderButton
-            label="Continue with Phone"
-            icon={
-              <HugeiconsIcon
-                icon={SmartPhone01Icon}
-                size={18}
-                color={authColors.text}
-                strokeWidth={2}
-              />
-            }
-            onPress={() =>
-              router.push({
-                pathname: '/(auth)/login',
-                params: { mode: 'phone' },
-              })
-            }
-          />
-        </View>
-      </View>
-
-      <View style={styles.footer}>
-        {/* TEMP preview — remove when splash UI is final */}
-        <Pressable
-          accessibilityRole="button"
-          onPress={previewSplash}
-          style={styles.previewSplashBtn}
-        >
-          <Text style={styles.previewSplashText}>Preview splash</Text>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={() =>
-            Alert.alert('Upcoming', 'Forgot password will be available soon.', [
-              { text: 'OK' },
-            ])
-          }
-          style={styles.forgotPress}
-        >
-          <Text style={styles.forgotText}>Forgot password?</Text>
-        </Pressable>
-
-        <View style={styles.signInRow}>
-          <Text style={styles.signInPrompt}>Have an account? </Text>
+        <View style={styles.footer}>
+          {/* TEMP preview — remove when splash UI is final */}
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push('/(auth)/login')}
-            hitSlop={6}
+            onPress={previewSplash}
+            style={styles.previewSplashBtn}
           >
-            <Text style={styles.signInLink}>Sign in</Text>
+            <Text style={styles.previewSplashText}>Preview splash</Text>
           </Pressable>
+
+          <View style={styles.signInRow}>
+            <Text style={styles.signInPrompt}>Have an account? </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/(auth)/login')}
+              hitSlop={6}
+            >
+              <Text style={styles.signInLink}>Sign in</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>
@@ -146,59 +163,79 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: authColors.white,
-    paddingHorizontal: 28,
   },
-  content: {
+  inner: {
     flex: 1,
+    paddingHorizontal: 28,
     width: '100%',
     maxWidth: 420,
     alignSelf: 'center',
-    justifyContent: 'center',
   },
-  brandBlock: {
+  topLogo: {
     alignItems: 'center',
-    marginBottom: 40,
-    paddingHorizontal: 8,
+    paddingTop: 8,
   },
-  logoHalo: {
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(242, 70, 28, 0.06)',
-    marginBottom: 4,
+  middle: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingBottom: 12,
   },
-  welcomeTo: {
-    marginTop: 16,
-    color: authColors.muted,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-  name: {
-    marginTop: 4,
+  welcomeLine: {
+    textAlign: 'center',
     color: authColors.text,
     fontWeight: '700',
-    fontSize: 36,
-    lineHeight: 42,
-    letterSpacing: -0.6,
+    fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.4,
   },
-  tagline: {
-    marginTop: 10,
-    color: authColors.textSecondary,
-    fontSize: 15,
-    lineHeight: 22,
+  brandItalic: {
     textAlign: 'center',
-    maxWidth: 280,
+    color: authColors.text,
+    fontStyle: 'italic',
+    fontWeight: '600',
+    fontSize: 28,
+    lineHeight: 34,
+    letterSpacing: -0.3,
+    marginBottom: 36,
   },
   actions: {
     width: '100%',
-    alignSelf: 'stretch',
+  },
+  primaryBtn: {
+    minHeight: 52,
+    borderRadius: 10,
+    backgroundColor: authColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  primaryBtnPressed: {
+    backgroundColor: authColors.primaryPressed,
+  },
+  primaryBtnText: {
+    color: authColors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  orRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  orLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: authColors.border,
+  },
+  orText: {
+    fontSize: 13,
+    color: authColors.muted,
   },
   footer: {
-    width: '100%',
-    maxWidth: 420,
-    alignSelf: 'center',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
     paddingTop: 8,
   },
   previewSplashBtn: {
@@ -208,19 +245,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: authColors.border,
-    backgroundColor: '#F5F6F7',
+    backgroundColor: 'rgba(245, 246, 247, 0.9)',
   },
   previewSplashText: {
     color: authColors.muted,
     fontSize: 13,
     fontWeight: '600',
-  },
-  forgotPress: {
-    paddingVertical: 4,
-  },
-  forgotText: {
-    color: authColors.muted,
-    fontSize: 14,
   },
   signInRow: {
     flexDirection: 'row',
@@ -229,7 +259,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   signInPrompt: {
-    color: authColors.textSecondary,
+    color: authColors.muted,
     fontSize: 14,
   },
   signInLink: {
