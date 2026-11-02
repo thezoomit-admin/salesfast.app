@@ -1,7 +1,7 @@
 # Phase 0 — Call Sync Feasibility Spike
 
 **Status:** PRODUCT OVERRIDE — implementing auto sync (2026-11-01)  
-**Product:** Realist CRM Mobile (`salesapp.app`)  
+**Product:** SalesFast CRM Mobile (`salesapp.app`)  
 **Gate:** Originally blocked automatic `READ_CALL_LOG` until device pass. Product requested Call History auto-sync now.
 
 ## Shipping approach

@@ -50,7 +50,7 @@ export default function CallSyncSetupScreen() {
           ? 'Preference saved. Open the Android development build for automatic sync.'
           : nativeReady
             ? 'Setup complete. Matched lead calls will sync when you open the app or tap Sync now.'
-            : 'Consent saved. Expo Go cannot read call logs — install the Realist CRM development build, then tap Sync now.'
+            : 'Consent saved. Expo Go cannot read call logs — install the SalesFast CRM development build, then tap Sync now.'
       );
       await refresh();
     } finally {
@@ -172,7 +172,7 @@ export default function CallSyncSetupScreen() {
       )}
 
       <Text style={styles.footnote}>
-        Automatic sync needs the Realist CRM Android development build (not Expo
+        Automatic sync needs the SalesFast CRM Android development build (not Expo
         Go). After install, enable sync here and tap Sync now — matched lead
         calls appear under Call History.
       </Text>

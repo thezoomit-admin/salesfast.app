@@ -1,6 +1,6 @@
-# Realist CRM Mobile
+# SalesFast CRM Mobile
 
-Android-first React Native (Expo) client for SalesFast / Realist CRM.
+Android-first React Native (Expo) client for SalesFast CRM.
 
 ## Features
 

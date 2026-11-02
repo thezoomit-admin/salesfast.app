@@ -8,7 +8,7 @@ const isDevClientBuild = process.env.EAS_BUILD_PROFILE === 'development';
 
 /**
  * Firebase config for Android push (FCM). Download it from the Firebase
- * console (Android app id com.zoomit.realistcrm). On EAS it can come from a
+ * console (Android app id com.salesfastcrm). On EAS it can come from a
  * file env var (GOOGLE_SERVICES_JSON) so the file never needs to be committed.
  */
 const googleServicesFile =
@@ -26,14 +26,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   owner: 'ibnabdullah01',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'realistcrm',
+  scheme: 'salesfast',
   userInterfaceStyle: 'light',
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.zoomit.realistcrm',
+    bundleIdentifier: 'com.salesfastcrm',
   },
   android: {
-    package: 'com.zoomit.realistcrm',
+    package: 'com.salesfastcrm',
     adaptiveIcon: {
       backgroundColor: '#0F3D3E',
       foregroundImage: './assets/images/android-icon-foreground.png',
