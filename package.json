@@ -51,7 +51,8 @@
     "build:dev": "eas build --platform android --profile development",
     "build:preview": "eas build --platform android --profile preview",
     "build:prod": "eas build --platform android --profile production",
-    "start:dev-client": "expo start --dev-client"
+    "start:dev-client": "expo start --dev-client",
+    "lint": "expo lint"
   },
   "private": true
 }
