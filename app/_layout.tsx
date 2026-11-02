@@ -103,6 +103,7 @@ export default function RootLayout() {
             <Stack.Screen name="notifications" />
             <Stack.Screen name="activities" />
             <Stack.Screen name="call-sync/setup" />
+            <Stack.Screen name="settings/edit" />
             <Stack.Screen name="+not-found" />
           </Stack>
         </AuthGate>

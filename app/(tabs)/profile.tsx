@@ -467,13 +467,8 @@ export default function ProfileScreen() {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Profile"
-          onPress={() => {
-            Alert.alert(
-              displayName,
-              [roleLabel, user?.email, user?.phone].filter(Boolean).join('\n')
-            );
-          }}
+          accessibilityLabel="Edit personal info"
+          onPress={() => router.push('/settings/edit')}
           style={({ pressed }) => [styles.profileCard, pressed && styles.pressed]}
         >
           <View style={styles.avatarRing}>
@@ -481,6 +476,7 @@ export default function ProfileScreen() {
               uri={user?.profilePhoto}
               name={displayName}
               size={56}
+              muted
               style={styles.avatar}
             />
           </View>
@@ -497,7 +493,7 @@ export default function ProfileScreen() {
               </Text>
             ) : null}
           </View>
-          <Ionicons name="chevron-forward" size={16} color={more.primary} />
+          <Ionicons name="chevron-forward" size={16} color={more.muted} />
         </Pressable>
 
         {sections.map((section) => (
@@ -556,17 +552,17 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: more.primary100,
+    borderColor: more.border,
   },
   avatarRing: {
     width: 56,
     height: 56,
     borderRadius: more.radiusFull,
     borderWidth: 2,
-    borderColor: more.primary,
+    borderColor: more.border,
     marginRight: 14,
     overflow: 'hidden',
-    backgroundColor: more.primary50,
+    backgroundColor: '#EEF2F7',
   },
   avatar: {
     width: '100%',
@@ -586,7 +582,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 13,
     lineHeight: 18,
-    color: more.primary,
+    color: more.muted,
     marginTop: 2,
   },
   profileEmail: {

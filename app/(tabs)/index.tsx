@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -144,9 +145,13 @@ export default function HomeScreen() {
             {greeting}
           </Text>
           <View style={styles.metaRow}>
-            <View style={styles.metaChip}>
-              <Text style={styles.metaChipText}>My pipeline</Text>
-            </View>
+            {user?.designation?.name ? (
+              <View style={styles.metaChip}>
+                <Text style={styles.metaChipText} numberOfLines={1}>
+                  {user.designation.name}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.syncChip}>
               <Ionicons
                 name={syncOk ? 'cloud-done-outline' : 'cloud-offline-outline'}
@@ -304,45 +309,53 @@ export default function HomeScreen() {
         </ChipScroll>
       ) : null}
 
-      {/* Hero — Hisab SummaryCard pattern */}
-      <View style={styles.hero}>
-        <View style={styles.heroSheen} pointerEvents="none" />
-        <View style={styles.heroTop}>
-          <View style={styles.periodPill}>
-            <Text style={styles.periodText}>Today</Text>
+      {/* Hero — deep brand gradient */}
+      <Pressable
+        onPress={() => router.push('/(tabs)/follow-ups')}
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <LinearGradient
+          colors={['#C43516', '#9A2A12', '#6B1C0C']}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroSheen} pointerEvents="none" />
+          <View style={styles.heroTop}>
+            <View style={styles.periodPill}>
+              <Text style={styles.periodText}>Today</Text>
+            </View>
+            <View style={styles.heroLinkRow}>
+              <Text style={styles.heroLink}>Follow-ups</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.white} />
+            </View>
           </View>
-          <Pressable
-            onPress={() => router.push('/(tabs)/follow-ups')}
-            hitSlop={8}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <Text style={styles.heroLink}>Open follow-ups</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.heroLabel}>Needs attention</Text>
-        <Text style={styles.heroValue}>{focusTotal}</Text>
-        <Text style={styles.heroHint}>
-          {attentionClear
-            ? 'You’re clear — no urgent follow-ups'
-            : `${kpis.todayFollowUps} today · ${kpis.overdueFollowUps} overdue`}
-        </Text>
-        <View style={styles.heroStats}>
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatLabel}>Assigned</Text>
-            <Text style={styles.heroStatValue}>{kpis.totalAssigned}</Text>
+          <Text style={styles.heroLabel}>Needs attention</Text>
+          <Text style={styles.heroValue}>{focusTotal}</Text>
+          <Text style={styles.heroHint}>
+            {attentionClear
+              ? 'You’re clear — no urgent follow-ups'
+              : `${kpis.todayFollowUps} today · ${kpis.overdueFollowUps} overdue`}
+          </Text>
+          <View style={styles.heroStats}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>Assigned</Text>
+              <Text style={styles.heroStatValue}>{kpis.totalAssigned}</Text>
+            </View>
+            <View style={styles.heroDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>New (7d)</Text>
+              <Text style={styles.heroStatValue}>{kpis.newLeads}</Text>
+            </View>
+            <View style={styles.heroDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>Activities</Text>
+              <Text style={styles.heroStatValue}>{kpis.completedActivities}</Text>
+            </View>
           </View>
-          <View style={styles.heroDivider} />
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatLabel}>New (7d)</Text>
-            <Text style={styles.heroStatValue}>{kpis.newLeads}</Text>
-          </View>
-          <View style={styles.heroDivider} />
-          <View style={styles.heroStat}>
-            <Text style={styles.heroStatLabel}>Activities</Text>
-            <Text style={styles.heroStatValue}>{kpis.completedActivities}</Text>
-          </View>
-        </View>
-      </View>
+        </LinearGradient>
+      </Pressable>
 
       {/* Pulse — BudgetPulse pattern → follow-up health */}
       <Pressable
@@ -730,6 +743,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radii.pill,
+    maxWidth: 160,
   },
   metaChipText: {
     ...typography.caption,
@@ -785,21 +799,20 @@ const styles = StyleSheet.create({
   alertDismiss: { padding: 4 },
 
   hero: {
-    backgroundColor: colors.brandMuted,
     borderRadius: radii.md,
-    paddingHorizontal: 14,
-    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingTop: 14,
     paddingBottom: 14,
     overflow: 'hidden',
   },
   heroSheen: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -60,
-    right: -40,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    top: -70,
+    right: -45,
   },
   heroTop: {
     flexDirection: 'row',
@@ -818,14 +831,19 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: '600',
   },
+  heroLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
   heroLink: {
     ...typography.caption,
-    color: 'rgba(255,255,255,0.85)',
-    fontWeight: '600',
+    color: colors.white,
+    fontWeight: '700',
   },
   heroLabel: {
     ...typography.caption,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.78)',
     marginBottom: 2,
   },
   heroValue: {
@@ -837,7 +855,7 @@ const styles = StyleSheet.create({
   },
   heroHint: {
     ...typography.caption,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.82)',
     marginTop: 2,
     marginBottom: 12,
   },
@@ -845,14 +863,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.25)',
+    borderTopColor: 'rgba(255,255,255,0.22)',
     paddingTop: 12,
   },
   heroStat: { flex: 1, gap: 2 },
   heroStatLabel: {
     ...typography.caption,
     fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.72)',
   },
   heroStatValue: {
     ...typography.subtitle,
@@ -862,7 +880,7 @@ const styles = StyleSheet.create({
   heroDivider: {
     width: StyleSheet.hairlineWidth,
     height: 28,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     marginHorizontal: 8,
   },
 

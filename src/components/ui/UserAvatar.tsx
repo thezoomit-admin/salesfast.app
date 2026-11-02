@@ -14,6 +14,8 @@ type Props = {
   name?: string | null;
   size?: number;
   style?: StyleProp<ViewStyle>;
+  /** Neutral ash initials — no brand tint. */
+  muted?: boolean;
 };
 
 function avatarInitials(name?: string | null) {
@@ -24,7 +26,7 @@ function avatarInitials(name?: string | null) {
 }
 
 /** Profile photo, or initials placeholder when none is set. (Hisab UserAvatar) */
-export function UserAvatar({ uri, name, size = 48, style }: Props) {
+export function UserAvatar({ uri, name, size = 48, style, muted }: Props) {
   const radius = size / 2;
 
   if (uri) {
@@ -40,11 +42,18 @@ export function UserAvatar({ uri, name, size = 48, style }: Props) {
     <View
       style={[
         styles.placeholder,
+        muted && styles.placeholderMuted,
         { width: size, height: size, borderRadius: radius },
         style,
       ]}
     >
-      <Text style={[styles.initials, { fontSize: Math.max(14, size * 0.36) }]}>
+      <Text
+        style={[
+          styles.initials,
+          muted && styles.initialsMuted,
+          { fontSize: Math.max(14, size * 0.36) },
+        ]}
+      >
         {avatarInitials(name)}
       </Text>
     </View>
@@ -57,8 +66,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.brandSoft,
   },
+  placeholderMuted: {
+    backgroundColor: '#EEF2F7',
+  },
   initials: {
     color: colors.brand,
     fontWeight: '700',
+  },
+  initialsMuted: {
+    color: colors.textSecondary,
   },
 });
