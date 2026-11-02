@@ -67,11 +67,56 @@ import {
   radii,
   spacing,
   typography,
-  useThemeColors,
+  useTheme,
   type ThemeColors,
 } from '@/theme';
 import type { LeadDetail, LeadPriority } from '@/types/api';
 import { formatPhoneDisplay } from '@/utils/phone';
+
+function mix(
+  hex: string,
+  target: { r: number; g: number; b: number },
+  amount: number
+): string {
+  const raw = hex.trim().replace('#', '');
+  const full =
+    raw.length === 3
+      ? raw
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : raw;
+  if (full.length !== 6) return hex;
+  const n = Number.parseInt(full, 16);
+  if (Number.isNaN(n)) return hex;
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  const h = (c: number) =>
+    Math.max(0, Math.min(255, Math.round(c)))
+      .toString(16)
+      .padStart(2, '0');
+  return `#${h(r + (target.r - r) * amount)}${h(g + (target.g - g) * amount)}${h(b + (target.b - b) * amount)}`;
+}
+
+const WHITE = { r: 255, g: 255, b: 255 };
+const BLACK = { r: 0, g: 0, b: 0 };
+
+function priorityBadgeColors(priority: LeadPriority, isDark: boolean) {
+  const meta = PRIORITY_META[priority];
+  if (!isDark) {
+    return {
+      backgroundColor: meta.bg,
+      borderColor: meta.border,
+      color: meta.color,
+    };
+  }
+  return {
+    backgroundColor: mix(meta.color, BLACK, 0.72),
+    borderColor: mix(meta.color, BLACK, 0.5),
+    color: mix(meta.color, WHITE, 0.38),
+  };
+}
 
 type Props = {
   visible: boolean;
@@ -253,9 +298,10 @@ export function AddNoteSheet({
   onClose,
   onSaved,
 }: Props) {
-  const colors = useThemeColors();
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const queryClient = useQueryClient();
   const channelsQuery = useQuery({
     ...noteChannelsQuery,
@@ -751,6 +797,9 @@ export function AddNoteSheet({
   const name = lead.buyerPersona?.fullName?.trim() || `Lead #${lead.id}`;
   const phone = lead.buyerPersona?.phone;
   const priorityMeta = rating ? PRIORITY_META[rating] : null;
+  const priorityBadge = rating
+    ? priorityBadgeColors(rating, isDark)
+    : null;
   const meter = recorderState.metering;
   const liveLevels = useMemo(() => {
     if (!recording) return [];
@@ -798,38 +847,83 @@ export function AddNoteSheet({
                 </Text>
               ) : null}
             </View>
-            <Pressable
-              onPress={() => setPriorityOpen(true)}
-              style={[
-                styles.priorityChip,
-                priorityMeta
-                  ? {
-                      backgroundColor: priorityMeta.bg,
-                      borderColor: priorityMeta.border,
-                    }
-                  : {
-                      backgroundColor: colors.surfaceMuted,
-                      borderColor: colors.border,
-                    },
-              ]}
-            >
-              {rating ? (
-                <HugeiconsIcon
-                  icon={PRIORITY_ICON[rating]}
-                  size={13}
-                  color={priorityMeta!.color}
-                  strokeWidth={1.5}
-                />
-              ) : null}
-              <Text
+            <View style={styles.priorityWrap}>
+              <Pressable
+                onPress={() => setPriorityOpen((o) => !o)}
                 style={[
-                  styles.priorityText,
-                  { color: priorityMeta?.color ?? colors.textMuted },
+                  styles.priorityChip,
+                  priorityBadge
+                    ? {
+                        backgroundColor: priorityBadge.backgroundColor,
+                        borderColor: priorityBadge.borderColor,
+                      }
+                    : {
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.border,
+                      },
                 ]}
               >
-                {priorityMeta?.label ?? 'Priority'}
-              </Text>
-            </Pressable>
+                {rating ? (
+                  <HugeiconsIcon
+                    icon={PRIORITY_ICON[rating]}
+                    size={13}
+                    color={priorityBadge!.color}
+                    strokeWidth={1.5}
+                  />
+                ) : null}
+                <Text
+                  style={[
+                    styles.priorityText,
+                    { color: priorityBadge?.color ?? colors.textMuted },
+                  ]}
+                >
+                  {priorityMeta?.label ?? 'Priority'}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={12}
+                  color={priorityBadge?.color ?? colors.textMuted}
+                />
+              </Pressable>
+              {priorityOpen ? (
+                <View style={styles.priorityMenu}>
+                  {PRIORITIES.map((p) => {
+                    const opt = priorityBadgeColors(p, isDark);
+                    const selected = p === rating;
+                    return (
+                      <Pressable
+                        key={p}
+                        style={[
+                          styles.priorityOption,
+                          selected && {
+                            backgroundColor: opt.backgroundColor,
+                            borderColor: opt.borderColor,
+                          },
+                        ]}
+                        onPress={() => priorityMutation.mutate(p)}
+                      >
+                        <HugeiconsIcon
+                          icon={PRIORITY_ICON[p]}
+                          size={14}
+                          color={opt.color}
+                          strokeWidth={1.5}
+                        />
+                        <Text
+                          style={{
+                            color: opt.color,
+                            fontWeight: '700',
+                            fontSize: 12,
+                            flex: 1,
+                          }}
+                        >
+                          {PRIORITY_META[p].label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </View>
             <Pressable
               onPress={onClose}
               hitSlop={8}
@@ -839,6 +933,13 @@ export function AddNoteSheet({
               <Ionicons name="close" size={20} color={colors.textMuted} />
             </Pressable>
           </View>
+
+          {priorityOpen ? (
+            <Pressable
+              style={styles.priorityDismiss}
+              onPress={() => setPriorityOpen(false)}
+            />
+          ) : null}
 
           <ScrollView
             keyboardShouldPersistTaps="handled"
@@ -924,6 +1025,8 @@ export function AddNoteSheet({
                 onChangeText={setNote}
                 maxLength={5000}
                 textAlignVertical="top"
+                keyboardAppearance={isDark ? 'dark' : 'light'}
+                selectionColor={colors.brand}
               />
 
               {clips.length > 0 ? (
@@ -1097,57 +1200,15 @@ export function AddNoteSheet({
         </View>
       </View>
 
-      <Modal visible={priorityOpen} animationType="fade" transparent>
-        <Pressable
-          style={styles.priorityBackdrop}
-          onPress={() => setPriorityOpen(false)}
-        >
-          <Pressable
-            style={styles.priorityCard}
-            onPress={(e) => e.stopPropagation?.()}
-          >
-            <Text style={styles.priorityTitle}>Priority</Text>
-            {PRIORITIES.map((p) => {
-              const meta = PRIORITY_META[p];
-              const selected = p === rating;
-              return (
-                <Pressable
-                  key={p}
-                  style={[
-                    styles.priorityOption,
-                    selected && {
-                      backgroundColor: meta.bg,
-                      borderColor: meta.border,
-                    },
-                  ]}
-                  onPress={() => priorityMutation.mutate(p)}
-                >
-                  <HugeiconsIcon
-                    icon={PRIORITY_ICON[p]}
-                    size={16}
-                    color={meta.color}
-                    strokeWidth={1.5}
-                  />
-                  <Text
-                    style={{ color: meta.color, fontWeight: '700', flex: 1 }}
-                  >
-                    {meta.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </Pressable>
-        </Pressable>
-      </Modal>
     </Modal>
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     backdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(0,0,0,0.5)',
       justifyContent: 'flex-end',
     },
     sheet: {
@@ -1156,6 +1217,7 @@ function createStyles(colors: ThemeColors) {
       borderTopRightRadius: radii.lg,
       maxHeight: '92%',
       paddingTop: spacing.md,
+      overflow: 'visible',
     },
     header: {
       flexDirection: 'row',
@@ -1165,6 +1227,7 @@ function createStyles(colors: ThemeColors) {
       paddingBottom: spacing.md,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
+      zIndex: 30,
     },
     avatar: {
       width: 40,
@@ -1185,16 +1248,53 @@ function createStyles(colors: ThemeColors) {
       color: colors.textSecondary,
       marginTop: 1,
     },
+    priorityWrap: {
+      position: 'relative',
+      zIndex: 40,
+    },
     priorityChip: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
       borderWidth: 1,
-      borderRadius: radii.pill,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      borderRadius: radii.sm,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
     },
     priorityText: { fontSize: 12, fontWeight: '700' },
+    priorityMenu: {
+      position: 'absolute',
+      top: '100%',
+      right: 0,
+      marginTop: 6,
+      minWidth: 148,
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 6,
+      gap: 2,
+      shadowColor: '#000',
+      shadowOpacity: isDark ? 0.45 : 0.14,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+      zIndex: 50,
+    },
+    priorityOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    priorityDismiss: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 20,
+    },
     closeBtn: {
       width: 32,
       height: 32,
@@ -1217,7 +1317,7 @@ function createStyles(colors: ThemeColors) {
       gap: 6,
       borderWidth: 1,
       borderColor: colors.border,
-      backgroundColor: colors.surface,
+      backgroundColor: isDark ? colors.surfaceMuted : colors.surface,
       borderRadius: radii.md,
       paddingHorizontal: 12,
       paddingVertical: 8,
@@ -1241,7 +1341,7 @@ function createStyles(colors: ThemeColors) {
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.lg,
-      backgroundColor: colors.surfaceMuted,
+      backgroundColor: isDark ? colors.background : colors.surfaceMuted,
       overflow: 'hidden',
     },
     noteInput: {
@@ -1320,7 +1420,7 @@ function createStyles(colors: ThemeColors) {
       paddingVertical: 6,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
-      backgroundColor: colors.surfaceMuted,
+      backgroundColor: isDark ? colors.surfaceMuted : '#F2F4F7',
     },
     toolBtn: {
       width: 32,
@@ -1413,36 +1513,6 @@ function createStyles(colors: ThemeColors) {
       color: colors.white,
       fontSize: 16,
       fontWeight: '700',
-    },
-    priorityBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.45)',
-      justifyContent: 'center',
-      paddingHorizontal: spacing.lg,
-    },
-    priorityCard: {
-      backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: spacing.md,
-      gap: 4,
-    },
-    priorityTitle: {
-      ...typography.subtitle,
-      color: colors.text,
-      marginBottom: 4,
-    },
-    priorityOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      paddingVertical: 10,
-      paddingHorizontal: spacing.sm,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      borderColor: 'transparent',
-      marginTop: 4,
     },
   });
 }
