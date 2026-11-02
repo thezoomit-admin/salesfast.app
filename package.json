@@ -40,17 +40,21 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
+    "dev": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('no mobile unit tests yet')\"",
     "prebuild:android": "expo prebuild --platform android",
     "run:android": "expo run:android",
     "eas:init": "eas init --id 37dc35d5-a2b1-476e-bb6c-721668bc7473",
     "build:dev": "eas build --platform android --profile development",
     "build:preview": "eas build --platform android --profile preview",
     "build:prod": "eas build --platform android --profile production",
+    "deploy:preview": "node ../scripts/deploy-mobile.mjs preview android",
+    "deploy:prod": "node ../scripts/deploy-mobile.mjs production android",
     "start:dev-client": "expo start --dev-client",
     "lint": "expo lint"
   },

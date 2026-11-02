@@ -54,3 +54,18 @@ npx expo start --dev-client
 2. Grant `READ_CALL_LOG`.
 3. Open the app or tap **Sync now** after a lead calls you.
 4. Matched calls appear on that lead’s **Call History** tab in admin.
+
+## Deploy (EAS)
+
+From repo root (`SalesFast/`):
+
+```bash
+npm run deploy:mobile        # preview APK → dev API
+npm run deploy:mobile:prod   # production AAB → prod API
+npm run deploy:mobile:dev    # development client APK
+npm run update:mobile        # OTA update (production channel)
+```
+
+Or from this folder: `npm run deploy:preview` / `npm run deploy:prod`.
+
+API URLs are baked from `eas.json` and checked before each cloud build.
