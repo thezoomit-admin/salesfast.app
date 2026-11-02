@@ -26,6 +26,7 @@ import {
   FlameIcon,
   MinusSignIcon,
 } from '@/components/icons/hugeicons';
+import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
 import { LeadCallHistoryPanel } from '@/components/leads/LeadCallHistoryPanel';
 import {
   LeadDetailTabBar,
@@ -33,6 +34,8 @@ import {
 } from '@/components/leads/LeadDetailTabBar';
 import { LeadHistoryPanel } from '@/components/leads/LeadHistoryPanel';
 import { LeadPipeline } from '@/components/leads/LeadPipeline';
+import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
+import { LeadSectionShell } from '@/components/leads/LeadSectionShell';
 import { LeadViewHistoryPanel } from '@/components/leads/LeadViewHistoryPanel';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
@@ -79,6 +82,12 @@ import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 type NoteForm = { note: string; followupAt?: string };
+type OverviewView = 'profile' | 'requirements';
+
+const OVERVIEW_PILLS = [
+  { key: 'profile' as const, label: 'Buyer Profile' },
+  { key: 'requirements' as const, label: 'Requirements' },
+];
 
 const noteResolver = formResolver<NoteForm>((v) => ({
   note: minLength(v.note, 1, 'Note is required'),
@@ -100,6 +109,7 @@ export default function LeadDetailScreen() {
   const [noteOpen, setNoteOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<LeadDetailTab>('overview');
+  const [overviewView, setOverviewView] = useState<OverviewView>('profile');
 
   const { leadQuery, metaQuery } = useLeadDetail(leadId);
   const statusesQuery = useQuery(leadStatusesQuery);
@@ -206,7 +216,7 @@ export default function LeadDetailScreen() {
 
   const headerRight = (
     <HeaderAddButton
-      label="Add note"
+      label="Add Note"
       onPress={() => setNoteOpen(true)}
     />
   );
@@ -274,140 +284,154 @@ export default function LeadDetailScreen() {
       onRefresh={() => leadQuery.refetch()}
     >
       {activeTab === 'overview' ? (
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHero}>
-            {/* Row 1: Name + Priority */}
-            <View style={styles.nameRow}>
-              <Text style={styles.name} numberOfLines={1}>
-                {name}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Change priority"
-                onPress={() => setPriorityOpen(true)}
-                style={({ pressed }) => [
-                  styles.priorityChip,
-                  priorityMeta
-                    ? {
-                        backgroundColor: priorityMeta.bg,
-                        borderColor: priorityMeta.border,
-                      }
-                    : {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                      },
-                  pressed && styles.pressed,
-                ]}
-              >
-                {priority ? (
-                  <HugeiconsIcon
-                    icon={PRIORITY_ICON[priority]}
-                    size={13}
-                    color={priorityMeta!.color}
-                    strokeWidth={1.5}
-                  />
-                ) : null}
-                <Text
-                  style={[
-                    styles.priorityChipText,
-                    { color: priorityMeta?.color ?? colors.textMuted },
+        <View style={styles.overviewStack}>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryHero}>
+              {/* Row 1: Name + Priority */}
+              <View style={styles.nameRow}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {name}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Change priority"
+                  onPress={() => setPriorityOpen(true)}
+                  style={({ pressed }) => [
+                    styles.priorityChip,
+                    priorityMeta
+                      ? {
+                          backgroundColor: priorityMeta.bg,
+                          borderColor: priorityMeta.border,
+                        }
+                      : {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                        },
+                    pressed && styles.pressed,
                   ]}
                 >
-                  {priorityMeta?.label ?? 'Priority'}
-                </Text>
-                <Ionicons
-                  name="chevron-down"
-                  size={11}
-                  color={priorityMeta?.color ?? colors.textMuted}
-                />
-              </Pressable>
-            </View>
-
-            {/* Row 2: Number + Call + WhatsApp + Source */}
-            <View style={styles.contactRow}>
-              {phone || whatsapp ? (
-                <Text style={styles.subLine} numberOfLines={1}>
-                  {formatPhoneDisplay(phone || whatsapp)}
-                </Text>
-              ) : null}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Call"
-                hitSlop={8}
-                disabled={!phone}
-                onPress={() => void onCall()}
-                style={({ pressed }) => [
-                  styles.inlineAction,
-                  (pressed || !phone) && styles.actionFaded,
-                ]}
-              >
-                <Ionicons
-                  name="call-outline"
-                  size={17}
-                  color={phone ? colors.textSecondary : colors.textMuted}
-                />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="WhatsApp"
-                hitSlop={8}
-                disabled={!whatsapp}
-                onPress={() => void onWhatsApp()}
-                style={({ pressed }) => [
-                  styles.inlineAction,
-                  (pressed || !whatsapp) && styles.actionFaded,
-                ]}
-              >
-                <Ionicons
-                  name="logo-whatsapp"
-                  size={17}
-                  color={whatsapp ? '#25D366' : colors.textMuted}
-                />
-              </Pressable>
-              {lead.leadSource?.name ? (
-                <Text style={styles.sourceText} numberOfLines={1}>
-                  · {lead.leadSource.name}
-                </Text>
-              ) : null}
-            </View>
-
-            {/* Row 3: Assign BY */}
-            <Text style={styles.assignLine} numberOfLines={1}>
-              Assign BY- {lead.assignedToName?.trim() || '—'}
-            </Text>
-
-            {sm.occupation ? (
-              <Text style={styles.occupation}>{sm.occupation}</Text>
-            ) : null}
-            {pendingStatusName ? (
-              <Text style={styles.pendingText}>
-                Changing to {pendingStatusName} · waiting to sync
-              </Text>
-            ) : null}
-          </View>
-
-          <View style={styles.pipelineBlock}>
-            <LeadPipeline
-              statuses={statusesQuery.data ?? []}
-              currentStatusId={currentStatusId}
-              assignedToName={lead.assignedToName}
-              onStepPress={() => setNoteOpen(true)}
-            />
-          </View>
-
-          {prefChips.length > 0 ? (
-            <View style={styles.prefSection}>
-              <Text style={styles.prefHeading}>Preferences</Text>
-              <View style={styles.prefRow}>
-                {prefChips.map((c) => (
-                  <View key={c.key} style={styles.prefChip}>
-                    <Text style={styles.prefChipLabel}>{c.label}</Text>
-                    <Text style={styles.prefChipValue}>{c.value}</Text>
-                  </View>
-                ))}
+                  {priority ? (
+                    <HugeiconsIcon
+                      icon={PRIORITY_ICON[priority]}
+                      size={13}
+                      color={priorityMeta!.color}
+                      strokeWidth={1.5}
+                    />
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.priorityChipText,
+                      { color: priorityMeta?.color ?? colors.textMuted },
+                    ]}
+                  >
+                    {priorityMeta?.label ?? 'Priority'}
+                  </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={11}
+                    color={priorityMeta?.color ?? colors.textMuted}
+                  />
+                </Pressable>
               </View>
+
+              {/* Row 2: Number + Call + WhatsApp + Source */}
+              <View style={styles.contactRow}>
+                {phone || whatsapp ? (
+                  <Text style={styles.subLine} numberOfLines={1}>
+                    {formatPhoneDisplay(phone || whatsapp)}
+                  </Text>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Call"
+                  hitSlop={8}
+                  disabled={!phone}
+                  onPress={() => void onCall()}
+                  style={({ pressed }) => [
+                    styles.inlineAction,
+                    (pressed || !phone) && styles.actionFaded,
+                  ]}
+                >
+                  <Ionicons
+                    name="call-outline"
+                    size={17}
+                    color={phone ? colors.textSecondary : colors.textMuted}
+                  />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="WhatsApp"
+                  hitSlop={8}
+                  disabled={!whatsapp}
+                  onPress={() => void onWhatsApp()}
+                  style={({ pressed }) => [
+                    styles.inlineAction,
+                    (pressed || !whatsapp) && styles.actionFaded,
+                  ]}
+                >
+                  <Ionicons
+                    name="logo-whatsapp"
+                    size={17}
+                    color={whatsapp ? '#25D366' : colors.textMuted}
+                  />
+                </Pressable>
+                {lead.leadSource?.name ? (
+                  <Text style={styles.sourceText} numberOfLines={1}>
+                    · {lead.leadSource.name}
+                  </Text>
+                ) : null}
+              </View>
+
+              {/* Row 3: Assign BY */}
+              <Text style={styles.assignLine} numberOfLines={1}>
+                Assign BY- {lead.assignedToName?.trim() || '—'}
+              </Text>
+
+              {sm.occupation ? (
+                <Text style={styles.occupation}>{sm.occupation}</Text>
+              ) : null}
+              {pendingStatusName ? (
+                <Text style={styles.pendingText}>
+                  Changing to {pendingStatusName} · waiting to sync
+                </Text>
+              ) : null}
             </View>
-          ) : null}
+
+            <View style={styles.pipelineBlock}>
+              <LeadPipeline
+                statuses={statusesQuery.data ?? []}
+                currentStatusId={currentStatusId}
+                assignedToName={lead.assignedToName}
+                onStepPress={() => setNoteOpen(true)}
+              />
+            </View>
+
+            {prefChips.length > 0 ? (
+              <View style={styles.prefSection}>
+                <Text style={styles.prefHeading}>Preferences</Text>
+                <View style={styles.prefRow}>
+                  {prefChips.map((c) => (
+                    <View key={c.key} style={styles.prefChip}>
+                      <Text style={styles.prefChipLabel}>{c.label}</Text>
+                      <Text style={styles.prefChipValue}>{c.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </View>
+
+          <LeadSectionShell
+            pills={OVERVIEW_PILLS}
+            activeKey={overviewView}
+            onPillChange={(key) => setOverviewView(key as OverviewView)}
+          >
+            {overviewView === 'profile' ? (
+              <LeadBuyerProfilePanel lead={lead} meta={metaQuery.data} />
+            ) : (
+              <LeadRequirementsPanel lead={lead} meta={metaQuery.data} />
+            )}
+          </LeadSectionShell>
         </View>
       ) : null}
 
@@ -539,6 +563,7 @@ export default function LeadDetailScreen() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     pressed: { opacity: 0.85 },
+    overviewStack: { gap: spacing.md },
     summaryCard: {
       backgroundColor: colors.surface,
       borderRadius: radii.lg,

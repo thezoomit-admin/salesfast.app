@@ -134,7 +134,7 @@ export function ScreenHeader({
 
 export function HeaderAddButton({
   onPress,
-  label,
+  label = 'Add',
 }: {
   onPress: () => void;
   label?: string;
@@ -148,7 +148,10 @@ export function HeaderAddButton({
       onPress={onPress}
       style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
     >
-      <Ionicons name="add" size={24} color={colors.white} />
+      <Ionicons name="add" size={16} color={colors.white} />
+      <Text style={styles.addBtnLabel} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -279,12 +282,22 @@ function createStyles(colors: ThemeColors) {
       gap: 2,
     },
     addBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: radii.pill,
-      backgroundColor: colors.brand,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 2,
+      minHeight: 30,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+    },
+    addBtnLabel: {
+      ...typography.caption,
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '600',
+      color: colors.white,
     },
     pressed: {
       opacity: 0.85,
