@@ -2,7 +2,7 @@ import { Mail01Icon, SmartPhone01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -45,17 +45,23 @@ export default function WelcomeScreen() {
       style={[
         styles.root,
         {
-          paddingTop: insets.top + 16,
-          paddingBottom: Math.max(insets.bottom, 24),
+          paddingTop: insets.top + 12,
+          paddingBottom: Math.max(insets.bottom, 20),
         },
       ]}
     >
       <StatusBar style="dark" />
+
       <View style={styles.content}>
         <View style={styles.brandBlock}>
-          <BrandMark variant="icon" size={72} />
+          <View style={styles.logoHalo}>
+            <BrandMark variant="icon" size={76} />
+          </View>
           <Text style={styles.welcomeTo}>Welcome to</Text>
           <Text style={styles.name}>Salesfast</Text>
+          <Text style={styles.tagline}>
+            Manage leads, calls, and follow-ups — all in one place.
+          </Text>
         </View>
 
         <View style={styles.actions}>
@@ -64,9 +70,9 @@ export default function WelcomeScreen() {
             icon={
               <HugeiconsIcon
                 icon={Mail01Icon}
-                size={20}
+                size={18}
                 color={authColors.text}
-                strokeWidth={1.8}
+                strokeWidth={2}
               />
             }
             onPress={() => router.push('/(auth)/login')}
@@ -76,9 +82,9 @@ export default function WelcomeScreen() {
             icon={
               <HugeiconsIcon
                 icon={SmartPhone01Icon}
-                size={20}
+                size={18}
                 color={authColors.text}
-                strokeWidth={1.8}
+                strokeWidth={2}
               />
             }
             onPress={() =>
@@ -88,13 +94,30 @@ export default function WelcomeScreen() {
               })
             }
           />
+        </View>
+      </View>
 
+      <View style={styles.footer}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            Alert.alert('Upcoming', 'Forgot password will be available soon.', [
+              { text: 'OK' },
+            ])
+          }
+          style={styles.forgotPress}
+        >
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </Pressable>
+
+        <View style={styles.signInRow}>
+          <Text style={styles.signInPrompt}>Have an account? </Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push('/(auth)/login')}
-            style={styles.forgotPress}
+            hitSlop={6}
           >
-            <Text style={styles.forgotText}>Forgot Password?</Text>
+            <Text style={styles.signInLink}>Sign in</Text>
           </Pressable>
         </View>
       </View>
@@ -117,33 +140,70 @@ const styles = StyleSheet.create({
   },
   brandBlock: {
     alignItems: 'center',
-    marginBottom: 36,
+    marginBottom: 40,
+    paddingHorizontal: 8,
+  },
+  logoHalo: {
+    padding: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(242, 70, 28, 0.06)',
+    marginBottom: 4,
   },
   welcomeTo: {
-    marginTop: 18,
-    color: authColors.text,
-    fontSize: 18,
-    lineHeight: 26,
+    marginTop: 16,
+    color: authColors.muted,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '500',
   },
   name: {
-    marginTop: 2,
+    marginTop: 4,
     color: authColors.text,
     fontWeight: '700',
-    fontSize: 34,
+    fontSize: 36,
     lineHeight: 42,
-    letterSpacing: -0.4,
+    letterSpacing: -0.6,
+  },
+  tagline: {
+    marginTop: 10,
+    color: authColors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    maxWidth: 280,
   },
   actions: {
     width: '100%',
     alignSelf: 'stretch',
   },
-  forgotPress: {
+  footer: {
+    width: '100%',
+    maxWidth: 420,
     alignSelf: 'center',
-    marginTop: 18,
-    paddingVertical: 6,
+    alignItems: 'center',
+    gap: 14,
+    paddingTop: 8,
+  },
+  forgotPress: {
+    paddingVertical: 4,
   },
   forgotText: {
     color: authColors.muted,
     fontSize: 14,
+  },
+  signInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  signInPrompt: {
+    color: authColors.textSecondary,
+    fontSize: 14,
+  },
+  signInLink: {
+    color: authColors.primary,
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

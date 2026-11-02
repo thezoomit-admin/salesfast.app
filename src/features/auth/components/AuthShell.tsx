@@ -55,7 +55,7 @@ export function AuthShell({
             <Pressable
               accessibilityRole="link"
               accessibilityLabel="Salesfast"
-              onPress={() => router.replace('/(auth)/index')}
+              onPress={() => router.replace('/(auth)')}
               style={styles.logoPress}
             >
               <BrandMark variant="icon" size={64} />

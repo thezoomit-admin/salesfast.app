@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -63,7 +64,15 @@ export default function LoginScreen() {
       }
       switchPrompt="Don't have an account?"
       switchAction={
-        <Pressable onPress={() => router.push('/(auth)/signup')}>
+        <Pressable
+          onPress={() =>
+            Alert.alert(
+              'Contact administration',
+              'To create a Salesfast account, please contact your administrator. Accounts are provisioned by your organization.',
+              [{ text: 'OK' }]
+            )
+          }
+        >
           <Text style={styles.switchLink}>Sign up</Text>
         </Pressable>
       }
@@ -110,7 +119,11 @@ export default function LoginScreen() {
       <Pressable
         accessibilityRole="button"
         style={styles.forgotPress}
-        onPress={() => {}}
+        onPress={() =>
+          Alert.alert('Upcoming', 'Forgot password will be available soon.', [
+            { text: 'OK' },
+          ])
+        }
       >
         <Text style={styles.forgotText}>Forgot Password?</Text>
       </Pressable>
