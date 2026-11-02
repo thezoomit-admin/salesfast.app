@@ -1,10 +1,4 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import {
-  useLocalSearchParams,
-  usePathname,
-  useRouter,
-  type Href,
-} from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -20,61 +14,32 @@ import { spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 
-type TabKey = 'index' | 'history' | 'calls' | 'views';
+export type LeadDetailTab = 'overview' | 'history' | 'calls' | 'views';
 
 const TABS: {
-  key: TabKey;
+  key: LeadDetailTab;
   label: string;
   icon: HugeIconData;
-  path: (id: string) => Href;
-  match: (pathname: string) => boolean;
 }[] = [
-  {
-    key: 'index',
-    label: 'Overview',
-    icon: UserIcon,
-    path: (id) => `/leads/${id}` as Href,
-    match: (p) =>
-      /\/leads\/[^/]+\/?$/.test(p) || /\/leads\/[^/]+\/index\/?$/.test(p),
-  },
-  {
-    key: 'history',
-    label: 'History',
-    icon: Calendar03Icon,
-    path: (id) => `/leads/${id}/history` as Href,
-    match: (p) => /\/leads\/[^/]+\/history\/?$/.test(p),
-  },
-  {
-    key: 'calls',
-    label: 'Call History',
-    icon: CallIcon,
-    path: (id) => `/leads/${id}/calls` as Href,
-    match: (p) => /\/leads\/[^/]+\/calls\/?$/.test(p),
-  },
-  {
-    key: 'views',
-    label: 'View History',
-    icon: EyeIcon,
-    path: (id) => `/leads/${id}/views` as Href,
-    match: (p) => /\/leads\/[^/]+\/views\/?$/.test(p),
-  },
+  { key: 'overview', label: 'Overview', icon: UserIcon },
+  { key: 'history', label: 'History', icon: Calendar03Icon },
+  { key: 'calls', label: 'Call History', icon: CallIcon },
+  { key: 'views', label: 'View History', icon: EyeIcon },
 ];
 
 const TAB_BAR_CONTENT_HEIGHT = 56;
 
-/** Dedicated bottom menu — navigates via expo-router (no RN tab navigation prop). */
-export function LeadDetailTabBar() {
+type Props = {
+  active: LeadDetailTab;
+  onChange: (tab: LeadDetailTab) => void;
+};
+
+/** Dedicated bottom menu — local tab state only (no router / navigation.emit). */
+export function LeadDetailTabBar({ active, onChange }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const router = useRouter();
-  const pathname = usePathname();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const leadId = String(id ?? '');
-
-  const activeKey =
-    TABS.find((t) => t.match(pathname))?.key ?? ('index' as TabKey);
 
   return (
     <View
@@ -87,20 +52,14 @@ export function LeadDetailTabBar() {
       ]}
     >
       {TABS.map((tab) => {
-        const isActive = activeKey === tab.key;
+        const isActive = active === tab.key;
         const tint = isActive ? colors.brand : colors.textMuted;
-
         return (
           <Pressable
             key={tab.key}
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
-            disabled={!leadId}
-            onPress={() => {
-              if (!leadId || isActive) return;
-              // replace → tab switches don't stack on the back stack
-              router.replace(tab.path(leadId));
-            }}
+            onPress={() => onChange(tab.key)}
             style={styles.item}
           >
             <HugeiconsIcon
