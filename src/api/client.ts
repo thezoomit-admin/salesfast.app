@@ -1,11 +1,15 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 import { API_BASE_URL } from '@/constants/config';
+import { upsertSavedAccount } from '@/features/auth/savedAccounts';
+import { reportReachable, reportUnreachable } from '@/lib/connectivity';
+import { recordApiTiming } from '@/lib/perfMonitor';
 import { secureStorage } from '@/services/secureStorage';
 import type { ApiResponse, MobileRefreshResult } from '@/types/api';
 
 type RetriableConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
+  _startedAt?: number;
 };
 
 let refreshPromise: Promise<string | null> | null = null;
@@ -30,8 +34,15 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   config.headers['X-Device-Id'] = deviceId;
+  (config as RetriableConfig)._startedAt = Date.now();
   return config;
 });
+
+function trackResponse(config: RetriableConfig | undefined, status: number | string) {
+  if (config?._startedAt) {
+    recordApiTiming(config.method, config.url, status, Date.now() - config._startedAt);
+  }
+}
 
 async function refreshAccessToken(): Promise<string | null> {
   const [accountId, refreshToken, deviceId] = await Promise.all([
@@ -54,23 +65,40 @@ async function refreshAccessToken(): Promise<string | null> {
   );
 
   const payload = data.data;
+  const nextRefresh = payload.refreshToken ?? refreshToken;
   await secureStorage.updateTokens(payload.accessToken, payload.refreshToken);
   if (payload.user) {
     await secureStorage.saveSession({
       accessToken: payload.accessToken,
-      refreshToken: payload.refreshToken ?? refreshToken,
+      refreshToken: nextRefresh,
       accountId: payload.user.id,
       userJson: JSON.stringify(payload.user),
+    });
+    await upsertSavedAccount({
+      user: payload.user,
+      accessToken: payload.accessToken,
+      refreshToken: nextRefresh,
     });
   }
   return payload.accessToken;
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    reportReachable();
+    trackResponse(response.config, response.status);
+    return response;
+  },
   async (error: AxiosError) => {
     const original = error.config as RetriableConfig | undefined;
     const status = error.response?.status;
+    trackResponse(original, status ?? error.code ?? 'ERR');
+    if (error.response) {
+      reportReachable();
+    } else if (!axios.isCancel(error)) {
+      // Never reached the server (no network / DNS / timeout).
+      reportUnreachable();
+    }
     const url = String(original?.url || '');
     const isAuthCall =
       url.includes('/auth/mobile/login') ||

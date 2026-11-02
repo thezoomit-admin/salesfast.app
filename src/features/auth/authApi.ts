@@ -65,3 +65,24 @@ export async function loadStoredUser(): Promise<AuthUser | null> {
     return null;
   }
 }
+
+export async function forgotPasswordRequest(identifier: string) {
+  const { data } = await api.post<ApiResponse<{ message?: string } | null>>(
+    '/auth/forgot-password',
+    { identifier: identifier.trim() }
+  );
+  return data;
+}
+
+export async function resetPasswordRequest(input: {
+  identifier: string;
+  otp: string;
+  password: string;
+}) {
+  const { data } = await api.post<ApiResponse<null>>('/auth/reset-password', {
+    identifier: input.identifier.trim(),
+    otp: input.otp.trim(),
+    password: input.password,
+  });
+  return data;
+}

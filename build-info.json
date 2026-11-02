@@ -1,0 +1,49 @@
+﻿{
+  "id": "f05e9b1c-0c1f-4f4e-9943-46c39a67458a",
+  "status": "ERRORED",
+  "platform": "ANDROID",
+  "error": {
+    "errorCode": "EAS_BUILD_UNKNOWN_GRADLE_ERROR",
+    "message": "Gradle build failed with unknown error. See logs for the \"Run gradlew\" phase for more information."
+  },
+  "artifacts": {},
+  "fingerprint": {
+    "id": "01a19bcc-1340-7d8a-ad8e-a75879552b7f",
+    "hash": "045290d46b5f7716b8e91ca4a459d537df192850"
+  },
+  "initiatingActor": {
+    "id": "2e16bcee-b3f6-4dbe-aaca-0cfc47be646d",
+    "displayName": "ibnabdullah01"
+  },
+  "logFiles": [
+    "https://storage.googleapis.com/eas-workflows-production/logs/37dc35d5-a2b1-476e-bb6c-721668bc7473/f05e9b1c-0c1f-4f4e-9943-46c39a67458a/2026-11-02T10%3A27%3A46Z-91094d9f-963e-4622-84b1-cabe4b144d03.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20261102%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20261102T102901Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=52491caca415b6ac8697b878fabb93a6510d300d82265caa5308975c84432a66e2e579163d396755f8e09fe66728bb83dacc43f0e69ee258b2efe7137da9dac39b9ded1a2b3aee68ed1e277c7e084e2d1dd0ea83a027d60a59e3aa6ac253be57424d76874330c94a8fdab1cdb600b633fee2eaace1fef1724383c5ec8ec7d59e5a6b63570d3de8dd732dbc24ae3bdcae62d42313792957db242dbcd02378ebe9b9e81a64e9e893881f6aa9a463d33f88eb4587a50452d5889aa51d69512a0933aafdee7eb0e2f2e0249a62f4ff396bbc3f195e2189501c2381dc9333e6334daf9d6648dfb3e8c80e500bc7695f8e32715880fef1392757ef00d9bf22c7bfb548"
+  ],
+  "app": {
+    "id": "37dc35d5-a2b1-476e-bb6c-721668bc7473",
+    "name": "salesfast",
+    "slug": "salesfast",
+    "ownerAccount": {
+      "id": "23ecfab1-8ed0-4c6a-840a-4ede60459fbf",
+      "name": "ibnabdullah01"
+    }
+  },
+  "distribution": "INTERNAL",
+  "buildProfile": "preview",
+  "appIdentifier": "com.salesfastcrm",
+  "sdkVersion": "58.0.0",
+  "appVersion": "1.0.0",
+  "appBuildVersion": "1",
+  "gitCommitHash": "7ebd78ca21fb9fa931753ff793fb9036664fd3a9",
+  "gitCommitMessage": "fix(metro): adjust maxWorkers and cache configuration for Windows compatibility\n\nReduced maxWorkers to 1 and cleared cacheStores to prevent EMFILE errors on Windows. Updated blockList to include node_modules cache, enhancing Metro bundler performance and stability.",
+  "priority": "NORMAL",
+  "createdAt": "2026-11-02T10:26:45.066Z",
+  "updatedAt": "2026-11-02T10:32:00.315Z",
+  "completedAt": "2026-11-02T10:32:00.049Z",
+  "expirationDate": "2026-11-16T10:26:45.172Z",
+  "isForIosSimulator": false,
+  "metrics": {
+    "buildWaitTime": 3129,
+    "buildQueueTime": 64798,
+    "buildDuration": 247056
+  }
+}

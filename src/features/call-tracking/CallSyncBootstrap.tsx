@@ -13,7 +13,9 @@ const FOREGROUND_SYNC_MS = 30_000;
 export function CallSyncBootstrap() {
   const { user } = useAuth();
   const running = useRef(false);
-  const appState = useRef<AppStateStatus>(AppState.currentState);
+  const appState = useRef<AppStateStatus | null | undefined>(
+    AppState.currentState as AppStateStatus | null | undefined,
+  );
 
   useEffect(() => {
     if (!user || Platform.OS === 'web') return;

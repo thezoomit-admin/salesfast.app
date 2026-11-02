@@ -1,6 +1,11 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -8,14 +13,19 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
-import { EmptyState, ErrorState } from '@/components/ui/StateViews';
-import { fetchLeadStatuses, fetchMyLeads } from '@/features/leads/leadsApi';
+import {
+  HeaderIconButton,
+  ScreenHeader,
+} from '@/components/ui/ScreenHeader';
+import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { leadStatusesQuery, myLeadsQuery } from '@/features/leads/leadsApi';
+import type { LeadListItem } from '@/types/api';
 import { colors, radii, spacing, typography } from '@/theme';
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -29,90 +39,131 @@ function useDebounced<T>(value: T, delay = 350) {
 
 export default function LeadsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const searchRef = useRef<TextInputInstance>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [statusId, setStatusId] = useState<number | undefined>();
   const debouncedSearch = useDebounced(search);
 
-  const statuses = useQuery({
-    queryKey: ['lead-statuses'],
-    queryFn: fetchLeadStatuses,
-  });
+  const statuses = useQuery(leadStatusesQuery);
 
+  // Keep the current list on screen while a new search / filter loads.
   const leads = useInfiniteQuery({
-    queryKey: ['my-leads', debouncedSearch, statusId],
-    initialPageParam: 1,
-    queryFn: ({ pageParam }) =>
-      fetchMyLeads({
-        page: pageParam,
-        search: debouncedSearch,
-        leadStatusId: statusId,
-      }),
-    getNextPageParam: (last) => {
-      const current =
-        last.meta.current_page ?? last.meta.page ?? 1;
-      const lastPage =
-        last.meta.last_page ?? last.meta.totalPages ?? current;
-      return current < lastPage ? current + 1 : undefined;
-    },
+    ...myLeadsQuery(debouncedSearch, statusId),
+    placeholderData: keepPreviousData,
   });
 
-  const items = leads.data?.pages.flatMap((p) => p.items) ?? [];
+  const items = useMemo(
+    () => leads.data?.pages.flatMap((p) => p.items) ?? [],
+    [leads.data]
+  );
+  const filterChips = useMemo(
+    () => [
+      { id: 0, name: 'All' },
+      ...(Array.isArray(statuses.data) ? statuses.data : []),
+    ],
+    [statuses.data]
+  );
+  const openLead = useCallback(
+    (lead: LeadListItem) => router.push(`/leads/${lead.id}`),
+    [router]
+  );
+  const renderLead = useCallback(
+    ({ item }: { item: LeadListItem }) => (
+      <LeadListItemCard lead={item} onPress={openLead} />
+    ),
+    [openLead]
+  );
+
+  const toggleSearch = () => {
+    setSearchOpen((open) => {
+      const next = !open;
+      if (next) {
+        requestAnimationFrame(() => searchRef.current?.focus());
+      } else {
+        setSearch('');
+        searchRef.current?.blur();
+      }
+      return next;
+    });
+  };
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Leads</Text>
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search name or phone"
-          placeholderTextColor={colors.textMuted}
-          style={styles.search}
-        />
-        <FlatList
-          horizontal
-          data={[
-            { id: 0, name: 'All' },
-            ...(Array.isArray(statuses.data) ? statuses.data : []),
-          ]}
-          keyExtractor={(item) => String(item.id)}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filters}
-          renderItem={({ item }) => {
-            const active =
-              (item.id === 0 && !statusId) || item.id === statusId;
-            return (
-              <Pressable
-                onPress={() =>
-                  setStatusId(item.id === 0 ? undefined : item.id)
-                }
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {item.name}
-                </Text>
-              </Pressable>
-            );
-          }}
-        />
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader
+        title="Leads"
+        showBack={false}
+        right={
+          <HeaderIconButton label="Search leads" onPress={toggleSearch}>
+            <Ionicons
+              name={searchOpen ? 'close' : 'search'}
+              size={22}
+              color={colors.text}
+            />
+          </HeaderIconButton>
+        }
+      />
 
-      {leads.isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.brand} size="large" />
+      {searchOpen ? (
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={16} color={colors.textMuted} />
+          <TextInput
+            ref={searchRef}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search name or phone"
+            placeholderTextColor={colors.textMuted}
+            returnKeyType="search"
+            style={styles.searchInput}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {search.length > 0 ? (
+            <Pressable
+              onPress={() => setSearch('')}
+              hitSlop={8}
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          ) : null}
         </View>
-      ) : leads.isError ? (
-        <ErrorState
-          message={getErrorMessage(leads.error)}
-          onRetry={() => leads.refetch()}
+      ) : null}
+
+      <FlatList
+        horizontal
+        data={filterChips}
+        keyExtractor={(item) => String(item.id)}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filters}
+        style={styles.filterList}
+        renderItem={({ item }) => {
+          const active = (item.id === 0 && !statusId) || item.id === statusId;
+          return (
+            <Pressable
+              onPress={() => setStatusId(item.id === 0 ? undefined : item.id)}
+              style={[styles.chip, active && styles.chipActive]}
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                {item.name}
+              </Text>
+            </Pressable>
+          );
+        }}
+      />
+
+      {!leads.data ? (
+        <QueryPlaceholder
+          query={leads}
+          errorMessage={getErrorMessage(leads.error)}
         />
       ) : (
         <FlatList
           data={items}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
-          refreshing={leads.isRefetching}
+          style={leads.isPlaceholderData && styles.stale}
+          refreshing={leads.isRefetching && !leads.isPlaceholderData}
           onRefresh={() => leads.refetch()}
           onEndReached={() => {
             if (leads.hasNextPage && !leads.isFetchingNextPage) {
@@ -136,12 +187,11 @@ export default function LeadsScreen() {
               <View />
             )
           }
-          renderItem={({ item }) => (
-            <LeadListItemCard
-              lead={item}
-              onPress={() => router.push(`/leads/${item.id}`)}
-            />
-          )}
+          renderItem={renderLead}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
         />
       )}
     </View>
@@ -150,18 +200,31 @@ export default function LeadsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
-  title: { ...typography.title, color: colors.text },
-  search: {
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
     minHeight: 44,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    color: colors.text,
   },
-  filters: { gap: spacing.sm, paddingBottom: spacing.sm },
+  searchInput: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 15,
+    paddingVertical: spacing.sm,
+  },
+  filterList: { flexGrow: 0 },
+  filters: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
   chip: {
     borderRadius: radii.pill,
     borderWidth: 1,
@@ -174,5 +237,5 @@ const styles = StyleSheet.create({
   chipText: { ...typography.caption, color: colors.textSecondary },
   chipTextActive: { color: colors.white },
   list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  stale: { opacity: 0.6 },
 });

@@ -12,6 +12,8 @@ import { colors, spacing } from '@/theme';
 
 type Props = {
   children: ReactNode;
+  /** Hisab-style page header rendered above content (handles its own top inset). */
+  header?: ReactNode;
   scroll?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
@@ -21,40 +23,41 @@ type Props = {
 
 export function Screen({
   children,
+  header,
   scroll,
   refreshing,
   onRefresh,
   style,
   contentStyle,
 }: Props) {
-  if (scroll) {
-    return (
-      <SafeAreaView
-        style={[styles.safe, style]}
-        edges={['top', 'left', 'right']}
-      >
-        <ScrollView
-          contentContainerStyle={[styles.content, contentStyle]}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={!!refreshing}
-                onRefresh={onRefresh}
-                tintColor={colors.brand}
-              />
-            ) : undefined
-          }
-        >
-          {children}
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
+  const edges = header
+    ? (['left', 'right'] as const)
+    : (['top', 'left', 'right'] as const);
+
+  const body = scroll ? (
+    <ScrollView
+      contentContainerStyle={[styles.content, contentStyle]}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={!!refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand}
+          />
+        ) : undefined
+      }
+    >
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={[styles.content, contentStyle]}>{children}</View>
+  );
 
   return (
-    <SafeAreaView style={[styles.safe, style]} edges={['top', 'left', 'right']}>
-      <View style={[styles.content, contentStyle]}>{children}</View>
+    <SafeAreaView style={[styles.safe, style]} edges={[...edges]}>
+      {header}
+      {body}
     </SafeAreaView>
   );
 }

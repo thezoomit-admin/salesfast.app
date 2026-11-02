@@ -4,6 +4,7 @@ import { Alert, Platform, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { isCallLogModuleAvailable } from 'android-call-log';
 
 import { runCallSync } from '@/features/call-tracking/runCallSync';
@@ -95,8 +96,10 @@ export default function CallSyncSetupScreen() {
   };
 
   return (
-    <Screen scroll>
-      <Text style={styles.title}>Call synchronization</Text>
+    <Screen
+      scroll
+      header={<ScreenHeader title="Call sync setup" />}
+    >
       <Text style={styles.body}>
         Match phone calls with your CRM leads and save activities automatically.
         Personal calls that do not match an authorized lead are never uploaded.
@@ -181,7 +184,6 @@ export default function CallSyncSetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.title, color: colors.text },
   body: { ...typography.body, color: colors.textSecondary },
   card: {
     backgroundColor: colors.surface,

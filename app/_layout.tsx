@@ -1,33 +1,50 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import {
+  Stack,
+  useRootNavigationState,
+  useRouter,
+  useSegments,
+} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
+import { BrandSplash } from '@/features/auth/components/BrandSplash';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 import { CallSyncBootstrap } from '@/features/call-tracking/CallSyncBootstrap';
 import { NotificationsBootstrap } from '@/features/notifications/NotificationsBootstrap';
+import { installConnectivityManagers } from '@/lib/connectivity';
+import { installQueryCacheMonitor } from '@/lib/perfMonitor';
+import { useAccountQueryCache } from '@/lib/useAccountQueryCache';
 import { colors } from '@/theme';
 
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+installConnectivityManagers();
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, bootstrapping } = useAuth();
+  const { user, bootstrapping: authBootstrapping } = useAuth();
+  // Hold the splash until this account's saved data is in memory, so the
+  // first screen paints with content instead of a spinner.
+  const bootstrapping = useAccountQueryCache(user?.id ?? null, authBootstrapping);
   const segments = useSegments();
   const router = useRouter();
+  const navigationState = useRootNavigationState();
 
   useEffect(() => {
     if (bootstrapping) return;
+    // Wait until the root navigator exists — avoids ROUTE_NAMES_CHANGED noise.
+    if (!navigationState?.key) return;
     const inAuth = segments[0] === '(auth)';
     if (!user && !inAuth) {
-      router.replace('/(auth)/login');
+      router.replace('/(auth)');
     } else if (user && inAuth) {
       router.replace('/(tabs)');
     }
-  }, [user, bootstrapping, segments, router]);
+  }, [user, bootstrapping, segments, router, navigationState?.key]);
 
   useEffect(() => {
     if (!bootstrapping) {
@@ -35,36 +52,36 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [bootstrapping]);
 
-  if (bootstrapping) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.brand} />
-      </View>
-    );
-  }
-
-  return <>{children}</>;
+  // Keep Stack mounted during bootstrap so navigators aren't torn down/recreated.
+  return (
+    <View style={styles.gate}>
+      {children}
+      <OfflineBanner />
+      {bootstrapping ? (
+        <View style={styles.splashOverlay} pointerEvents="auto">
+          <BrandSplash mode="logo" />
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 export default function RootLayout() {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
+  const [queryClient] = useState(() => {
+    const client = new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 30_000,
+            // Cached data renders instantly; screens refresh in the background
+            // once it is older than this. Mutations invalidate what they touch.
+            staleTime: 2 * 60_000,
+            gcTime: 30 * 60_000,
             retry: 1,
           },
         },
-      })
-  );
+      });
+    installQueryCacheMonitor(client);
+    return client;
+  });
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -72,36 +89,32 @@ export default function RootLayout() {
         <AuthGate>
           <CallSyncBootstrap />
           <NotificationsBootstrap />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="leads/[id]"
-              options={{
-                headerShown: true,
-                title: 'Lead details',
-                headerTintColor: colors.brand,
-              }}
-            />
-            <Stack.Screen
-              name="notifications"
-              options={{
-                headerShown: true,
-                title: 'Notifications',
-                headerTintColor: colors.brand,
-              }}
-            />
-            <Stack.Screen
-              name="call-sync/setup"
-              options={{
-                headerShown: true,
-                title: 'Call sync setup',
-                headerTintColor: colors.brand,
-              }}
-            />
+            <Stack.Screen name="leads/[id]" />
+            <Stack.Screen name="notifications" />
+            <Stack.Screen name="activities" />
+            <Stack.Screen name="call-sync/setup" />
+            <Stack.Screen name="+not-found" />
           </Stack>
         </AuthGate>
       </AuthProvider>
     </QueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  gate: {
+    flex: 1,
+  },
+  splashOverlay: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 10,
+  },
+});

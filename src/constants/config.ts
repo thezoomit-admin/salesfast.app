@@ -74,9 +74,20 @@ function resolveApiUrl() {
 
 export const API_BASE_URL = resolveApiUrl();
 
-export const APP_NAME = 'Salesfast- Real estate CRM';
+export const APP_NAME = 'Salesfast- CRM';
 export const APP_VERSION = '1.0.0';
 
 /** Dokploy staging API — used by installed APKs. */
 export const STAGING_API_URL = 'https://salesfastapi-dev.thezoomit.com/api';
+
+/**
+ * Admin contact for agent onboarding (accounts are provisioned, not self-serve).
+ * Override via EXPO_PUBLIC_ADMIN_EMAIL / EXPO_PUBLIC_ADMIN_WHATSAPP.
+ */
+export const ADMIN_CONTACT_EMAIL =
+  process.env.EXPO_PUBLIC_ADMIN_EMAIL?.trim() || 'admin@thezoomit.com';
+/** Digits only or with country code, e.g. 88017XXXXXXXX */
+export const ADMIN_CONTACT_WHATSAPP =
+  process.env.EXPO_PUBLIC_ADMIN_WHATSAPP?.trim() || '';
+
 

@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   warning: { backgroundColor: colors.warningSoft, borderColor: '#F5D08A' },
-  accent: { backgroundColor: colors.brandSoft, borderColor: '#B7D4D4' },
+  accent: { backgroundColor: colors.brandSoft, borderColor: '#F5C4B3' },
   value: { ...typography.title, color: colors.text },
   label: { ...typography.caption, color: colors.textSecondary },
 });

@@ -15,6 +15,7 @@ import {
 } from './notificationsApi';
 import {
   clearDeliveredNotifications,
+  isPushSupported,
   registerForPushNotifications,
 } from './pushRegistration';
 
@@ -50,12 +51,14 @@ export function NotificationsBootstrap() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const handledResponse = useRef<string | null>(null);
+  const pushOk = isPushSupported();
 
   // Register this install's push token for the signed-in user; re-register
   // when the OS rotates the token or the app returns to the foreground
   // (picks up a permission the user just enabled in Settings).
+  // Skip in Expo Go on Android — addPushTokenListener / getExpoPushToken throw (SDK 53+).
   useEffect(() => {
-    if (!userId || Platform.OS === 'web') return;
+    if (!userId || Platform.OS === 'web' || !pushOk) return;
     void registerForPushNotifications();
 
     const tokenSub = Notifications.addPushTokenListener(() => {
@@ -71,7 +74,18 @@ export function NotificationsBootstrap() {
       tokenSub.remove();
       appSub.remove();
     };
-  }, [userId, queryClient]);
+  }, [userId, queryClient, pushOk]);
+
+  // Still refresh inbox when returning to foreground without push APIs.
+  useEffect(() => {
+    if (!userId || Platform.OS === 'web' || pushOk) return;
+    const appSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
+      }
+    });
+    return () => appSub.remove();
+  }, [userId, queryClient, pushOk]);
 
   // Signed out → clear the tray and cached inbox so the next account on this
   // phone never sees (or taps) the previous user's notifications.
@@ -81,7 +95,7 @@ export function NotificationsBootstrap() {
     queryClient.removeQueries({ queryKey: NOTIFICATIONS_KEY });
   }, [userId, queryClient]);
 
-  // Push arrived while the app is open → refresh inbox + bell count.
+  // Notification arrived while the app is open → refresh inbox + bell count.
   useEffect(() => {
     if (!userId || Platform.OS === 'web') return;
     const sub = Notifications.addNotificationReceivedListener(() => {

@@ -9,7 +9,7 @@ import {
 import { loadStoredUser } from '@/features/auth/authApi';
 
 import {
-  fetchCallMatchDirectory,
+  getCallMatchDirectory,
   uploadMatchedCalls,
   type CallSyncUploadItem,
 } from './callSyncApi';
@@ -29,6 +29,13 @@ export type CallSyncRunResult = {
   duplicates: number;
   unmatched: number;
 };
+
+/**
+ * Calls the server already holds (created or duplicate) this app session.
+ * Background ticks skip them so each 30s sync only uploads new calls;
+ * a manual "Sync now" still resends everything.
+ */
+const confirmedCallIds = new Set<string>();
 
 async function ensureCallLogPermission(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
@@ -86,7 +93,7 @@ export async function runCallSync(options?: {
   // Match against recent device call history (no enable-time cutoff).
   // Native module caps at 300 rows; unmatched personal numbers are never uploaded.
   const rows = await getRecentCalls(300, 0);
-  const directory = await fetchCallMatchDirectory();
+  const directory = await getCallMatchDirectory({ fresh: options?.force });
   const keySet = new Set(directory.entries.map((e) => e.phoneKey));
 
   const payload: CallSyncUploadItem[] = [];
@@ -94,6 +101,7 @@ export async function runCallSync(options?: {
     const key = phoneMatchKey(row.number);
     if (!key || !keySet.has(key)) continue;
     const deviceCallId = `android:${row.id}:${row.dateMs}:${row.type}`;
+    if (!options?.force && confirmedCallIds.has(deviceCallId)) continue;
     payload.push({
       deviceCallId,
       phone: row.number,
@@ -127,6 +135,11 @@ export async function runCallSync(options?: {
   for (let i = 0; i < payload.length; i += 100) {
     const chunk = payload.slice(i, i + 100);
     const result = await uploadMatchedCalls(chunk, devicePhone);
+    for (const r of result.results ?? []) {
+      if (r.status === 'created' || r.status === 'duplicate') {
+        confirmedCallIds.add(r.deviceCallId);
+      }
+    }
     created += result.created;
     duplicates += result.duplicates;
     unmatched += result.unmatched;

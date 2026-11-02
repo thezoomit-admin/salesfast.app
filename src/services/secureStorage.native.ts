@@ -6,19 +6,33 @@ const KEYS = {
   accountId: 'sf_mobile_account_id',
   userJson: 'sf_mobile_user_json',
   deviceId: 'sf_mobile_device_id',
+  accountsJson: 'sf_mobile_accounts_v1',
+  rememberEmail: 'sf_mobile_remember_email',
 } as const;
 
+/**
+ * Keystore reads are slow and the API client reads the token + device id on
+ * every request. All writes go through this module, so a memory mirror is safe.
+ */
+const cache = new Map<string, string | null>();
+
 async function setItem(key: string, value: string) {
+  cache.set(key, value);
   await SecureStore.setItemAsync(key, value, {
     keychainAccessible: SecureStore.WHEN_UNLOCKED,
   });
 }
 
 async function getItem(key: string) {
-  return SecureStore.getItemAsync(key);
+  if (cache.has(key)) return cache.get(key) ?? null;
+  const value = await SecureStore.getItemAsync(key);
+  // A write that landed during the read wins.
+  if (!cache.has(key)) cache.set(key, value);
+  return cache.get(key) ?? null;
 }
 
 async function deleteItem(key: string) {
+  cache.set(key, null);
   await SecureStore.deleteItemAsync(key);
 }
 
@@ -67,5 +81,17 @@ export const secureStorage = {
       deleteItem(KEYS.accountId),
       deleteItem(KEYS.userJson),
     ]);
+  },
+
+  getAccountsJson: () => getItem(KEYS.accountsJson),
+  setAccountsJson: (value: string) => setItem(KEYS.accountsJson, value),
+
+  getRememberEmail: () => getItem(KEYS.rememberEmail),
+  async setRememberEmail(email: string | null) {
+    if (!email) {
+      await deleteItem(KEYS.rememberEmail);
+      return;
+    }
+    await setItem(KEYS.rememberEmail, email);
   },
 };

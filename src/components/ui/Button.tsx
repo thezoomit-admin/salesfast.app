@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   secondary: {
     backgroundColor: colors.brandSoft,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#F5C4B3',
   },
   danger: { backgroundColor: colors.danger },
   ghost: { backgroundColor: 'transparent' },

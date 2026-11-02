@@ -1,75 +1,67 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
-import { fetchMyLeads } from '@/features/leads/leadsApi';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import {
+  followUpLeadsQuery,
+  type FollowUpTab,
+} from '@/features/leads/leadsApi';
+import type { LeadListItem } from '@/types/api';
 import { colors, radii, spacing, typography } from '@/theme';
-import { endOfLocalDayIso, startOfLocalDayIso } from '@/utils/dates';
-
-type TabKey = 'today' | 'overdue' | 'upcoming';
 
 export default function FollowUpsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<TabKey>('today');
+  const [tab, setTab] = useState<FollowUpTab>('today');
 
-  const params =
-    tab === 'overdue'
-      ? { followupOverdue: true as const }
-      : tab === 'today'
-        ? {
-            followupFrom: startOfLocalDayIso(),
-            followupTo: endOfLocalDayIso(),
-          }
-        : {
-            followupFrom: endOfLocalDayIso(),
-          };
+  const query = useQuery(followUpLeadsQuery(tab));
 
-  const query = useQuery({
-    queryKey: ['follow-up-leads', tab],
-    queryFn: () => fetchMyLeads({ ...params, per_page: 50 }),
-  });
+  const openLead = useCallback(
+    (lead: LeadListItem) => router.push(`/leads/${lead.id}`),
+    [router]
+  );
+  const renderLead = useCallback(
+    ({ item }: { item: LeadListItem }) => (
+      <LeadListItemCard lead={item} onPress={openLead} />
+    ),
+    [openLead]
+  );
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Follow-ups</Text>
-        <View style={styles.tabs}>
-          {(
-            [
-              ['today', 'Today'],
-              ['overdue', 'Overdue'],
-              ['upcoming', 'Upcoming'],
-            ] as const
-          ).map(([key, label]) => (
-            <Pressable
-              key={key}
-              onPress={() => setTab(key)}
-              style={[styles.tab, tab === key && styles.tabActive]}
-            >
-              <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+    <View style={styles.safe}>
+      <ScreenHeader title="Follow-ups" showBack={false} />
+      <View style={styles.tabs}>
+        {(
+          [
+            ['today', 'Today'],
+            ['overdue', 'Overdue'],
+            ['upcoming', 'Upcoming'],
+          ] as const
+        ).map(([key, label]) => (
+          <Pressable
+            key={key}
+            onPress={() => setTab(key)}
+            style={[styles.tab, tab === key && styles.tabActive]}
+          >
+            <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
-      {query.isLoading ? (
-        <LoadingState />
-      ) : query.isError ? (
-        <ErrorState
-          message={getErrorMessage(query.error)}
-          onRetry={() => query.refetch()}
+      {!query.data ? (
+        <QueryPlaceholder
+          query={query}
+          errorMessage={getErrorMessage(query.error)}
         />
       ) : (
         <FlatList
-          data={query.data?.items ?? []}
+          data={query.data.items}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           refreshing={query.isRefetching}
@@ -77,15 +69,14 @@ export default function FollowUpsScreen() {
           ListEmptyComponent={
             <EmptyState
               title="No follow-ups"
-              message="Nothing in this queue right now."
+              message="Nothing in this bucket right now."
             />
           }
-          renderItem={({ item }) => (
-            <LeadListItemCard
-              lead={item}
-              onPress={() => router.push(`/leads/${item.id}`)}
-            />
-          )}
+          renderItem={renderLead}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
         />
       )}
     </View>
@@ -94,9 +85,12 @@ export default function FollowUpsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { padding: spacing.lg, gap: spacing.md },
-  title: { ...typography.title, color: colors.text },
-  tabs: { flexDirection: 'row', gap: spacing.sm },
+  tabs: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
   tab: {
     flex: 1,
     alignItems: 'center',

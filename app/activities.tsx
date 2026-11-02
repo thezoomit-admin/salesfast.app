@@ -1,41 +1,34 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
-import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { colors, radii, spacing, typography } from '@/theme';
 import { formatDateTime } from '@/utils/dates';
 
 export default function ActivitiesScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const query = useQuery({
-    queryKey: ['mobile-dashboard'],
-    queryFn: fetchMobileDashboard,
-  });
+  const query = useQuery(dashboardQuery);
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Activities</Text>
-        <Text style={styles.subtitle}>
-          Recent notes from your assigned leads. Matched calls sync from the Android build.
-        </Text>
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader title="Activities" />
+      <Text style={styles.subtitle}>
+        Recent notes from your assigned leads. Matched calls sync from the Android
+        build.
+      </Text>
 
-      {query.isLoading ? (
-        <LoadingState />
-      ) : query.isError ? (
-        <ErrorState
-          message={getErrorMessage(query.error)}
-          onRetry={() => query.refetch()}
+      {!query.data ? (
+        <QueryPlaceholder
+          query={query}
+          errorMessage={getErrorMessage(query.error)}
         />
       ) : (
         <FlatList
-          data={query.data?.recentNotes ?? []}
+          data={query.data.recentNotes}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           refreshing={query.isRefetching}
@@ -73,9 +66,12 @@ export default function ActivitiesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { padding: spacing.lg, gap: spacing.xs },
-  title: { ...typography.title, color: colors.text },
-  subtitle: { ...typography.body, color: colors.textSecondary },
+  subtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
   list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
   card: {
     backgroundColor: colors.surface,

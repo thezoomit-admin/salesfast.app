@@ -9,6 +9,8 @@ const KEYS = {
   accountId: 'sf_mobile_account_id',
   userJson: 'sf_mobile_user_json',
   deviceId: 'sf_mobile_device_id',
+  accountsJson: 'sf_mobile_accounts_v1',
+  rememberEmail: 'sf_mobile_remember_email',
 } as const;
 
 const memoryStore = new Map<string, string>();
@@ -94,5 +96,23 @@ export const secureStorage = {
     remove(KEYS.refreshToken);
     remove(KEYS.accountId);
     remove(KEYS.userJson);
+  },
+
+  async getAccountsJson() {
+    return get(KEYS.accountsJson);
+  },
+  async setAccountsJson(value: string) {
+    set(KEYS.accountsJson, value);
+  },
+
+  async getRememberEmail() {
+    return get(KEYS.rememberEmail);
+  },
+  async setRememberEmail(email: string | null) {
+    if (!email) {
+      remove(KEYS.rememberEmail);
+      return;
+    }
+    set(KEYS.rememberEmail, email);
   },
 };
