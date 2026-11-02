@@ -10,6 +10,7 @@ import {
   ADMIN_CONTACT_EMAIL,
   ADMIN_CONTACT_WHATSAPP,
   API_BASE_URL,
+  APP_BUILD,
   APP_NAME,
   APP_VERSION,
 } from '@/constants/config';
@@ -43,13 +44,15 @@ export default function AboutScreen() {
     Constants.nativeApplicationVersion ||
     Constants.expoConfig?.version ||
     APP_VERSION;
+  // Expo Go often has no nativeBuildVersion for this app — fall back to config.
+  const configBuild =
+    Platform.OS === 'ios'
+      ? Constants.expoConfig?.ios?.buildNumber
+      : Constants.expoConfig?.android?.versionCode;
   const buildNumber =
     Constants.nativeBuildVersion ||
-    (Constants.expoConfig?.android as { versionCode?: number } | undefined)
-      ?.versionCode ||
-    (Constants.expoConfig?.ios as { buildNumber?: string } | undefined)
-      ?.buildNumber ||
-    '—';
+    (configBuild != null && String(configBuild)) ||
+    APP_BUILD;
   const env = apiLabel(API_BASE_URL);
 
   const rows: InfoRow[] = [

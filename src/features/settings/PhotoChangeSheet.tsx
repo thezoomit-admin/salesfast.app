@@ -98,6 +98,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radii.lg,
     paddingTop: 16,
     paddingHorizontal: 16,
+    shadowColor: '#111827',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 16,
   },
   title: {
     color: colors.text,
