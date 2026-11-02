@@ -1,7 +1,8 @@
-import { existsSync } from 'fs';
-import { join } from 'path';
-
 import { ExpoConfig, ConfigContext } from 'expo/config';
+
+// app.config runs in Node, but the app tsconfig has no @types/node.
+declare const require: (id: 'fs') => { existsSync: (path: string) => boolean };
+const { existsSync } = require('fs');
 
 const isDevClientBuild = process.env.EAS_BUILD_PROFILE === 'development';
 
@@ -12,7 +13,8 @@ const isDevClientBuild = process.env.EAS_BUILD_PROFILE === 'development';
  */
 const googleServicesFile =
   process.env.GOOGLE_SERVICES_JSON ??
-  (existsSync(join(__dirname, 'google-services.json'))
+  // Expo evaluates app config with the project root as cwd.
+  (existsSync('./google-services.json')
     ? './google-services.json'
     : undefined);
 

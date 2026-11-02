@@ -137,7 +137,9 @@ export default function NotificationsScreen() {
         refreshControl={
           <RefreshControl
             refreshing={query.isRefetching && !query.isFetchingNextPage}
-            onRefresh={() => query.refetch()}
+            onRefresh={() => {
+              void query.refetch();
+            }}
             tintColor={colors.brand}
           />
         }
@@ -156,7 +158,7 @@ export default function NotificationsScreen() {
         ListFooterComponent={
           query.isFetchingNextPage ? (
             <ActivityIndicator color={colors.brand} style={styles.footer} />
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => {
           const type = item.metadata?.crmType ?? '';
