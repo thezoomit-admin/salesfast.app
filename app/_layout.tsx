@@ -84,38 +84,10 @@ export default function RootLayout() {
           >
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="leads/[id]"
-              options={{
-                headerShown: true,
-                title: 'Lead details',
-                headerTintColor: colors.brand,
-              }}
-            />
-            <Stack.Screen
-              name="notifications"
-              options={{
-                headerShown: true,
-                title: 'Notifications',
-                headerTintColor: colors.brand,
-              }}
-            />
-            <Stack.Screen
-              name="activities"
-              options={{
-                headerShown: true,
-                title: 'Activities',
-                headerTintColor: colors.brand,
-              }}
-            />
-            <Stack.Screen
-              name="call-sync/setup"
-              options={{
-                headerShown: true,
-                title: 'Call sync setup',
-                headerTintColor: colors.brand,
-              }}
-            />
+            <Stack.Screen name="leads/[id]" />
+            <Stack.Screen name="notifications" />
+            <Stack.Screen name="activities" />
+            <Stack.Screen name="call-sync/setup" />
             <Stack.Screen name="+not-found" />
           </Stack>
         </AuthGate>

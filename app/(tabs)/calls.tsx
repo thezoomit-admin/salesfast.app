@@ -3,10 +3,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
 import type { CallSyncDirection } from '@/features/call-tracking/callSyncApi';
 import { runCallSync } from '@/features/call-tracking/runCallSync';
@@ -50,7 +50,6 @@ function formatDuration(sec: number) {
 
 export default function CallsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const callSync = useCallSyncStatus();
   const [filter, setFilter] = useState<FilterKey>('leads');
@@ -122,9 +121,8 @@ export default function CallsScreen() {
 
   const syncOk = callSync.status === 'configured';
 
-  const header = (
-    <View style={styles.header}>
-      <Text style={styles.title}>Calls</Text>
+  const toolbar = (
+    <View style={styles.toolbar}>
       <Pressable
         style={[styles.syncCard, syncOk ? styles.syncCardOk : styles.syncCardWarn]}
         onPress={() => router.push('/call-sync/setup')}
@@ -156,7 +154,8 @@ export default function CallsScreen() {
 
   if (callSync.loading && !callSync.prefs) {
     return (
-      <View style={[styles.safe, { paddingTop: insets.top }]}>
+      <View style={styles.safe}>
+        <ScreenHeader title="Calls" showBack={false} />
         <LoadingState />
       </View>
     );
@@ -164,8 +163,9 @@ export default function CallsScreen() {
 
   if (!setupDone) {
     return (
-      <View style={[styles.safe, { paddingTop: insets.top }]}>
-        {header}
+      <View style={styles.safe}>
+        <ScreenHeader title="Calls" showBack={false} />
+        {toolbar}
         <EmptyState
           title="Set up call sync"
           message="Match your phone calls with CRM leads. Only calls with your leads are saved to the CRM."
@@ -181,8 +181,9 @@ export default function CallsScreen() {
   }
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
-      {header}
+    <View style={styles.safe}>
+      <ScreenHeader title="Calls" showBack={false} />
+      {toolbar}
 
       {calls.isLoading ? (
         <LoadingState label="Reading call history…" />
@@ -322,8 +323,11 @@ function CallRow({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  header: { padding: spacing.lg, gap: spacing.md },
-  title: { ...typography.title, color: colors.text },
+  toolbar: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
   cta: { paddingHorizontal: spacing.lg },
   pressed: { opacity: 0.8 },
 

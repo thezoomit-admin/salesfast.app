@@ -10,10 +10,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EmptyState, ErrorState } from '@/components/ui/StateViews';
 import { fetchLeadStatuses, fetchMyLeads } from '@/features/leads/leadsApi';
 import { colors, radii, spacing, typography } from '@/theme';
@@ -29,7 +28,6 @@ function useDebounced<T>(value: T, delay = 350) {
 
 export default function LeadsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [statusId, setStatusId] = useState<number | undefined>();
   const debouncedSearch = useDebounced(search);
@@ -60,9 +58,9 @@ export default function LeadsScreen() {
   const items = leads.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Leads</Text>
+    <View style={styles.safe}>
+      <ScreenHeader title="Leads" showBack={false} />
+      <View style={styles.toolbar}>
         <TextInput
           value={search}
           onChangeText={setSearch}
@@ -150,8 +148,11 @@ export default function LeadsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.md },
-  title: { ...typography.title, color: colors.text },
+  toolbar: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
   search: {
     minHeight: 44,
     borderRadius: radii.md,

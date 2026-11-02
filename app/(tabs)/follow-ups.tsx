@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
 import { fetchMyLeads } from '@/features/leads/leadsApi';
 import { colors, radii, spacing, typography } from '@/theme';
@@ -15,7 +15,6 @@ type TabKey = 'today' | 'overdue' | 'upcoming';
 
 export default function FollowUpsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<TabKey>('today');
 
   const params =
@@ -36,28 +35,26 @@ export default function FollowUpsScreen() {
   });
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Follow-ups</Text>
-        <View style={styles.tabs}>
-          {(
-            [
-              ['today', 'Today'],
-              ['overdue', 'Overdue'],
-              ['upcoming', 'Upcoming'],
-            ] as const
-          ).map(([key, label]) => (
-            <Pressable
-              key={key}
-              onPress={() => setTab(key)}
-              style={[styles.tab, tab === key && styles.tabActive]}
-            >
-              <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+    <View style={styles.safe}>
+      <ScreenHeader title="Follow-ups" showBack={false} />
+      <View style={styles.tabs}>
+        {(
+          [
+            ['today', 'Today'],
+            ['overdue', 'Overdue'],
+            ['upcoming', 'Upcoming'],
+          ] as const
+        ).map(([key, label]) => (
+          <Pressable
+            key={key}
+            onPress={() => setTab(key)}
+            style={[styles.tab, tab === key && styles.tabActive]}
+          >
+            <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
       {query.isLoading ? (
@@ -77,7 +74,7 @@ export default function FollowUpsScreen() {
           ListEmptyComponent={
             <EmptyState
               title="No follow-ups"
-              message="Nothing in this queue right now."
+              message="Nothing in this bucket right now."
             />
           }
           renderItem={({ item }) => (
@@ -94,9 +91,12 @@ export default function FollowUpsScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { padding: spacing.lg, gap: spacing.md },
-  title: { ...typography.title, color: colors.text },
-  tabs: { flexDirection: 'row', gap: spacing.sm },
+  tabs: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
   tab: {
     flex: 1,
     alignItems: 'center',

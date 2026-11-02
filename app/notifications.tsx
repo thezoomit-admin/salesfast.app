@@ -4,7 +4,7 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
-import { type Href, Stack, useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
 import {
   type AppNotification,
@@ -87,47 +88,48 @@ export default function NotificationsScreen() {
   };
 
   const header = (
-    <Stack.Screen
-      options={{
-        headerRight: () =>
-          unread > 0 ? (
-            <Pressable
-              onPress={() => markAll.mutate()}
-              disabled={markAll.isPending}
-              hitSlop={8}
-            >
-              <Text style={styles.headerAction}>
-                {markAll.isPending ? 'Marking…' : 'Mark all read'}
-              </Text>
-            </Pressable>
-          ) : null,
-      }}
+    <ScreenHeader
+      title="Notifications"
+      right={
+        unread > 0 ? (
+          <Pressable
+            onPress={() => markAll.mutate()}
+            disabled={markAll.isPending}
+            hitSlop={8}
+            style={styles.headerActionBtn}
+          >
+            <Text style={styles.headerAction}>
+              {markAll.isPending ? 'Marking…' : 'Mark all'}
+            </Text>
+          </Pressable>
+        ) : null
+      }
     />
   );
 
   if (query.isLoading) {
     return (
-      <>
+      <View style={styles.safe}>
         {header}
         <LoadingState label="Loading notifications…" />
-      </>
+      </View>
     );
   }
 
   if (query.isError) {
     return (
-      <>
+      <View style={styles.safe}>
         {header}
         <ErrorState
           message={getErrorMessage(query.error)}
           onRetry={() => query.refetch()}
         />
-      </>
+      </View>
     );
   }
 
   return (
-    <>
+    <View style={styles.safe}>
       {header}
       <FlatList
         style={styles.list}
@@ -206,16 +208,22 @@ export default function NotificationsScreen() {
           );
         }}
       />
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: colors.background },
+  list: { flex: 1 },
   content: { padding: spacing.lg, gap: spacing.sm },
   emptyContent: { flexGrow: 1 },
   footer: { paddingVertical: spacing.lg },
-  headerAction: { ...typography.caption, color: colors.brand },
+  headerActionBtn: {
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  headerAction: { ...typography.caption, color: colors.brand, fontWeight: '700' },
   row: {
     flexDirection: 'row',
     gap: spacing.md,

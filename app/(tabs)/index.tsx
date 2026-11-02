@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { Screen } from '@/components/ui/Screen';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
@@ -44,9 +45,17 @@ export default function HomeScreen() {
   const syncOk =
     callSync.status === 'configured' || callSync.status === 'unavailable_web';
 
+  const homeHeader = (
+    <ScreenHeader
+      title="Home"
+      showBack={false}
+      right={<NotificationBell plain />}
+    />
+  );
+
   if (query.isLoading) {
     return (
-      <Screen>
+      <Screen header={homeHeader}>
         <LoadingState label="Loading dashboard…" />
       </Screen>
     );
@@ -54,7 +63,7 @@ export default function HomeScreen() {
 
   if (query.isError) {
     return (
-      <Screen>
+      <Screen header={homeHeader}>
         <ErrorState
           message={getErrorMessage(query.error)}
           onRetry={() => query.refetch()}
@@ -66,7 +75,7 @@ export default function HomeScreen() {
   const data = query.data;
   if (!data) {
     return (
-      <Screen>
+      <Screen header={homeHeader}>
         <EmptyState title="No dashboard data" />
       </Screen>
     );
@@ -78,23 +87,21 @@ export default function HomeScreen() {
 
   return (
     <Screen
+      header={homeHeader}
       scroll
       refreshing={query.isRefetching}
       onRefresh={() => query.refetch()}
       contentStyle={styles.screenContent}
     >
-      <View style={styles.headerRow}>
-        <View style={styles.header}>
-          <Text style={styles.greeting}>
-            {greeting}, {firstName}
-          </Text>
-          <Text style={styles.subtitle}>
-            {focusTotal > 0
-              ? `${focusTotal} follow-up${focusTotal === 1 ? '' : 's'} need attention today.`
-              : 'Your pipeline looks clear — keep momentum going.'}
-          </Text>
-        </View>
-        <NotificationBell />
+      <View style={styles.intro}>
+        <Text style={styles.greeting}>
+          {greeting}, {firstName}
+        </Text>
+        <Text style={styles.subtitle}>
+          {focusTotal > 0
+            ? `${focusTotal} follow-up${focusTotal === 1 ? '' : 's'} need attention today.`
+            : 'Your pipeline looks clear — keep momentum going.'}
+        </Text>
       </View>
 
       {hasOverdue ? (
@@ -403,13 +410,7 @@ function Section({
 
 const styles = StyleSheet.create({
   screenContent: { gap: spacing.md, paddingBottom: spacing.xxl },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  header: { flex: 1, gap: 4 },
+  intro: { gap: 4, marginBottom: spacing.xs },
   greeting: { ...typography.display, color: colors.text, fontSize: 26 },
   subtitle: { ...typography.body, color: colors.textSecondary },
   pressed: { opacity: 0.85 },

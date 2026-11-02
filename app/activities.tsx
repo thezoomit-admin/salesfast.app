@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
 import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
 import { colors, radii, spacing, typography } from '@/theme';
@@ -17,11 +18,11 @@ export default function ActivitiesScreen() {
 
   return (
     <View style={styles.safe}>
-      <View style={styles.header}>
-        <Text style={styles.subtitle}>
-          Recent notes from your assigned leads. Matched calls sync from the Android build.
-        </Text>
-      </View>
+      <ScreenHeader title="Activities" />
+      <Text style={styles.subtitle}>
+        Recent notes from your assigned leads. Matched calls sync from the Android
+        build.
+      </Text>
 
       {query.isLoading ? (
         <LoadingState />
@@ -70,8 +71,12 @@ export default function ActivitiesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.xs },
-  subtitle: { ...typography.body, color: colors.textSecondary },
+  subtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
   list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
   card: {
     backgroundColor: colors.surface,

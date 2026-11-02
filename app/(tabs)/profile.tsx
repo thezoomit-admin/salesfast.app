@@ -12,6 +12,7 @@ import {
 import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
@@ -90,8 +91,10 @@ export default function ProfileScreen() {
     !a.signedOut && Boolean(a.accessToken && a.refreshToken);
 
   return (
-    <Screen scroll>
-      <Text style={styles.title}>Profile</Text>
+    <Screen
+      scroll
+      header={<ScreenHeader title="Profile" showBack={false} />}
+    >
       <View style={styles.card}>
         <Text style={styles.name}>{user?.name}</Text>
         <Text style={styles.meta}>{user?.email}</Text>
@@ -191,7 +194,6 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  title: { ...typography.title, color: colors.text },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radii.lg,

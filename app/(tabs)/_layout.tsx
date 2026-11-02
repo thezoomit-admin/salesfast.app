@@ -62,7 +62,7 @@ export default function TabLayout() {
         options={{
           title: 'Follow-ups',
           tabBarBadge: overdue > 0 ? (overdue > 99 ? '99+' : overdue) : undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.accent, color: colors.white },
+          tabBarBadgeStyle: { backgroundColor: colors.brand, color: colors.white },
           tabBarIcon: ({ color }) => (
             <TabIcon name="calendar" color={String(color)} />
           ),

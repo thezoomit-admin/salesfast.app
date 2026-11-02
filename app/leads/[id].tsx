@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
 import { TextField } from '@/components/ui/TextField';
 import {
@@ -120,8 +121,7 @@ export default function LeadDetailScreen() {
 
   if (leadQuery.isLoading) {
     return (
-      <Screen>
-        <Stack.Screen options={{ title: 'Lead' }} />
+      <Screen header={<ScreenHeader title="Lead" />}>
         <LoadingState />
       </Screen>
     );
@@ -129,8 +129,7 @@ export default function LeadDetailScreen() {
 
   if (leadQuery.isError || !leadQuery.data) {
     return (
-      <Screen>
-        <Stack.Screen options={{ title: 'Lead' }} />
+      <Screen header={<ScreenHeader title="Lead" />}>
         <ErrorState
           message={getErrorMessage(leadQuery.error, 'Lead not found')}
           onRetry={() => leadQuery.refetch()}
@@ -146,12 +145,11 @@ export default function LeadDetailScreen() {
 
   return (
     <Screen
+      header={<ScreenHeader title={name} />}
       scroll
       refreshing={leadQuery.isRefetching}
       onRefresh={() => leadQuery.refetch()}
     >
-      <Stack.Screen options={{ title: name }} />
-
       <View style={styles.hero}>
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.phone}>{formatPhoneDisplay(phone)}</Text>
