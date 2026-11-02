@@ -1,7 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import {
+  Stack,
+  useRootNavigationState,
+  useRouter,
+  useSegments,
+} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { BrandSplash } from '@/features/auth/components/BrandSplash';
@@ -18,16 +24,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, bootstrapping } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const navigationState = useRootNavigationState();
 
   useEffect(() => {
     if (bootstrapping) return;
+    // Wait until the root navigator exists — avoids ROUTE_NAMES_CHANGED noise.
+    if (!navigationState?.key) return;
     const inAuth = segments[0] === '(auth)';
     if (!user && !inAuth) {
       router.replace('/(auth)');
     } else if (user && inAuth) {
       router.replace('/(tabs)');
     }
-  }, [user, bootstrapping, segments, router]);
+  }, [user, bootstrapping, segments, router, navigationState?.key]);
 
   useEffect(() => {
     if (!bootstrapping) {
@@ -35,11 +44,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [bootstrapping]);
 
-  if (bootstrapping) {
-    return <BrandSplash mode="logo" />;
-  }
-
-  return <>{children}</>;
+  // Keep Stack mounted during bootstrap so navigators aren't torn down/recreated.
+  return (
+    <View style={styles.gate}>
+      {children}
+      {bootstrapping ? (
+        <View style={styles.splashOverlay} pointerEvents="auto">
+          <BrandSplash mode="logo" />
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 export default function RootLayout() {
@@ -61,7 +76,12 @@ export default function RootLayout() {
         <AuthGate>
           <CallSyncBootstrap />
           <NotificationsBootstrap />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
@@ -88,9 +108,20 @@ export default function RootLayout() {
                 headerTintColor: colors.brand,
               }}
             />
+            <Stack.Screen name="+not-found" />
           </Stack>
         </AuthGate>
       </AuthProvider>
     </QueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  gate: {
+    flex: 1,
+  },
+  splashOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+  },
+});

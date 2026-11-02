@@ -22,9 +22,8 @@ import {
 /**
  * While the app is open, still show the system pop-up (heads-up banner).
  * Nobody signed in on this install → stay silent (a stale session's push).
- * Skip entirely in Expo Go on Android — remote push APIs throw there (SDK 53+).
  */
-if (Platform.OS !== 'web' && isPushSupported()) {
+if (Platform.OS !== 'web') {
   Notifications.setNotificationHandler({
     handleNotification: async () => {
       const signedIn = !!(await secureStorage.getAccessToken().catch(() => null));
@@ -57,11 +56,11 @@ export function NotificationsBootstrap() {
   // Register this install's push token for the signed-in user; re-register
   // when the OS rotates the token or the app returns to the foreground
   // (picks up a permission the user just enabled in Settings).
+  // Skip in Expo Go on Android — addPushTokenListener / getExpoPushToken throw (SDK 53+).
   useEffect(() => {
-    if (!userId || !pushOk) return;
+    if (!userId || Platform.OS === 'web' || !pushOk) return;
     void registerForPushNotifications();
 
-    // addPushTokenListener throws in Expo Go on Android (SDK 53+).
     const tokenSub = Notifications.addPushTokenListener(() => {
       void registerForPushNotifications();
     });
@@ -77,32 +76,38 @@ export function NotificationsBootstrap() {
     };
   }, [userId, queryClient, pushOk]);
 
+  // Still refresh inbox when returning to foreground without push APIs.
+  useEffect(() => {
+    if (!userId || Platform.OS === 'web' || pushOk) return;
+    const appSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
+      }
+    });
+    return () => appSub.remove();
+  }, [userId, queryClient, pushOk]);
+
   // Signed out → clear the tray and cached inbox so the next account on this
   // phone never sees (or taps) the previous user's notifications.
   useEffect(() => {
     if (userId) return;
-    if (pushOk) {
-      void clearDeliveredNotifications();
-    }
+    void clearDeliveredNotifications();
     queryClient.removeQueries({ queryKey: NOTIFICATIONS_KEY });
-  }, [userId, queryClient, pushOk]);
+  }, [userId, queryClient]);
 
-  // Push arrived while the app is open → refresh inbox + bell count.
+  // Notification arrived while the app is open → refresh inbox + bell count.
   useEffect(() => {
-    if (!userId || !pushOk) return;
+    if (!userId || Platform.OS === 'web') return;
     const sub = Notifications.addNotificationReceivedListener(() => {
       void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
     });
     return () => sub.remove();
-  }, [userId, queryClient, pushOk]);
+  }, [userId, queryClient]);
 
   // Tap on a notification (covers cold start too) → open its screen.
-  // Hook must always run; skip handling when push isn't available.
-  const lastResponse = pushOk
-    ? Notifications.useLastNotificationResponse()
-    : null;
+  const lastResponse = Notifications.useLastNotificationResponse();
   useEffect(() => {
-    if (!pushOk || !lastResponse || Platform.OS === 'web') return;
+    if (!lastResponse || Platform.OS === 'web') return;
     const { notification, actionIdentifier } = lastResponse;
     const key = `${notification.request.identifier}:${actionIdentifier}`;
     if (handledResponse.current === key) return;
@@ -124,7 +129,7 @@ export function NotificationsBootstrap() {
 
     const route = safeRoute(data['url']) ?? '/notifications';
     router.push(route);
-  }, [lastResponse, userId, router, queryClient, pushOk]);
+  }, [lastResponse, userId, router, queryClient]);
 
   // Keep the launcher badge in sync with the unread count.
   const unread = useQuery({
@@ -134,9 +139,9 @@ export function NotificationsBootstrap() {
     refetchInterval: 60_000,
   });
   useEffect(() => {
-    if (!pushOk || unread.data == null) return;
+    if (Platform.OS === 'web' || unread.data == null) return;
     void Notifications.setBadgeCountAsync(unread.data).catch(() => undefined);
-  }, [unread.data, pushOk]);
+  }, [unread.data]);
 
   return null;
 }

@@ -1,4 +1,5 @@
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -19,11 +20,8 @@ export type PushSetupResult =
 export function isPushSupported() {
   if (Platform.OS === 'web') return false;
   if (!Device.isDevice) return false;
-  // Expo Go (SDK 53+) has no remote push on Android.
-  if (
-    Platform.OS === 'android' &&
-    Constants.executionEnvironment === ExecutionEnvironment.StoreClient
-  ) {
+  // Expo Go (SDK 53+) throws on Android remote-push APIs — never call them there.
+  if (Platform.OS === 'android' && isRunningInExpoGo()) {
     return false;
   }
   return true;
