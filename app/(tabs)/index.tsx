@@ -182,15 +182,21 @@ export default function HomeScreen() {
   const { kpis } = data;
   const focusTotal = kpis.todayFollowUps + kpis.overdueFollowUps;
   const attentionClear = focusTotal === 0;
-  const pulsePct =
-    kpis.pendingFollowUps <= 0
-      ? 100
-      : Math.round(
-          ((kpis.pendingFollowUps - kpis.overdueFollowUps) /
-            kpis.pendingFollowUps) *
-            100
-        );
-  const pulseClamped = Math.max(0, Math.min(100, pulsePct));
+  const hasFollowUps = kpis.pendingFollowUps > 0;
+  // Only score when there is something to score — 0 pending ≠ 100% healthy.
+  const pulseClamped = hasFollowUps
+    ? Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            ((kpis.pendingFollowUps - kpis.overdueFollowUps) /
+              kpis.pendingFollowUps) *
+              100
+          )
+        )
+      )
+    : 0;
 
   const alerts = (
     [
@@ -345,7 +351,9 @@ export default function HomeScreen() {
       >
         <View style={styles.pulseHeader}>
           <Text style={styles.cardTitle}>Follow-up health</Text>
-          <Text style={styles.pulsePct}>{pulseClamped}%</Text>
+          <Text style={styles.pulsePct}>
+            {hasFollowUps ? `${pulseClamped}%` : '—'}
+          </Text>
         </View>
         <View style={styles.pulseTrack}>
           <View
@@ -353,8 +361,9 @@ export default function HomeScreen() {
               styles.pulseFill,
               {
                 width: `${pulseClamped}%`,
-                backgroundColor:
-                  pulseClamped < 50
+                backgroundColor: !hasFollowUps
+                  ? colors.border
+                  : pulseClamped < 50
                     ? colors.danger
                     : pulseClamped < 80
                       ? colors.warning
@@ -364,11 +373,11 @@ export default function HomeScreen() {
           />
         </View>
         <Text style={styles.pulseMeta}>
-          {kpis.overdueFollowUps > 0
-            ? `${kpis.overdueFollowUps} overdue of ${kpis.pendingFollowUps} pending`
-            : kpis.pendingFollowUps > 0
-              ? `${kpis.pendingFollowUps} pending · none overdue`
-              : 'No pending follow-ups'}
+          {!hasFollowUps
+            ? 'No follow-ups set yet — schedule one from a lead'
+            : kpis.overdueFollowUps > 0
+              ? `${kpis.overdueFollowUps} overdue of ${kpis.pendingFollowUps} pending`
+              : `${kpis.pendingFollowUps} pending · none overdue`}
         </Text>
       </Pressable>
 
