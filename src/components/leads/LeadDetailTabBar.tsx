@@ -1,4 +1,10 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
+import {
+  useLocalSearchParams,
+  usePathname,
+  useRouter,
+  type Href,
+} from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -14,45 +20,61 @@ import { spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 
-/** Minimal shape from React Navigation tabBar props (avoid hard dep on package types). */
-type TabBarProps = {
-  state: {
-    index: number;
-    routes: Array<{ key: string; name: string; params?: object }>;
-  };
-  descriptors: Record<string, { options: { title?: string } }>;
-  navigation: {
-    emit: (e: {
-      type: string;
-      target: string;
-      canPreventDefault: boolean;
-    }) => { defaultPrevented: boolean };
-    navigate: (name: string, params?: object) => void;
-  };
-};
+type TabKey = 'index' | 'history' | 'calls' | 'views';
 
-const TAB_META: Record<
-  string,
-  { label: string; icon: HugeIconData }
-> = {
-  index: { label: 'Overview', icon: UserIcon },
-  history: { label: 'History', icon: Calendar03Icon },
-  calls: { label: 'Call History', icon: CallIcon },
-  views: { label: 'View History', icon: EyeIcon },
-};
+const TABS: {
+  key: TabKey;
+  label: string;
+  icon: HugeIconData;
+  path: (id: string) => Href;
+  match: (pathname: string) => boolean;
+}[] = [
+  {
+    key: 'index',
+    label: 'Overview',
+    icon: UserIcon,
+    path: (id) => `/leads/${id}` as Href,
+    match: (p) =>
+      /\/leads\/[^/]+\/?$/.test(p) || /\/leads\/[^/]+\/index\/?$/.test(p),
+  },
+  {
+    key: 'history',
+    label: 'History',
+    icon: Calendar03Icon,
+    path: (id) => `/leads/${id}/history` as Href,
+    match: (p) => /\/leads\/[^/]+\/history\/?$/.test(p),
+  },
+  {
+    key: 'calls',
+    label: 'Call History',
+    icon: CallIcon,
+    path: (id) => `/leads/${id}/calls` as Href,
+    match: (p) => /\/leads\/[^/]+\/calls\/?$/.test(p),
+  },
+  {
+    key: 'views',
+    label: 'View History',
+    icon: EyeIcon,
+    path: (id) => `/leads/${id}/views` as Href,
+    match: (p) => /\/leads\/[^/]+\/views\/?$/.test(p),
+  },
+];
 
 const TAB_BAR_CONTENT_HEIGHT = 56;
 
-/** Dedicated bottom menu for lead detail sub-pages (matches app tab bar). */
-export function LeadDetailTabBar({
-  state,
-  descriptors,
-  navigation,
-}: TabBarProps) {
+/** Dedicated bottom menu — navigates via expo-router (no RN tab navigation prop). */
+export function LeadDetailTabBar() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const leadId = String(id ?? '');
+
+  const activeKey =
+    TABS.find((t) => t.match(pathname))?.key ?? ('index' as TabKey);
 
   return (
     <View
@@ -64,41 +86,31 @@ export function LeadDetailTabBar({
         },
       ]}
     >
-      {state.routes.map((route, index) => {
-        const meta = TAB_META[route.name] ?? {
-          label: descriptors[route.key]?.options.title ?? route.name,
-          icon: UserIcon,
-        };
-        const isActive = state.index === index;
+      {TABS.map((tab) => {
+        const isActive = activeKey === tab.key;
         const tint = isActive ? colors.brand : colors.textMuted;
-
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
-          if (!isActive && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
-          }
-        };
 
         return (
           <Pressable
-            key={route.key}
+            key={tab.key}
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
-            onPress={onPress}
+            disabled={!leadId}
+            onPress={() => {
+              if (!leadId || isActive) return;
+              // replace → tab switches don't stack on the back stack
+              router.replace(tab.path(leadId));
+            }}
             style={styles.item}
           >
             <HugeiconsIcon
-              icon={meta.icon}
+              icon={tab.icon}
               size={22}
               color={tint}
               strokeWidth={1.8}
             />
             <Text style={[styles.label, { color: tint }]} numberOfLines={1}>
-              {meta.label}
+              {tab.label}
             </Text>
           </Pressable>
         );

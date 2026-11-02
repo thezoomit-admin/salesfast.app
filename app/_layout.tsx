@@ -88,7 +88,8 @@ function ThemedStack() {
         {/* Auth ↔ app: fade so the gate doesn't slide over tabs. */}
         <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-        <Stack.Screen name="leads/[id]" />
+        {/* Folder route: Overview / History / Calls / Views under leads/[id]/ */}
+        <Stack.Screen name="leads/[id]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="activities" />
         <Stack.Screen name="call-sync/setup" />
