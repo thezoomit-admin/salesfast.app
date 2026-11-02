@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = TextInputProps & {
   label: string;
@@ -8,6 +9,8 @@ type Props = TextInputProps & {
 };
 
 export function TextField({ label, error, style, ...rest }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
@@ -21,19 +24,21 @@ export function TextField({ label, error, style, ...rest }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { gap: spacing.xs },
-  label: { ...typography.caption, color: colors.textSecondary },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-    color: colors.text,
-    fontSize: 15,
-  },
-  inputError: { borderColor: colors.danger },
-  error: { ...typography.caption, color: colors.danger },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: { gap: spacing.xs },
+    label: { ...typography.caption, color: colors.textSecondary },
+    input: {
+      minHeight: 48,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+      backgroundColor: colors.surface,
+      color: colors.text,
+      fontSize: 15,
+    },
+    inputError: { borderColor: colors.danger },
+    error: { ...typography.caption, color: colors.danger },
+  });
+}

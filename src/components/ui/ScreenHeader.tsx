@@ -1,13 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radii, typography } from '@/theme';
+import { radii, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
   title: string;
+  /** Soft line under the title (tab roots). Ignored when centered. */
+  subtitle?: string;
   /** Center slot (e.g. filter pill). Stays truly centered. */
   center?: ReactNode;
   /** Right slot (e.g. actions). Always far-right. */
@@ -28,6 +31,7 @@ type Props = {
  */
 export function ScreenHeader({
   title,
+  subtitle,
   center,
   right,
   onBack,
@@ -37,6 +41,8 @@ export function ScreenHeader({
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const centered = titleCentered ?? (showBack && !center);
 
   const handleBack = () => {
@@ -72,7 +78,13 @@ export function ScreenHeader({
   ) : null;
 
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
+    <View
+      style={[
+        styles.wrap,
+        !showBack && styles.wrapTabRoot,
+        { paddingTop: insets.top + 8 },
+      ]}
+    >
       {center || centered ? (
         <View
           style={[styles.centerSlot, { top: insets.top }]}
@@ -98,14 +110,21 @@ export function ScreenHeader({
           <>
             <View style={styles.leftWithTitle}>
               {backControl}
-              <Text
-                style={[styles.titleInline, !showBack && styles.titleRoot]}
-                numberOfLines={1}
-              >
-                {title}
-              </Text>
+              <View style={styles.titleBlock}>
+                <Text
+                  style={[styles.titleInline, !showBack && styles.titleRoot]}
+                  numberOfLines={1}
+                >
+                  {title}
+                </Text>
+                {subtitle && !centered ? (
+                  <Text style={styles.subtitle} numberOfLines={1}>
+                    {subtitle}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-            <View style={styles.right}>{right}</View>
+            <View style={styles.right}>{right ?? <View style={styles.iconBtn} />}</View>
           </>
         )}
       </View>
@@ -115,11 +134,13 @@ export function ScreenHeader({
 
 export function HeaderAddButton({
   onPress,
-  label,
+  label = 'Add',
 }: {
   onPress: () => void;
   label?: string;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <Pressable
       accessibilityRole="button"
@@ -127,7 +148,9 @@ export function HeaderAddButton({
       onPress={onPress}
       style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
     >
-      <Ionicons name="add" size={24} color={colors.white} />
+      <Text style={styles.addBtnLabel} numberOfLines={1}>
+        + {label}
+      </Text>
     </Pressable>
   );
 }
@@ -141,6 +164,8 @@ export function HeaderIconButton({
   label: string;
   children: ReactNode;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <Pressable
       accessibilityRole="button"
@@ -154,99 +179,129 @@ export function HeaderIconButton({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    minHeight: 48,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#FDDFCF',
-    zIndex: 2,
-  },
-  centerSlot: {
-    position: 'absolute',
-    left: 56,
-    right: 56,
-    top: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 0,
-    pointerEvents: 'box-none',
-  },
-  sideRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 1,
-  },
-  side: {
-    minWidth: 40,
-    minHeight: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sideEnd: {
-    minWidth: 40,
-    minHeight: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 2,
-  },
-  leftWithTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-    minWidth: 0,
-    paddingRight: 8,
-    maxWidth: '70%',
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titleInline: {
-    ...typography.subtitle,
-    fontSize: 17,
-    lineHeight: 26,
-    color: colors.text,
-    flexShrink: 1,
-  },
-  titleRoot: {
-    fontSize: 20,
-    lineHeight: 28,
-    letterSpacing: -0.2,
-    fontWeight: '700',
-  },
-  titleCentered: {
-    ...typography.subtitle,
-    fontSize: 18,
-    lineHeight: 26,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  right: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    minHeight: 40,
-    gap: 2,
-  },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.pill,
-    backgroundColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      minHeight: 48,
+      marginBottom: 12,
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.brandSoft,
+      zIndex: 2,
+    },
+    /** Tab roots sit directly above chips/tabs — seam handled by chip/tab margins. */
+    wrapTabRoot: {
+      marginBottom: 0,
+      paddingBottom: 0,
+    },
+    centerSlot: {
+      position: 'absolute',
+      left: 56,
+      right: 56,
+      top: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 0,
+      pointerEvents: 'box-none',
+    },
+    sideRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      zIndex: 1,
+    },
+    side: {
+      minWidth: 40,
+      minHeight: 40,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    sideEnd: {
+      minWidth: 40,
+      minHeight: 40,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      flexShrink: 0,
+      gap: 2,
+    },
+    leftWithTitle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexShrink: 1,
+      minWidth: 0,
+      paddingRight: 8,
+      maxWidth: '72%',
+    },
+    titleBlock: {
+      flexShrink: 1,
+      minWidth: 0,
+      gap: 1,
+    },
+    iconBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    titleInline: {
+      ...typography.subtitle,
+      fontSize: 17,
+      lineHeight: 24,
+      color: colors.text,
+      flexShrink: 1,
+    },
+    titleRoot: {
+      fontSize: 22,
+      lineHeight: 28,
+      letterSpacing: -0.3,
+      fontWeight: '700',
+    },
+    subtitle: {
+      ...typography.caption,
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.textSecondary,
+    },
+    titleCentered: {
+      ...typography.subtitle,
+      fontSize: 18,
+      lineHeight: 26,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    right: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      flexShrink: 0,
+      minHeight: 40,
+      gap: 2,
+    },
+    addBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      minHeight: 28,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+    },
+    addBtnLabel: {
+      ...typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
+      fontWeight: '600',
+      color: colors.white,
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+  });
+}

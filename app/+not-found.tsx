@@ -1,9 +1,12 @@
 import { Link, Stack } from 'expo-router';
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '@/theme';
+import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 export default function NotFoundScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <>
       <Stack.Screen options={{ title: 'Not found' }} />
@@ -17,16 +20,18 @@ export default function NotFoundScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    backgroundColor: colors.background,
-    gap: spacing.md,
-  },
-  title: { ...typography.title, color: colors.text },
-  link: { paddingVertical: spacing.sm },
-  linkText: { ...typography.subtitle, color: colors.brand },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xl,
+      backgroundColor: colors.background,
+      gap: spacing.md,
+    },
+    title: { ...typography.title, color: colors.text },
+    link: { paddingVertical: spacing.sm },
+    linkText: { ...typography.subtitle, color: colors.brand },
+  });
+}

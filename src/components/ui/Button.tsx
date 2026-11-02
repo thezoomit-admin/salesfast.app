@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,7 +7,7 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
@@ -27,6 +28,8 @@ export function Button({
   variant = 'primary',
   style,
 }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isDisabled = disabled || loading;
   return (
     <Pressable
@@ -58,27 +61,29 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    minHeight: 48,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primary: { backgroundColor: colors.brand },
-  secondary: {
-    backgroundColor: colors.brandSoft,
-    borderWidth: 1,
-    borderColor: '#F5C4B3',
-  },
-  danger: { backgroundColor: colors.danger },
-  ghost: { backgroundColor: 'transparent' },
-  pressed: { opacity: 0.88 },
-  disabled: { opacity: 0.5 },
-  label: { ...typography.subtitle },
-  primaryLabel: { color: colors.white },
-  secondaryLabel: { color: colors.brand },
-  dangerLabel: { color: colors.white },
-  ghostLabel: { color: colors.brand },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    base: {
+      minHeight: 48,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.lg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primary: { backgroundColor: colors.brand },
+    secondary: {
+      backgroundColor: colors.brandSoft,
+      borderWidth: 1,
+      borderColor: colors.brandSoft,
+    },
+    danger: { backgroundColor: colors.danger },
+    ghost: { backgroundColor: 'transparent' },
+    pressed: { opacity: 0.88 },
+    disabled: { opacity: 0.5 },
+    label: { ...typography.subtitle },
+    primaryLabel: { color: colors.white },
+    secondaryLabel: { color: colors.brand },
+    dangerLabel: { color: colors.white },
+    ghostLabel: { color: colors.brand },
+  });
+}

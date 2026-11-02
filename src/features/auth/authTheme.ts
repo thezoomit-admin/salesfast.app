@@ -9,8 +9,8 @@ export const authColors = {
   primary: colors.brand,
   primaryPressed: colors.brandMuted,
   primarySoft: colors.brandSoft,
-  /** Login page wash — primary-50. */
-  cream: colors.primary50,
+  /** Login page wash — Hisab surface. */
+  cream: colors.background,
   background: colors.surface,
   border: '#E0E0E0',
   borderFocus: colors.brand,
@@ -22,6 +22,6 @@ export const authColors = {
   link: colors.brand,
   danger: '#C0392B',
   white: colors.white,
-  backBtnBg: colors.primary50,
+  backBtnBg: colors.background,
   radius: 12,
 } as const;

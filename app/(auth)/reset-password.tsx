@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
@@ -19,8 +19,8 @@ import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
 import { resetPasswordRequest } from '@/features/auth/authApi';
-import { authColors } from '@/features/auth/authTheme';
 import { AuthInput } from '@/features/auth/components/AuthInput';
+import { useTheme, type ThemeColors } from '@/theme';
 
 type FormValues = {
   identifier: string;
@@ -45,6 +45,9 @@ const resolver = formResolver<FormValues>(
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { identifier: preset } = useLocalSearchParams<{
     identifier?: string;
   }>();
@@ -92,7 +95,7 @@ export default function ResetPasswordScreen() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -112,7 +115,7 @@ export default function ResetPasswordScreen() {
             style={styles.backBtn}
             hitSlop={8}
           >
-            <Ionicons name="chevron-back" size={22} color={authColors.text} />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Reset password</Text>
           <View style={styles.headerSpacer} />
@@ -205,7 +208,7 @@ export default function ResetPasswordScreen() {
           ]}
         >
           {submitting ? (
-            <ActivityIndicator color={authColors.white} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.primaryBtnText}>Reset password</Text>
           )}
@@ -231,84 +234,86 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: authColors.white,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 44,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: authColors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: authColors.white,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: authColors.text,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: authColors.text,
-    letterSpacing: -0.3,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: authColors.muted,
-    marginBottom: 28,
-  },
-  primaryBtn: {
-    minHeight: 54,
-    borderRadius: 10,
-    backgroundColor: authColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  primaryBtnPressed: {
-    backgroundColor: authColors.primaryPressed,
-  },
-  primaryBtnDisabled: {
-    opacity: 0.7,
-  },
-  primaryBtnText: {
-    color: authColors.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  footerLinks: {
-    marginTop: 22,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-  },
-  link: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: authColors.primary,
-  },
-  dot: {
-    color: authColors.border,
-  },
-});
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: isDark ? colors.background : colors.white,
+    },
+    scroll: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 44,
+    },
+    backBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.surface : colors.white,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    headerSpacer: {
+      width: 40,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: -0.3,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textMuted,
+      marginBottom: 28,
+    },
+    primaryBtn: {
+      minHeight: 54,
+      borderRadius: 10,
+      backgroundColor: colors.brand,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 8,
+    },
+    primaryBtnPressed: {
+      backgroundColor: colors.brandMuted,
+    },
+    primaryBtnDisabled: {
+      opacity: 0.7,
+    },
+    primaryBtnText: {
+      color: colors.white,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    footerLinks: {
+      marginTop: 22,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 10,
+    },
+    link: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.brand,
+    },
+    dot: {
+      color: colors.border,
+    },
+  });
+}

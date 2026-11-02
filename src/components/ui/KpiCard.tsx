@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
 export function KpiCard({
   label,
@@ -11,6 +12,9 @@ export function KpiCard({
   value: number | string;
   tone?: 'default' | 'warning' | 'accent';
 }) {
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   return (
     <View
       style={[
@@ -25,19 +29,27 @@ export function KpiCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    minWidth: '45%',
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.xs,
-  },
-  warning: { backgroundColor: colors.warningSoft, borderColor: '#F5D08A' },
-  accent: { backgroundColor: colors.brandSoft, borderColor: '#F5C4B3' },
-  value: { ...typography.title, color: colors.text },
-  label: { ...typography.caption, color: colors.textSecondary },
-});
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  return StyleSheet.create({
+    card: {
+      flex: 1,
+      minWidth: '45%',
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: spacing.xs,
+    },
+    warning: {
+      backgroundColor: colors.warningSoft,
+      borderColor: isDark ? colors.warning : '#F5D08A',
+    },
+    accent: {
+      backgroundColor: colors.brandSoft,
+      borderColor: isDark ? colors.brand : '#F5C4B3',
+    },
+    value: { ...typography.title, color: colors.text },
+    label: { ...typography.caption, color: colors.textSecondary },
+  });
+}

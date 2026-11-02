@@ -19,7 +19,7 @@ import {
   toE164,
   type CountryOption,
 } from '../data/countries';
-import { authColors } from '../authTheme';
+import { useTheme, type ThemeColors } from '@/theme';
 
 type Props = {
   /** National number only (digits), or full value handled via onChangeE164. */
@@ -43,6 +43,9 @@ export function CountryPhoneInput({
   label = 'Phone number',
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const [focused, setFocused] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -89,7 +92,7 @@ export function CountryPhoneInput({
         >
           <Text style={styles.flag}>{country.flag}</Text>
           <Text style={styles.dial}>+{country.dialCode}</Text>
-          <Ionicons name="chevron-down" size={14} color={authColors.muted} />
+          <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
         </Pressable>
 
         <View style={styles.divider} />
@@ -102,7 +105,7 @@ export function CountryPhoneInput({
             emit(country, national);
           }}
           placeholder="Enter your phone number"
-          placeholderTextColor={authColors.textMuted}
+          placeholderTextColor={colors.textMuted}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"
@@ -134,12 +137,12 @@ export function CountryPhoneInput({
           </View>
 
           <View style={styles.searchWrap}>
-            <Ionicons name="search" size={16} color={authColors.muted} />
+            <Ionicons name="search" size={16} color={colors.textMuted} />
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder="Search country or code"
-              placeholderTextColor={authColors.textMuted}
+              placeholderTextColor={colors.textMuted}
               style={styles.searchInput}
               autoCorrect={false}
               autoCapitalize="none"
@@ -173,129 +176,133 @@ export function CountryPhoneInput({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    marginBottom: 18,
-  },
-  label: {
-    marginBottom: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: authColors.text,
-  },
-  field: {
-    minHeight: 52,
-    borderRadius: authColors.radius,
-    borderWidth: 1,
-    borderColor: authColors.border,
-    backgroundColor: authColors.white,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  fieldFocused: {
-    borderColor: authColors.borderFocus,
-    borderWidth: 1.5,
-  },
-  fieldError: {
-    borderColor: authColors.danger,
-  },
-  countryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-  },
-  flag: {
-    fontSize: 18,
-  },
-  dial: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: authColors.text,
-  },
-  divider: {
-    width: 1,
-    height: 22,
-    backgroundColor: authColors.border,
-    marginHorizontal: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: authColors.text,
-    paddingVertical: 14,
-  },
-  error: {
-    marginTop: 4,
-    marginLeft: 12,
-    fontSize: 12,
-    color: authColors.danger,
-  },
-  modal: {
-    flex: 1,
-    backgroundColor: authColors.white,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: authColors.text,
-  },
-  modalClose: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: authColors.primary,
-  },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    minHeight: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: authColors.border,
-    backgroundColor: '#FAFAFA',
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: authColors.text,
-    paddingVertical: 10,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: authColors.border,
-  },
-  rowSelected: {
-    backgroundColor: 'rgba(242, 70, 28, 0.06)',
-  },
-  rowFlag: {
-    fontSize: 22,
-  },
-  rowName: {
-    flex: 1,
-    fontSize: 15,
-    color: authColors.text,
-  },
-  rowDial: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: authColors.textSecondary,
-  },
-});
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  return StyleSheet.create({
+    wrap: {
+      marginBottom: 18,
+    },
+    label: {
+      marginBottom: 8,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    field: {
+      minHeight: 52,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: isDark ? colors.surface : colors.white,
+      paddingHorizontal: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    fieldFocused: {
+      borderColor: colors.brand,
+      borderWidth: 1.5,
+    },
+    fieldError: {
+      borderColor: colors.danger,
+    },
+    countryBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 8,
+      paddingHorizontal: 4,
+    },
+    flag: {
+      fontSize: 18,
+    },
+    dial: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    divider: {
+      width: 1,
+      height: 22,
+      backgroundColor: colors.border,
+      marginHorizontal: 8,
+    },
+    input: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.text,
+      paddingVertical: 14,
+    },
+    error: {
+      marginTop: 4,
+      marginLeft: 12,
+      fontSize: 12,
+      color: colors.danger,
+    },
+    modal: {
+      flex: 1,
+      backgroundColor: isDark ? colors.background : colors.white,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    modalClose: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.brand,
+    },
+    searchWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 16,
+      marginBottom: 8,
+      paddingHorizontal: 12,
+      minHeight: 44,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: isDark ? colors.surface : '#FAFAFA',
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.text,
+      paddingVertical: 10,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    rowSelected: {
+      backgroundColor: isDark
+        ? 'rgba(242, 70, 28, 0.14)'
+        : 'rgba(242, 70, 28, 0.06)',
+    },
+    rowFlag: {
+      fontSize: 22,
+    },
+    rowName: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.text,
+    },
+    rowDial: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+  });
+}

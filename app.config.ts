@@ -23,26 +23,36 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   name: 'Salesfast- CRM',
   slug: 'salesfast',
   version: '1.0.0',
+  // Android versionCode / iOS buildNumber — shown on App info.
+  // Bump with each store / APK release.
   owner: 'ibnabdullah01',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'salesfast',
-  userInterfaceStyle: 'light',
+  userInterfaceStyle: 'automatic',
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.salesfastcrm',
+    buildNumber: '1',
   },
   android: {
     package: 'com.salesfastcrm',
+    versionCode: 1,
     adaptiveIcon: {
       backgroundColor: '#000000',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
+      // Status-bar / themed icon — Salesfast mark on black plate.
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
     ...(googleServicesFile ? { googleServicesFile } : {}),
-    permissions: ['READ_CALL_LOG', 'POST_NOTIFICATIONS'],
+    permissions: [
+      'READ_CALL_LOG',
+      'POST_NOTIFICATIONS',
+      'RECORD_AUDIO',
+      'MODIFY_AUDIO_SETTINGS',
+    ],
     // Dev API is http:// — required for device → local backend.
     // Expo Android typings omit this field on some SDK versions.
     ...({ usesCleartextTraffic: true } as object),
@@ -54,6 +64,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     'expo-router',
+    '@react-native-community/datetimepicker',
+    [
+      'expo-audio',
+      {
+        microphonePermission:
+          'Allow Salesfast to record voice notes for leads.',
+        recordAudioAndroid: true,
+      },
+    ],
+    'expo-document-picker',
     [
       'expo-splash-screen',
       {

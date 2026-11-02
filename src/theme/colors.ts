@@ -2,24 +2,54 @@
  * Salesfast CRM brand — matched to logo + admin palette.
  *
  *   Primary  #F2461C · pressed #D93B14 · soft #FBD2C2
- *   primary-50 #FEF2EC (page wash) · Navy #15202C
+ *   Page wash #F7F7F7 (Hisab surface) · Navy #15202C
  */
-export const colors = {
+
+export type ThemeColors = {
+  brand: string;
+  brandMuted: string;
+  brandSoft: string;
+  /** Brand soft tint — icon chips / accents (not page wash). */
+  primary50: string;
+  /** Logo navy — secondary ink / accents */
+  accent: string;
+  accentSoft: string;
+  /** Page wash */
+  background: string;
+  surface: string;
+  surfaceMuted: string;
+  border: string;
+  text: string;
+  textSecondary: string;
+  textMuted: string;
+  danger: string;
+  dangerSoft: string;
+  success: string;
+  successSoft: string;
+  warning: string;
+  warningSoft: string;
+  white: string;
+  black: string;
+};
+
+/**
+ * TEXT-MAIN scale (design tokens):
+ *   light  #484848 · normal #767676 · dark #9c9c9c
+ */
+export const lightColors: ThemeColors = {
   brand: '#F2461C',
   brandMuted: '#D93B14',
   brandSoft: '#FBD2C2',
-  /** Tailwind primary-50 — light page background */
   primary50: '#FEF2EC',
-  /** Logo navy — secondary ink / accents */
-  accent: '#15202C',
+  accent: '#484848',
   accentSoft: '#E7EAED',
-  background: '#FEF2EC',
+  background: '#F7F7F7',
   surface: '#FFFFFF',
-  surfaceMuted: '#FDDFCF',
-  border: '#F0E0D8',
-  text: '#15202C',
-  textSecondary: '#5B6B7A',
-  textMuted: '#98A2B3',
+  surfaceMuted: '#EEF0F2',
+  border: '#E5E7EB',
+  text: '#484848',
+  textSecondary: '#767676',
+  textMuted: '#9c9c9c',
   danger: '#F04438',
   dangerSoft: '#FEE4E2',
   success: '#12B76A',
@@ -28,6 +58,38 @@ export const colors = {
   warningSoft: '#FEF0C7',
   white: '#FFFFFF',
   black: '#000000',
-} as const;
+};
 
-export type ColorName = keyof typeof colors;
+/**
+ * Dark surface stack:
+ *   #000000 page · #121212 cards · #1B1B1B muted / elevated
+ * Main text white; TEXT-MAIN scale for secondary / muted.
+ */
+export const darkColors: ThemeColors = {
+  brand: '#F2461C',
+  brandMuted: '#FF6A45',
+  brandSoft: '#2A1610',
+  primary50: '#1F120E',
+  accent: '#FFFFFF',
+  accentSoft: '#1B1B1B',
+  background: '#000000',
+  surface: '#121212',
+  surfaceMuted: '#1B1B1B',
+  border: '#2A2A2A',
+  text: '#FFFFFF',
+  textSecondary: '#9c9c9c',
+  textMuted: '#767676',
+  danger: '#F97066',
+  dangerSoft: '#2A1210',
+  success: '#32D583',
+  successSoft: '#0F1F18',
+  warning: '#FDB022',
+  warningSoft: '#241A08',
+  white: '#FFFFFF',
+  black: '#000000',
+};
+
+/** @deprecated Prefer `useTheme().colors` — static light fallback for non-UI modules. */
+export const colors = lightColors;
+
+export type ColorName = keyof ThemeColors;

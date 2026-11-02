@@ -38,6 +38,8 @@ export type AddNoteVars = LeadWrite & {
   note: string;
   channelId?: number;
   followupAt?: string;
+  followupDate?: string;
+  followupType?: string;
 };
 
 export type UpdateStatusVars = LeadWrite & {
@@ -151,6 +153,8 @@ export function installLeadWriteDefaults(client: QueryClient) {
             note: vars.note,
             channelId: vars.channelId,
             followupAt: vars.followupAt,
+            followupDate: vars.followupDate,
+            followupType: vars.followupType,
           },
           { accountId: vars.accountId, idempotencyKey: vars.clientId }
         )

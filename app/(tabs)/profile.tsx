@@ -14,41 +14,62 @@ import {
 
 import { Search02Icon } from '@/components/icons/hugeicons';
 import { getErrorMessage } from '@/api/client';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/constants/config';
+import { APP_NAME, APP_VERSION } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { usePendingWriteCount } from '@/lib/accountWrites';
 import {
   SettingsSearchSheet,
+  ThemeModeSheet,
   type SettingsSearchItem,
-} from '@/features/settings/SettingsSearchSheet';
-import { colors } from '@/theme';
+} from '@/features/settings';
+import {
+  THEME_MODE_LABELS,
+  useTheme,
+  type ThemeColors,
+} from '@/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-/**
- * Hisab More / settings chrome tokens — only brand slots remapped to Salesfast.
- * Page wash / borders / muted text stay Hisab-identical.
- */
-const more = {
-  primary: colors.brand,
-  primary50: colors.primary50,
-  primary100: '#FDDFCF',
-  surface: '#F7F7F7',
-  card: '#FFFFFF',
-  muted: '#6B7280',
-  icon: '#6B7280',
-  border: '#E5E7EB',
-  text: '#111827',
-  expense: '#C0392B',
-  expenseSoft: '#FDECEC',
-  radius2xl: 16,
-  radiusFull: 999,
-  screenPad: 20,
-} as const;
+type MoreChrome = {
+  primary: string;
+  primary50: string;
+  surface: string;
+  card: string;
+  muted: string;
+  icon: string;
+  border: string;
+  text: string;
+  expense: string;
+  expenseSoft: string;
+  pressed: string;
+  radius2xl: number;
+  radiusFull: number;
+  screenPad: number;
+};
+
+function makeMore(colors: ThemeColors): MoreChrome {
+  return {
+    primary: colors.brand,
+    primary50: colors.primary50,
+    surface: colors.background,
+    card: colors.surface,
+    muted: colors.textSecondary,
+    icon: colors.textSecondary,
+    border: colors.border,
+    text: colors.text,
+    expense: colors.danger,
+    expenseSoft: colors.dangerSoft,
+    pressed: colors.surfaceMuted,
+    radius2xl: 16,
+    radiusFull: 999,
+    screenPad: 20,
+  };
+}
 
 type MenuItem = {
   key: string;
@@ -68,14 +89,20 @@ type MenuSectionData = {
   items: MenuItem[];
 };
 
+type Styles = ReturnType<typeof createStyles>;
+
 function MenuSection({
   title,
   items,
   onItemPress,
+  more,
+  styles,
 }: {
   title: string;
   items: MenuItem[];
   onItemPress: (item: MenuItem) => void;
+  more: MoreChrome;
+  styles: Styles;
 }) {
   return (
     <View style={styles.section}>
@@ -87,6 +114,8 @@ function MenuSection({
             item={item}
             isLast={index === items.length - 1}
             onPress={() => onItemPress(item)}
+            more={more}
+            styles={styles}
           />
         ))}
       </View>
@@ -98,10 +127,14 @@ function MenuRow({
   item,
   isLast,
   onPress,
+  more,
+  styles,
 }: {
   item: MenuItem;
   isLast: boolean;
   onPress: () => void;
+  more: MoreChrome;
+  styles: Styles;
 }) {
   const iconColor = item.danger ? more.expense : more.primary;
   const labelColor = item.danger ? more.expense : more.text;
@@ -131,7 +164,7 @@ function MenuRow({
               </Text>
             ) : null}
             {showChevron ? (
-              <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+              <Ionicons name="chevron-forward" size={16} color={more.muted} />
             ) : null}
           </View>
         </View>
@@ -165,9 +198,15 @@ export default function ProfileScreen() {
     getSavedAccounts,
   } = useAuth();
   const router = useRouter();
+  const { mode, colors } = useTheme();
+  const more = useMemo(() => makeMore(colors), [colors]);
+  const styles = useMemo(() => createStyles(more), [more]);
   const callSync = useCallSyncStatus();
   const [accounts, setAccounts] = useState<SavedMobileAccount[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const refreshAccounts = useCallback(async () => {
     setAccounts(await getSavedAccounts());
@@ -187,22 +226,22 @@ export default function ProfileScreen() {
     : user?.phone?.trim() || '';
 
   const unsynced = usePendingWriteCount(user?.id);
-  const confirmSignOut = useCallback(() => {
-    const message = unsynced
-      ? `${unsynced} change${unsynced === 1 ? ' is' : 's are'} still waiting to sync. ` +
-        'They stay on this device and are sent the next time you sign in to this account.'
-      : 'End this session on this device?';
-    Alert.alert('Sign out', message, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: () => {
-          void signOut();
-        },
-      },
-    ]);
-  }, [signOut, unsynced]);
+  const signOutMessage = unsynced
+    ? `${unsynced} change${unsynced === 1 ? ' is' : 's are'} still waiting to sync. ` +
+      'They stay on this device and sync the next time you sign in.'
+    : 'End this session on this device? You can sign back in anytime.';
+
+  const onConfirmSignOut = useCallback(async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+      setSignOutOpen(false);
+    } catch (error) {
+      setSigningOut(false);
+      Alert.alert('Sign out failed', getErrorMessage(error));
+    }
+  }, [signOut, signingOut]);
 
   const canContinue = useCallback(
     (a: SavedMobileAccount) =>
@@ -295,22 +334,11 @@ export default function ProfileScreen() {
         title: 'Preferences',
         items: [
           {
-            key: 'leads',
-            label: 'Leads',
-            icon: 'people-outline',
-            href: '/(tabs)/leads',
-          },
-          {
-            key: 'followUps',
-            label: 'Follow-ups',
-            icon: 'calendar-outline',
-            href: '/(tabs)/follow-ups',
-          },
-          {
-            key: 'calls',
-            label: 'Calls',
-            icon: 'call-outline',
-            href: '/(tabs)/calls',
+            key: 'theme',
+            label: 'Theme mode',
+            icon: 'color-palette-outline',
+            value: THEME_MODE_LABELS[mode],
+            onPress: () => setThemeOpen(true),
           },
           {
             key: 'addAccount',
@@ -367,12 +395,7 @@ export default function ProfileScreen() {
             label: 'App info',
             icon: 'information-circle-outline',
             value: `v${APP_VERSION}`,
-            onPress: () => {
-              Alert.alert(
-                APP_NAME,
-                `Version ${APP_VERSION}\n\nAPI\n${API_BASE_URL}`
-              );
-            },
+            href: '/settings/about',
           },
         ],
       },
@@ -392,20 +415,20 @@ export default function ProfileScreen() {
             icon: 'log-out-outline',
             danger: true,
             showChevron: false,
-            onPress: confirmSignOut,
+            onPress: () => setSignOutOpen(true),
           },
         ],
       },
     ],
     [
       callSync.label,
+      mode,
       otherAccounts,
       prepareAddAccount,
       router,
       onRemove,
       onSwitch,
       switchingAccount,
-      confirmSignOut,
     ]
   );
 
@@ -433,7 +456,8 @@ export default function ProfileScreen() {
       item.onPress();
       return;
     }
-    if (item.href) router.push(item.href);
+    // navigate: switch tabs / reuse stack screens (Hisab — no duplicate stacks).
+    if (item.href) router.navigate(item.href);
   }
 
   return (
@@ -467,13 +491,8 @@ export default function ProfileScreen() {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Profile"
-          onPress={() => {
-            Alert.alert(
-              displayName,
-              [roleLabel, user?.email, user?.phone].filter(Boolean).join('\n')
-            );
-          }}
+          accessibilityLabel="Edit personal info"
+          onPress={() => router.push('/settings/edit')}
           style={({ pressed }) => [styles.profileCard, pressed && styles.pressed]}
         >
           <View style={styles.avatarRing}>
@@ -481,6 +500,7 @@ export default function ProfileScreen() {
               uri={user?.profilePhoto}
               name={displayName}
               size={56}
+              muted
               style={styles.avatar}
             />
           </View>
@@ -497,7 +517,7 @@ export default function ProfileScreen() {
               </Text>
             ) : null}
           </View>
-          <Ionicons name="chevron-forward" size={16} color={more.primary} />
+          <Ionicons name="chevron-forward" size={16} color={more.muted} />
         </Pressable>
 
         {sections.map((section) => (
@@ -506,6 +526,8 @@ export default function ProfileScreen() {
             title={section.title}
             items={section.items}
             onItemPress={runItem}
+            more={more}
+            styles={styles}
           />
         ))}
       </ScrollView>
@@ -523,152 +545,171 @@ export default function ProfileScreen() {
           }}
         />
       ) : null}
+
+      <ThemeModeSheet open={themeOpen} onClose={() => setThemeOpen(false)} />
+
+      <ConfirmModal
+        open={signOutOpen}
+        title="Sign out"
+        message={signOutMessage}
+        cancelLabel="Cancel"
+        confirmLabel="Sign out"
+        destructive
+        icon="log-out-outline"
+        loading={signingOut}
+        onCancel={() => {
+          if (!signingOut) setSignOutOpen(false);
+        }}
+        onConfirm={() => void onConfirmSignOut()}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: more.surface,
-  },
-  searchBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scroll: {
-    flex: 1,
-    backgroundColor: more.surface,
-  },
-  screen: {
-    flexGrow: 1,
-    paddingHorizontal: more.screenPad,
-    paddingBottom: 32,
-  },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: more.card,
-    borderRadius: more.radius2xl,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: more.primary100,
-  },
-  avatarRing: {
-    width: 56,
-    height: 56,
-    borderRadius: more.radiusFull,
-    borderWidth: 2,
-    borderColor: more.primary,
-    marginRight: 14,
-    overflow: 'hidden',
-    backgroundColor: more.primary50,
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  profileText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  profileName: {
-    fontWeight: '700',
-    fontSize: 17,
-    lineHeight: 24,
-    color: more.text,
-  },
-  profileComplete: {
-    fontWeight: '500',
-    fontSize: 13,
-    lineHeight: 18,
-    color: more.primary,
-    marginTop: 2,
-  },
-  profileEmail: {
-    fontWeight: '400',
-    fontSize: 12,
-    lineHeight: 16,
-    color: more.muted,
-    marginTop: 2,
-  },
-  section: {
-    marginBottom: 22,
-  },
-  sectionTitle: {
-    fontWeight: '500',
-    fontSize: 13,
-    lineHeight: 18,
-    color: more.muted,
-    marginBottom: 8,
-    marginLeft: 16,
-  },
-  card: {
-    backgroundColor: more.card,
-    borderRadius: more.radius2xl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: more.border,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 52,
-    paddingLeft: 16,
-    paddingRight: 14,
-    backgroundColor: more.card,
-  },
-  iconSlot: {
-    width: 32,
-    height: 32,
-    marginRight: 12,
-    borderRadius: more.radiusFull,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowBody: {
-    flex: 1,
-    minWidth: 0,
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  rowLabel: {
-    flex: 1,
-    minWidth: 0,
-    fontWeight: '500',
-    fontSize: 16,
-    lineHeight: 22,
-    color: more.text,
-  },
-  rowTrailing: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 0,
-    marginLeft: 10,
-    gap: 4,
-  },
-  rowValue: {
-    fontWeight: '400',
-    fontSize: 15,
-    lineHeight: 20,
-    color: more.muted,
-    maxWidth: 110,
-  },
-  dividerTrack: {
-    backgroundColor: more.card,
-    paddingLeft: 60,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: more.border,
-  },
-  pressed: {
-    backgroundColor: more.primary50,
-  },
-});
+function createStyles(more: MoreChrome) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: more.surface,
+    },
+    searchBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scroll: {
+      flex: 1,
+      backgroundColor: more.surface,
+    },
+    screen: {
+      flexGrow: 1,
+      paddingHorizontal: more.screenPad,
+      paddingBottom: 32,
+    },
+    profileCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: more.card,
+      borderRadius: more.radius2xl,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: more.border,
+    },
+    avatarRing: {
+      width: 56,
+      height: 56,
+      borderRadius: more.radiusFull,
+      borderWidth: 2,
+      borderColor: more.border,
+      marginRight: 14,
+      overflow: 'hidden',
+      backgroundColor: more.pressed,
+    },
+    avatar: {
+      width: '100%',
+      height: '100%',
+    },
+    profileText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    profileName: {
+      fontWeight: '700',
+      fontSize: 17,
+      lineHeight: 24,
+      color: more.text,
+    },
+    profileComplete: {
+      fontWeight: '500',
+      fontSize: 13,
+      lineHeight: 18,
+      color: more.muted,
+      marginTop: 2,
+    },
+    profileEmail: {
+      fontWeight: '400',
+      fontSize: 12,
+      lineHeight: 16,
+      color: more.muted,
+      marginTop: 2,
+    },
+    section: {
+      marginBottom: 22,
+    },
+    sectionTitle: {
+      fontWeight: '500',
+      fontSize: 13,
+      lineHeight: 18,
+      color: more.muted,
+      marginBottom: 8,
+      marginLeft: 16,
+    },
+    card: {
+      backgroundColor: more.card,
+      borderRadius: more.radius2xl,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: more.border,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 52,
+      paddingLeft: 16,
+      paddingRight: 14,
+      backgroundColor: more.card,
+    },
+    iconSlot: {
+      width: 32,
+      height: 32,
+      marginRight: 12,
+      borderRadius: more.radiusFull,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowBody: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 14,
+    },
+    rowLabel: {
+      flex: 1,
+      minWidth: 0,
+      fontWeight: '500',
+      fontSize: 16,
+      lineHeight: 22,
+      color: more.text,
+    },
+    rowTrailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexShrink: 0,
+      marginLeft: 10,
+      gap: 4,
+    },
+    rowValue: {
+      fontWeight: '400',
+      fontSize: 15,
+      lineHeight: 20,
+      color: more.muted,
+      maxWidth: 110,
+    },
+    dividerTrack: {
+      backgroundColor: more.card,
+      paddingLeft: 60,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: more.border,
+    },
+    pressed: {
+      backgroundColor: more.pressed,
+    },
+  });
+}

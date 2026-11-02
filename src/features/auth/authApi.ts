@@ -86,3 +86,40 @@ export async function resetPasswordRequest(input: {
   });
   return data;
 }
+
+type ProfileUpdatePayload = {
+  name?: string;
+  phone?: string | null;
+};
+
+type ProfileUpdateResult = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  role?: string;
+  profilePhoto?: string | null;
+  profile?: { url?: string | null } | null;
+  designationId?: string | null;
+  designation?: AuthUser['designation'];
+};
+
+/** PATCH /users/me — name / phone (Hisab-style personal info). */
+export async function updateProfileRequest(input: ProfileUpdatePayload) {
+  const { data } = await api.patch<ApiResponse<ProfileUpdateResult>>(
+    '/users/me',
+    input
+  );
+  const row = data.data;
+  const next: AuthUser = {
+    id: String(row.id),
+    name: row.name,
+    email: row.email,
+    phone: row.phone ?? null,
+    role: row.role || 'AGENT',
+    profilePhoto: row.profilePhoto ?? row.profile?.url ?? null,
+    designationId: row.designationId ?? null,
+    designation: row.designation ?? null,
+  };
+  return next;
+}

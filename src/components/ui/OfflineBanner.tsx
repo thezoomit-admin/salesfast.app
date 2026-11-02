@@ -1,17 +1,19 @@
 import { onlineManager } from '@tanstack/react-query';
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/features/auth/AuthContext';
 import { usePendingWriteCount } from '@/lib/accountWrites';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 /** Approximate bottom tab bar height, so the pill floats just above it. */
 const TAB_BAR_OFFSET = 64;
 
 /** Small floating notice while the API is unreachable; screens keep showing cached data. */
 export function OfflineBanner() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const online = useSyncExternalStore(
     onlineManager.subscribe.bind(onlineManager),
     () => onlineManager.isOnline()
@@ -37,28 +39,30 @@ export function OfflineBanner() {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 20,
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.text,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: radii.pill,
-    backgroundColor: colors.warning,
-  },
-  text: { ...typography.caption, color: colors.white },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 20,
+    },
+    pill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.text,
+      borderRadius: radii.pill,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+    },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: radii.pill,
+      backgroundColor: colors.warning,
+    },
+    text: { ...typography.caption, color: colors.white },
+  });
+}

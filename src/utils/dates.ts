@@ -1,7 +1,6 @@
 // Per-function entry points: the package root re-exports all ~250 helpers,
 // and Metro bundles every one of them.
 import { format } from 'date-fns/format';
-import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { isToday } from 'date-fns/isToday';
 import { isYesterday } from 'date-fns/isYesterday';
 import { parseISO } from 'date-fns/parseISO';
@@ -31,10 +30,34 @@ export function formatDate(value?: string | Date | null) {
   return format(d, 'dd MMM yyyy');
 }
 
+/** Calendar date only — e.g. target purchase (matches web portal DD MMM YYYY). */
+export function formatCalendarDate(value?: string | Date | null) {
+  const d = parseDate(value);
+  if (!d) return '—';
+  return format(d, 'dd MMM yyyy');
+}
+
+/** Compact relative time — "Just now", "5m ago", "2h ago", "3d ago". */
 export function formatRelative(value?: string | Date | null) {
   const d = parseDate(value);
   if (!d) return '—';
-  return formatDistanceToNow(d, { addSuffix: true });
+
+  const diffMs = Date.now() - d.getTime();
+  const future = diffMs < 0;
+  const abs = Math.abs(diffMs);
+  const mins = Math.round(abs / 60_000);
+  const hours = Math.round(abs / 3_600_000);
+  const days = Math.round(abs / 86_400_000);
+
+  let label: string;
+  if (mins < 1) label = 'Just now';
+  else if (mins < 60) label = `${mins}m ago`;
+  else if (hours < 24) label = `${hours}h ago`;
+  else if (days < 7) label = `${days}d ago`;
+  else return format(d, 'dd MMM yyyy');
+
+  if (label === 'Just now') return label;
+  return future ? label.replace(' ago', ' from now') : label;
 }
 
 export function startOfLocalDayIso(d = new Date()) {

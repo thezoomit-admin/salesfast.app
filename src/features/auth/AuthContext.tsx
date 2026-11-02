@@ -42,6 +42,8 @@ type AuthState = {
   switchToAccount: (accountId: string) => Promise<void>;
   removeAccount: (accountId: string) => Promise<void>;
   getSavedAccounts: () => Promise<SavedMobileAccount[]>;
+  /** Merge profile fields into the active user + saved account. */
+  updateUser: (next: AuthUser) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -217,6 +219,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const getSavedAccounts = useCallback(() => listSavedAccounts(), []);
 
+  const updateUser = useCallback(async (next: AuthUser) => {
+    const [accessToken, refreshToken, accountId] = await Promise.all([
+      secureStorage.getAccessToken(),
+      secureStorage.getRefreshToken(),
+      secureStorage.getAccountId(),
+    ]);
+    if (accessToken && refreshToken && accountId) {
+      await secureStorage.saveSession({
+        accessToken,
+        refreshToken,
+        accountId,
+        userJson: JSON.stringify(next),
+      });
+      await upsertSavedAccount({
+        user: next,
+        accessToken,
+        refreshToken,
+      });
+    }
+    setUser(next);
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -229,6 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       switchToAccount,
       removeAccount,
       getSavedAccounts,
+      updateUser,
     }),
     [
       user,
@@ -241,6 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       switchToAccount,
       removeAccount,
       getSavedAccounts,
+      updateUser,
     ]
   );
 

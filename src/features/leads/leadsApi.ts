@@ -6,7 +6,9 @@ import type {
   ApiResponse,
   LeadDetail,
   LeadListItem,
+  LeadMeta,
   LeadStatus,
+  LeadViewHistory,
 } from '@/types/api';
 
 export type LeadListParams = {
@@ -57,7 +59,8 @@ export async function fetchLeadById(
   options: WriteOptions = {}
 ) {
   const { data } = await api.get<ApiResponse<LeadDetail>>(`/crm/leads/${id}`, {
-    params: { view: 'full' },
+    // Lean mobile payload — avoids admin `full` graph that 500s for some leads.
+    params: { view: 'mobile' },
     accountId: options.accountId,
   });
   return data.data;
@@ -65,7 +68,40 @@ export async function fetchLeadById(
 
 export async function updateLeadStatus(
   id: number | string,
-  payload: { leadStatusId: number; expectedVersion?: number },
+  payload: Record<string, unknown> & {
+    leadStatusId?: number;
+    expectedVersion?: number;
+  },
+  options: WriteOptions = {}
+) {
+  const { data } = await api.put<ApiResponse<LeadDetail>>(
+    `/crm/leads/${id}`,
+    payload,
+    { accountId: options.accountId }
+  );
+  return data.data;
+}
+
+/** Generic lead PUT (priority, stageRating, full status change, …). */
+export async function updateLead(
+  id: number | string,
+  payload: Record<string, unknown>,
+  options: WriteOptions = {}
+) {
+  const { data } = await api.put<ApiResponse<LeadDetail>>(
+    `/crm/leads/${id}`,
+    payload,
+    { accountId: options.accountId }
+  );
+  return data.data;
+}
+
+export async function updateLeadPriority(
+  id: number | string,
+  payload: {
+    priority: 'LOW' | 'MEDIUM' | 'HIGH';
+    expectedVersion?: number;
+  },
   options: WriteOptions = {}
 ) {
   const { data } = await api.put<ApiResponse<LeadDetail>>(
@@ -134,6 +170,12 @@ export async function fetchNoteChannels() {
   );
 }
 
+/** Option key → label maps for Lead Entry fields (same meta web portal uses). */
+export async function fetchLeadMeta() {
+  const { data } = await api.get<ApiResponse<LeadMeta>>('/crm/lead-options/meta');
+  return data.data;
+}
+
 /** Admin-managed lookups — change rarely, so keep them fresh for a while. */
 const LOOKUP_STALE_MS = 10 * 60_000;
 
@@ -148,6 +190,35 @@ export const noteChannelsQuery = queryOptions({
   queryFn: fetchNoteChannels,
   staleTime: LOOKUP_STALE_MS,
 });
+
+export const leadMetaQuery = queryOptions({
+  queryKey: ['lead-meta'],
+  queryFn: fetchLeadMeta,
+  staleTime: LOOKUP_STALE_MS,
+});
+
+export async function fetchLeadViews(leadId: number | string, limit = 30) {
+  const { data } = await api.get<ApiResponse<LeadViewHistory>>(
+    `/crm/leads/${leadId}/views`,
+    { params: { limit } }
+  );
+  return data.data;
+}
+
+/** Record a visit so View History matches the web portal. */
+export async function startLeadView(leadId: number | string) {
+  const { data } = await api.post<ApiResponse<{ id: number }>>(
+    `/crm/leads/${leadId}/views`
+  );
+  return data.data;
+}
+
+export const leadViewsQuery = (leadId: number) =>
+  queryOptions({
+    queryKey: ['lead-views', leadId],
+    queryFn: () => fetchLeadViews(leadId),
+    enabled: Number.isFinite(leadId),
+  });
 
 export const myLeadsQuery = (search: string, statusId?: number) =>
   infiniteQueryOptions({

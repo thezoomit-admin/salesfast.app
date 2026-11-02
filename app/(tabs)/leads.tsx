@@ -11,7 +11,6 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   type TextInputInstance,
   View,
@@ -19,14 +18,17 @@ import {
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { ChipScroll } from '@/components/ui/ChipScroll';
+import { FilterChip } from '@/components/ui/FilterChip';
 import {
   HeaderIconButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
+import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { leadStatusesQuery, myLeadsQuery } from '@/features/leads/leadsApi';
 import type { LeadListItem } from '@/types/api';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 function useDebounced<T>(value: T, delay = 350) {
   const [debounced, setDebounced] = useState(value);
@@ -38,6 +40,8 @@ function useDebounced<T>(value: T, delay = 350) {
 }
 
 export default function LeadsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -130,32 +134,25 @@ export default function LeadsScreen() {
         </View>
       ) : null}
 
-      <FlatList
-        horizontal
-        data={filterChips}
-        keyExtractor={(item) => String(item.id)}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filters}
-        style={styles.filterList}
-        renderItem={({ item }) => {
+      <ChipScroll style={styles.chips}>
+        {filterChips.map((item) => {
           const active = (item.id === 0 && !statusId) || item.id === statusId;
           return (
-            <Pressable
+            <FilterChip
+              key={item.id}
+              label={item.name}
+              active={active}
               onPress={() => setStatusId(item.id === 0 ? undefined : item.id)}
-              style={[styles.chip, active && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {item.name}
-              </Text>
-            </Pressable>
+            />
           );
-        }}
-      />
+        })}
+      </ChipScroll>
 
       {!leads.data ? (
         <QueryPlaceholder
           query={leads}
           errorMessage={getErrorMessage(leads.error)}
+          skeleton={<LeadListSkeleton />}
         />
       ) : (
         <FlatList
@@ -198,44 +195,39 @@ export default function LeadsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    minHeight: 44,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 15,
-    paddingVertical: spacing.sm,
-  },
-  filterList: { flexGrow: 0 },
-  filters: {
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  chip: {
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  chipActive: { backgroundColor: colors.brand, borderColor: colors.brand },
-  chipText: { ...typography.caption, color: colors.textSecondary },
-  chipTextActive: { color: colors.white },
-  list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
-  stale: { opacity: 0.6 },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    searchWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginHorizontal: spacing.lg,
+      marginTop: spacing.sm,
+      marginBottom: spacing.sm,
+      minHeight: 44,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingHorizontal: spacing.md,
+    },
+    searchInput: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 15,
+      paddingVertical: spacing.sm,
+    },
+    chips: {
+      marginVertical: 10,
+    },
+    list: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: 0,
+      paddingBottom: spacing.lg,
+      gap: spacing.md,
+      flexGrow: 1,
+    },
+    stale: { opacity: 0.6 },
+  });
+}

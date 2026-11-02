@@ -1,13 +1,19 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import {
+  HeaderIconButton,
+  ScreenHeader,
+} from '@/components/ui/ScreenHeader';
+import { CallsSkeleton } from '@/components/ui/skeletons';
+import { EmptyState, ErrorState } from '@/components/ui/StateViews';
 import type { CallSyncDirection } from '@/features/call-tracking/callSyncApi';
 import { runCallSync } from '@/features/call-tracking/runCallSync';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
@@ -18,9 +24,60 @@ import {
   useRecentCalls,
   type RecentCall,
 } from '@/features/call-tracking/useRecentCalls';
-import { colors, radii, spacing, typography } from '@/theme';
+import type { CallSyncStatus } from '@/features/call-tracking/syncPreferences';
+import {
+  lightColors,
+  radii,
+  spacing,
+  typography,
+  useThemeColors,
+  type ThemeColors,
+} from '@/theme';
 import { formatDate } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer } from '@/utils/phone';
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+const SYNC_BANNER: Record<
+  CallSyncStatus,
+  {
+    icon: IoniconName;
+    title: string;
+    tone: 'ok' | 'warn' | 'muted';
+    action: string;
+  }
+> = {
+  configured: {
+    icon: 'checkmark-circle',
+    title: 'Call sync active',
+    tone: 'ok',
+    action: 'Manage',
+  },
+  paused: {
+    icon: 'pause-circle',
+    title: 'Call sync paused',
+    tone: 'warn',
+    action: 'Resume',
+  },
+  not_configured: {
+    icon: 'sync-outline',
+    title: 'Call sync not set up',
+    tone: 'warn',
+    action: 'Set up',
+  },
+  needs_dev_build: {
+    icon: 'phone-portrait-outline',
+    title: 'Needs Android build',
+    tone: 'warn',
+    action: 'Details',
+  },
+  unavailable_web: {
+    icon: 'desktop-outline',
+    title: 'Android app only',
+    tone: 'muted',
+    action: 'Details',
+  },
+};
 
 type FilterKey = 'leads' | 'missed' | 'others';
 
@@ -30,16 +87,20 @@ const FILTERS: readonly (readonly [FilterKey, string])[] = [
   ['others', 'Unknown'],
 ];
 
-const DIRECTION_ICON: Record<
+function directionIcons(
+  colors: ThemeColors
+): Record<
   CallSyncDirection,
   { name: React.ComponentProps<typeof FontAwesome>['name']; color: string }
-> = {
-  INCOMING: { name: 'arrow-down', color: colors.success },
-  OUTGOING: { name: 'arrow-up', color: colors.brand },
-  MISSED: { name: 'times', color: colors.danger },
-  REJECTED: { name: 'ban', color: colors.danger },
-  UNKNOWN: { name: 'phone', color: colors.textMuted },
-};
+> {
+  return {
+    INCOMING: { name: 'arrow-down', color: colors.success },
+    OUTGOING: { name: 'arrow-up', color: colors.brand },
+    MISSED: { name: 'times', color: colors.danger },
+    REJECTED: { name: 'ban', color: colors.danger },
+    UNKNOWN: { name: 'phone', color: colors.textMuted },
+  };
+}
 
 function formatDuration(sec: number) {
   if (sec <= 0) return null;
@@ -49,6 +110,8 @@ function formatDuration(sec: number) {
 }
 
 export default function CallsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const queryClient = useQueryClient();
   const callSync = useCallSyncStatus();
@@ -120,26 +183,86 @@ export default function CallsScreen() {
   };
 
   const syncOk = callSync.status === 'configured';
+  const banner = SYNC_BANNER[callSync.status];
+  const bannerBody = syncMessage ?? (
+    syncOk
+      ? callSync.message
+      : callSync.status === 'not_configured'
+        ? 'Match phone calls with CRM leads. Only lead calls are saved.'
+        : callSync.message
+  );
+
+  const headerSubtitle =
+    callSync.status === 'configured'
+      ? 'Syncing lead calls'
+      : callSync.status === 'paused'
+        ? 'Paused — tap to resume'
+        : callSync.status === 'not_configured'
+          ? 'Connect phone calls to CRM leads'
+          : callSync.label;
+
+  const pageHeader = (
+    <ScreenHeader
+      title="Calls"
+      subtitle={headerSubtitle}
+      showBack={false}
+      right={
+        <HeaderIconButton
+          label="Call sync settings"
+          onPress={() => router.push('/call-sync/setup')}
+        >
+          <Ionicons name="settings-outline" size={22} color={colors.text} />
+        </HeaderIconButton>
+      }
+    />
+  );
 
   const toolbar = (
     <View style={styles.toolbar}>
       <Pressable
-        style={[styles.syncCard, syncOk ? styles.syncCardOk : styles.syncCardWarn]}
+        accessibilityRole="button"
+        accessibilityLabel={`${banner.title}. ${banner.action}`}
         onPress={() => router.push('/call-sync/setup')}
+        style={({ pressed }) => [
+          styles.syncCard,
+          styles[`syncCard_${banner.tone}`],
+          pressed && styles.pressed,
+        ]}
       >
-        <View
-          style={[
-            styles.syncDot,
-            { backgroundColor: syncOk ? colors.success : colors.warning },
-          ]}
-        />
+        <View style={[styles.syncIcon, styles[`syncIcon_${banner.tone}`]]}>
+          <Ionicons
+            name={banner.icon}
+            size={22}
+            color={
+              banner.tone === 'ok'
+                ? colors.success
+                : banner.tone === 'warn'
+                  ? colors.warning
+                  : colors.textMuted
+            }
+          />
+        </View>
         <View style={styles.syncCopy}>
-          <Text style={styles.syncTitle}>Call sync · {callSync.label}</Text>
+          <Text style={styles.syncTitle}>{banner.title}</Text>
           <Text style={styles.syncBody} numberOfLines={2}>
-            {syncMessage ?? callSync.message}
+            {bannerBody}
           </Text>
         </View>
-        <FontAwesome name="cog" size={16} color={colors.textMuted} />
+        <View style={styles.syncAction}>
+          <Text
+            style={[
+              styles.syncActionText,
+              banner.tone === 'ok' && styles.syncActionTextOk,
+            ]}
+          >
+            {banner.action}
+          </Text>
+          <Ionicons
+            name="chevron-forward"
+            size={16}
+            color={banner.tone === 'ok' ? colors.success : colors.brand}
+          />
+        </View>
       </Pressable>
       {syncOk ? (
         <Button
@@ -155,8 +278,8 @@ export default function CallsScreen() {
   if (callSync.loading && !callSync.prefs) {
     return (
       <View style={styles.safe}>
-        <ScreenHeader title="Calls" showBack={false} />
-        <LoadingState />
+        {pageHeader}
+        <CallsSkeleton />
       </View>
     );
   }
@@ -164,7 +287,7 @@ export default function CallsScreen() {
   if (!setupDone) {
     return (
       <View style={styles.safe}>
-        <ScreenHeader title="Calls" showBack={false} />
+        {pageHeader}
         {toolbar}
         <EmptyState
           title="Set up call sync"
@@ -182,11 +305,11 @@ export default function CallsScreen() {
 
   return (
     <View style={styles.safe}>
-      <ScreenHeader title="Calls" showBack={false} />
+      {pageHeader}
       {toolbar}
 
       {calls.isLoading ? (
-        <LoadingState label="Reading call history…" />
+        <CallsSkeleton />
       ) : calls.isError ? (
         <ErrorState
           message={getErrorMessage(calls.error)}
@@ -273,7 +396,9 @@ function CallRow({
   call: RecentCall;
   onOpenLead?: () => void;
 }) {
-  const icon = DIRECTION_ICON[call.direction];
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const icon = directionIcons(colors)[call.direction];
   const missed = isMissed(call.direction);
   const duration = formatDuration(call.durationSec);
 
@@ -320,77 +445,121 @@ function CallRow({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  toolbar: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  cta: { paddingHorizontal: spacing.lg },
-  pressed: { opacity: 0.8 },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    flex: { flex: 1 },
+    toolbar: {
+      paddingHorizontal: spacing.lg,
+      gap: spacing.md,
+      marginBottom: spacing.md,
+    },
+    cta: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xl,
+    },
+    pressed: { opacity: 0.8 },
 
-  syncCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-  },
-  syncCardOk: { backgroundColor: colors.successSoft, borderColor: colors.successSoft },
-  syncCardWarn: { backgroundColor: colors.warningSoft, borderColor: colors.warningSoft },
-  syncDot: { width: 10, height: 10, borderRadius: radii.pill },
-  syncCopy: { flex: 1, gap: 2 },
-  syncTitle: { ...typography.subtitle, color: colors.text, fontSize: 14 },
-  syncBody: { ...typography.caption, color: colors.textSecondary },
+    syncCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      padding: spacing.md,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    syncCard_ok: {
+      backgroundColor: colors.successSoft,
+      borderColor: colors === lightColors ? '#A6F4C5' : colors.success,
+    },
+    syncCard_warn: {
+      backgroundColor: colors.warningSoft,
+      borderColor: colors === lightColors ? '#FEDF89' : colors.warning,
+    },
+    syncCard_muted: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    syncIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    syncIcon_ok: { backgroundColor: 'rgba(18, 183, 106, 0.15)' },
+    syncIcon_warn: { backgroundColor: 'rgba(247, 144, 9, 0.15)' },
+    syncIcon_muted: { backgroundColor: colors.surfaceMuted },
+    syncCopy: { flex: 1, gap: 3, minWidth: 0 },
+    syncTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
+    syncBody: {
+      ...typography.caption,
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.textSecondary,
+    },
+    syncAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
+    },
+    syncActionText: {
+      ...typography.caption,
+      fontWeight: '700',
+      color: colors.brand,
+      fontSize: 13,
+    },
+    syncActionTextOk: { color: colors.success },
 
-  tabs: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tabActive: { backgroundColor: colors.brand, borderColor: colors.brand },
-  tabText: { ...typography.caption, color: colors.textSecondary },
-  tabTextActive: { color: colors.white },
+    tabs: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderRadius: radii.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    tabActive: { backgroundColor: colors.brand, borderColor: colors.brand },
+    tabText: { ...typography.caption, color: colors.textSecondary },
+    tabTextActive: { color: colors.white },
 
-  list: { padding: spacing.lg, gap: spacing.sm, flexGrow: 1 },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  dirIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceMuted,
-  },
-  dirIconMissed: { backgroundColor: colors.dangerSoft },
-  cardCopy: { flex: 1, gap: 2 },
-  name: { ...typography.subtitle, color: colors.text },
-  nameMissed: { color: colors.danger },
-  meta: { ...typography.caption, color: colors.textMuted },
-  callBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.brandSoft,
-  },
-  callBtnMissed: { backgroundColor: colors.danger },
-});
+    list: { padding: spacing.lg, gap: spacing.sm, flexGrow: 1 },
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.md,
+    },
+    dirIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceMuted,
+    },
+    dirIconMissed: { backgroundColor: colors.dangerSoft },
+    cardCopy: { flex: 1, gap: 2 },
+    name: { ...typography.subtitle, color: colors.text },
+    nameMissed: { color: colors.danger },
+    meta: { ...typography.caption, color: colors.textMuted },
+    callBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.brandSoft,
+    },
+    callBtnMissed: { backgroundColor: colors.danger },
+  });
+}

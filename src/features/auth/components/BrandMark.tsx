@@ -1,4 +1,7 @@
+import { useMemo } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
+
+import { useTheme } from '@/theme';
 
 const favicon = require('../../../../assets/images/salesfast-favicon.png');
 const fullLogo = require('../../../../assets/images/salesfast-logo.png');
@@ -10,6 +13,10 @@ type Props = {
 };
 
 export function BrandMark({ variant = 'wordmark', size = 56 }: Props) {
+  const { resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
+
   if (variant === 'icon') {
     return (
       <Image
@@ -32,13 +39,24 @@ export function BrandMark({ variant = 'wordmark', size = 56 }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  wordmarkWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fullLogo: {
-    width: 188,
-    height: 52,
-  },
-});
+function createStyles(isDark: boolean) {
+  return StyleSheet.create({
+    wordmarkWrap: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      // Navy wordmark ink needs a light plate on dark screens.
+      ...(isDark
+        ? {
+            backgroundColor: '#FFFFFF',
+            borderRadius: 14,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+          }
+        : null),
+    },
+    fullLogo: {
+      width: 188,
+      height: 52,
+    },
+  });
+}

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
@@ -9,9 +9,11 @@ import { isCallLogModuleAvailable } from 'android-call-log';
 
 import { runCallSync } from '@/features/call-tracking/runCallSync';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 export default function CallSyncSetupScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const { prefs, loading, update, label, message, status, refresh } =
     useCallSyncStatus();
@@ -183,28 +185,30 @@ export default function CallSyncSetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  body: { ...typography.body, color: colors.textSecondary },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  cardTitle: { ...typography.subtitle, color: colors.text },
-  status: {
-    ...typography.caption,
-    color: colors.brand,
-    textTransform: 'uppercase',
-    fontWeight: '700',
-  },
-  bullet: { ...typography.body, color: colors.textSecondary },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  footnote: { ...typography.caption, color: colors.textMuted },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    body: { ...typography.body, color: colors.textSecondary },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.lg,
+      gap: spacing.sm,
+    },
+    cardTitle: { ...typography.subtitle, color: colors.text },
+    status: {
+      ...typography.caption,
+      color: colors.brand,
+      textTransform: 'uppercase',
+      fontWeight: '700',
+    },
+    bullet: { ...typography.body, color: colors.textSecondary },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+    },
+    footnote: { ...typography.caption, color: colors.textMuted },
+  });
+}

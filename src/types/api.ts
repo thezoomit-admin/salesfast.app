@@ -60,6 +60,25 @@ export type LeadStatus = {
   id: number;
   name: string;
   color?: string | null;
+  sortOrder?: number | null;
+  isWonStage?: boolean;
+  isLostStage?: boolean;
+  hasRating?: boolean;
+  stageOptions?: string[] | null;
+};
+
+export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type BuyerPersonaProfile = {
+  nid?: string | null;
+  occupation?: string | null;
+  propertyType?: string | null;
+  locationPref?: string | null;
+  sizePref?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  financingMethod?: string | null;
+  timeline?: string | null;
 };
 
 export type LeadListItem = {
@@ -69,11 +88,15 @@ export type LeadListItem = {
     phone?: string | null;
     email?: string | null;
     whatsapp?: string | null;
+    address?: string | null;
+    profile?: BuyerPersonaProfile | null;
   } | null;
   leadStatus?: LeadStatus | null;
   leadSource?: { id: number; name: string } | null;
   assignedTo?: string | null;
   assignedToName?: string | null;
+  /** Lead priority (Low / Medium / High). */
+  priority?: LeadPriority | null;
   nextFollowupDate?: string | null;
   lastContactDate?: string | null;
   updatedAt?: string;
@@ -90,16 +113,69 @@ export type LeadNote = {
   followupDate?: string | null;
 };
 
+export type LeadPropertyInterest = {
+  inventoryId: number;
+  position?: number;
+  inventory?: {
+    id?: number;
+    name?: string | null;
+    projectName?: string | null;
+    price?: number | null;
+    status?: string | null;
+    isDeleted?: boolean;
+  } | null;
+};
+
+/** Lead Entry / qualification fields shown on web Overview → Requirements. */
 export type LeadDetail = LeadListItem & {
   preferredLocations?: string[];
   propertyTypes?: string[];
   purchasePurpose?: string[];
   budgetMin?: number | null;
   budgetMax?: number | null;
+  sourceDetail?: string | null;
+  leadProject?: string | null;
+  referralSource?: string | null;
+  occupationCategory?: string | null;
+  occupationDetail?: string | null;
+  buyerType?: string | null;
+  decisionAuthority?: string | null;
+  unitSizeMin?: number | null;
+  unitSizeMax?: number | null;
+  bedrooms?: string | null;
+  mustHaveRequirements?: string | null;
+  alsoConsidering?: string | null;
+  financingRequired?: string | null;
+  preferredPaymentMethod?: string | null;
+  downPaymentAvailable?: number | null;
+  monthlyHouseholdIncome?: string | null;
+  budgetFlexibility?: string | null;
+  purchaseTimeline?: string | null;
+  targetPurchaseDate?: string | null;
+  urgency?: string | null;
+  timelineReason?: string | null;
+  currentLivingSituation?: string | null;
+  currentLocation?: string | null;
+  familySize?: number | null;
+  currentMonthlyRent?: number | null;
+  ownsExistingProperty?: string | null;
+  existingPropertyNotes?: string | null;
+  problemCategory?: string[];
+  problemDescription?: string | null;
+  problemSeverity?: string | null;
+  impactOfCurrentProblem?: string | null;
+  financialImpact?: string | null;
+  familyBusinessImpact?: string | null;
+  riskOfNotSolving?: string | null;
+  urgencyToSolve?: string | null;
+  desiredOutcome?: string | null;
+  preferredPropertySolution?: string | null;
+  expectedBenefit?: string | null;
+  propertyInterests?: LeadPropertyInterest[];
   notes?: LeadNote[];
   meetings?: unknown[];
   tasks?: unknown[];
-  statusHistory?: unknown[];
+  statusHistory?: LeadStatusHistoryEntry[];
   pendingFollowUp?: {
     id: number;
     dueAt: string;
@@ -108,6 +184,45 @@ export type LeadDetail = LeadListItem & {
     remindAt?: string | null;
   } | null;
   version?: number;
+};
+
+export type LeadStatusHistoryEntry = {
+  id: number;
+  fromStatusName?: string | null;
+  toStatusName?: string | null;
+  stageRating?: string | null;
+  stageOption?: string | null;
+  changedByName?: string | null;
+  changedAt: string;
+  note?: string | null;
+};
+
+export type LeadViewEntry = {
+  id: number;
+  userId: string;
+  userName?: string | null;
+  viewedAt: string;
+  lastSeenAt?: string;
+  durationSeconds: number;
+  endedAt?: string | null;
+  isLive?: boolean;
+};
+
+export type LeadViewHistory = {
+  items: LeadViewEntry[];
+  total: number;
+  liveCount: number;
+  firstViewId: number | null;
+  hasMore: boolean;
+};
+
+export type LeadOptionRow = { id?: number; key: string; label: string };
+
+export type LeadMeta = {
+  options: Record<string, LeadOptionRow[]>;
+  removed: Record<string, LeadOptionRow[]>;
+  fixed: Record<string, LeadOptionRow[]>;
+  limits?: Record<string, number>;
 };
 
 export type MobileDashboard = {

@@ -1,8 +1,18 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Tabs } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useEffect } from 'react';
+import { type ColorValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import {
+  AddTeam02Icon,
+  Calendar03Icon,
+  CallIcon,
+  Home03Icon,
+  Settings01Icon,
+} from '@/components/icons/hugeicons';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
   FOLLOW_UP_TABS,
@@ -11,26 +21,42 @@ import {
   myLeadsQuery,
   noteChannelsQuery,
 } from '@/features/leads/leadsApi';
-import { colors } from '@/theme';
+import { useThemeColors } from '@/theme';
 
-function TabIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
+type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
+
+/** Base tab bar content height (icons + labels), excluding system nav inset. */
+const TAB_BAR_CONTENT_HEIGHT = 56;
+
+function HugeTabIcon({
+  icon,
+  color,
+  size,
+  fallback,
+}: {
+  icon: HugeIconData;
+  color: ColorValue;
+  size: number;
+  fallback: string;
 }) {
   return (
-    <FontAwesome
-      size={22}
-      style={{ marginBottom: -2 }}
-      name={props.name}
-      color={props.color}
+    <HugeiconsIcon
+      icon={icon}
+      size={size ?? 24}
+      color={typeof color === 'string' ? color : fallback}
+      strokeWidth={1.8}
     />
   );
 }
 
 export default function TabLayout() {
+  const colors = useThemeColors();
   // Shares the Home dashboard cache, so this adds no extra request.
   const dashboard = useQuery(dashboardQuery);
   const overdue = dashboard.data?.kpis.overdueFollowUps ?? 0;
+  const insets = useSafeAreaInsets();
+  // Android 3-button / gesture nav overlays the app (edge-to-edge).
+  const bottomInset = Math.max(insets.bottom, 8);
 
   // Warm the other tabs after Home loads so switching tabs shows data at once.
   const queryClient = useQueryClient();
@@ -49,11 +75,25 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Prefetch warms data; keep every tab mounted so switches feel instant (Hisab).
+        lazy: false,
+        freezeOnBlur: true,
         tabBarActiveTintColor: colors.brand,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarShowLabel: true,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
+          height: TAB_BAR_CONTENT_HEIGHT + bottomInset,
+          paddingTop: 6,
+          paddingBottom: bottomInset,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          lineHeight: 16,
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
         },
       }}
     >
@@ -61,8 +101,13 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="home" color={String(color)} />
+          tabBarIcon: ({ color, size }) => (
+            <HugeTabIcon
+              icon={Home03Icon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
@@ -70,8 +115,13 @@ export default function TabLayout() {
         name="leads"
         options={{
           title: 'Leads',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="users" color={String(color)} />
+          tabBarIcon: ({ color, size }) => (
+            <HugeTabIcon
+              icon={AddTeam02Icon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
@@ -81,8 +131,13 @@ export default function TabLayout() {
           title: 'Follow-ups',
           tabBarBadge: overdue > 0 ? (overdue > 99 ? '99+' : overdue) : undefined,
           tabBarBadgeStyle: { backgroundColor: colors.brand, color: colors.white },
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="calendar" color={String(color)} />
+          tabBarIcon: ({ color, size }) => (
+            <HugeTabIcon
+              icon={Calendar03Icon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
@@ -90,8 +145,13 @@ export default function TabLayout() {
         name="calls"
         options={{
           title: 'Calls',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="phone" color={String(color)} />
+          tabBarIcon: ({ color, size }) => (
+            <HugeTabIcon
+              icon={CallIcon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
@@ -99,8 +159,13 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'More',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name="bars" color={String(color)} />
+          tabBarIcon: ({ color, size }) => (
+            <HugeTabIcon
+              icon={Settings01Icon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
