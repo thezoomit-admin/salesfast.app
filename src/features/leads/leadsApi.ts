@@ -68,7 +68,24 @@ export async function fetchLeadById(
 
 export async function updateLeadStatus(
   id: number | string,
-  payload: { leadStatusId: number; expectedVersion?: number },
+  payload: Record<string, unknown> & {
+    leadStatusId?: number;
+    expectedVersion?: number;
+  },
+  options: WriteOptions = {}
+) {
+  const { data } = await api.put<ApiResponse<LeadDetail>>(
+    `/crm/leads/${id}`,
+    payload,
+    { accountId: options.accountId }
+  );
+  return data.data;
+}
+
+/** Generic lead PUT (priority, stageRating, full status change, …). */
+export async function updateLead(
+  id: number | string,
+  payload: Record<string, unknown>,
   options: WriteOptions = {}
 ) {
   const { data } = await api.put<ApiResponse<LeadDetail>>(
