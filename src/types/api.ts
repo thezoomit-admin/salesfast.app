@@ -64,6 +64,18 @@ export type LeadStatus = {
 
 export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 
+export type BuyerPersonaProfile = {
+  nid?: string | null;
+  occupation?: string | null;
+  propertyType?: string | null;
+  locationPref?: string | null;
+  sizePref?: string | null;
+  budgetMin?: number | null;
+  budgetMax?: number | null;
+  financingMethod?: string | null;
+  timeline?: string | null;
+};
+
 export type LeadListItem = {
   id: number;
   buyerPersona?: {
@@ -71,6 +83,8 @@ export type LeadListItem = {
     phone?: string | null;
     email?: string | null;
     whatsapp?: string | null;
+    address?: string | null;
+    profile?: BuyerPersonaProfile | null;
   } | null;
   leadStatus?: LeadStatus | null;
   leadSource?: { id: number; name: string } | null;

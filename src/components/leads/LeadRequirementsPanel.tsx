@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { labelOf, labelsOf } from '@/features/leads/leadMeta';
-import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
+import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 import type { LeadDetail, LeadMeta } from '@/types/api';
 import { formatCalendarDate } from '@/utils/dates';
 
@@ -52,9 +52,7 @@ export function LeadRequirementsPanel({ lead, meta }: Props) {
       : null;
 
   return (
-    <View style={styles.panel}>
-      <Text style={styles.panelTitle}>Requirements</Text>
-
+    <View style={styles.wrap}>
       <Group title="Buyer & authority" styles={styles}>
         <Row label="Source detail" value={lead.sourceDetail} styles={styles} />
         <Row label="Lead project" value={lead.leadProject} styles={styles} />
@@ -249,15 +247,7 @@ function Row({
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    panel: {
-      backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: spacing.lg,
-      gap: spacing.sm,
-    },
-    panelTitle: { ...typography.subtitle, color: colors.text },
+    wrap: { gap: spacing.sm },
     group: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,

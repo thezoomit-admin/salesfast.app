@@ -136,6 +136,12 @@ export async function fetchNoteChannels() {
   );
 }
 
+/** Option key → label maps for Lead Entry fields (same meta web portal uses). */
+export async function fetchLeadMeta() {
+  const { data } = await api.get<ApiResponse<LeadMeta>>('/crm/lead-options/meta');
+  return data.data;
+}
+
 /** Admin-managed lookups — change rarely, so keep them fresh for a while. */
 const LOOKUP_STALE_MS = 10 * 60_000;
 
@@ -148,6 +154,12 @@ export const leadStatusesQuery = queryOptions({
 export const noteChannelsQuery = queryOptions({
   queryKey: ['note-channels'],
   queryFn: fetchNoteChannels,
+  staleTime: LOOKUP_STALE_MS,
+});
+
+export const leadMetaQuery = queryOptions({
+  queryKey: ['lead-meta'],
+  queryFn: fetchLeadMeta,
   staleTime: LOOKUP_STALE_MS,
 });
 

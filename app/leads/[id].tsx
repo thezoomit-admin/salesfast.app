@@ -22,6 +22,7 @@ import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
 import { LeadDetailSkeleton } from '@/components/ui/skeletons';
 import {
   EmptyState,
@@ -32,9 +33,11 @@ import { TextField } from '@/components/ui/TextField';
 import { useAuth } from '@/features/auth/AuthContext';
 import {
   fetchLeadById,
+  leadMetaQuery,
   leadStatusesQuery,
   noteChannelsQuery,
 } from '@/features/leads/leadsApi';
+import { labelsOf } from '@/features/leads/leadMeta';
 import {
   ADD_NOTE_MUTATION,
   leadWriteScope,
@@ -71,6 +74,7 @@ export default function LeadDetailScreen() {
   });
   const statusesQuery = useQuery(leadStatusesQuery);
   const channelsQuery = useQuery(noteChannelsQuery);
+  const metaQuery = useQuery(leadMetaQuery);
 
   const callChannelId = useMemo(
     () =>
@@ -236,17 +240,22 @@ export default function LeadDetailScreen() {
         <DetailRow label="Source" value={lead.leadSource?.name || '—'} />
         <DetailRow
           label="Locations"
-          value={lead.preferredLocations?.join(', ') || '—'}
+          value={
+            labelsOf(metaQuery.data, 'preferred_location', lead.preferredLocations) ||
+            '—'
+          }
         />
         <DetailRow
           label="Property types"
-          value={lead.propertyTypes?.join(', ') || '—'}
+          value={
+            labelsOf(metaQuery.data, 'property_type', lead.propertyTypes) || '—'
+          }
         />
         <DetailRow
           label="Budget"
           value={
             lead.budgetMin != null || lead.budgetMax != null
-              ? `${lead.budgetMin ?? '—'} – ${lead.budgetMax ?? '—'}`
+              ? `৳ ${lead.budgetMin != null ? Number(lead.budgetMin).toLocaleString('en-IN') : '—'} – ৳ ${lead.budgetMax != null ? Number(lead.budgetMax).toLocaleString('en-IN') : '—'}`
               : '—'
           }
         />
@@ -261,6 +270,8 @@ export default function LeadDetailScreen() {
           }
         />
       </View>
+
+      <LeadRequirementsPanel lead={lead} meta={metaQuery.data} />
 
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Notes & timeline</Text>
