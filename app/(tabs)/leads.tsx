@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   View,
 } from 'react-native';
 
@@ -33,7 +34,7 @@ function useDebounced<T>(value: T, delay = 350) {
 
 export default function LeadsScreen() {
   const router = useRouter();
-  const searchRef = useRef<TextInput>(null);
+  const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [statusId, setStatusId] = useState<number | undefined>();
