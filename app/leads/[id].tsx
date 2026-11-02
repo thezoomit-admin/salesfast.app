@@ -56,10 +56,7 @@ import {
   PRIORITIES,
   PRIORITY_META,
 } from '@/features/leads/leadPriority';
-import {
-  formatMoney,
-  summarizeLead,
-} from '@/features/leads/leadSummary';
+import { summarizeLead } from '@/features/leads/leadSummary';
 import {
   ADD_NOTE_MUTATION,
   leadWriteScope,
@@ -244,11 +241,6 @@ export default function LeadDetailScreen() {
   const priority = (lead.priority ?? null) as LeadPriority | null;
   const priorityMeta = priority ? PRIORITY_META[priority] : null;
 
-  const budgetLabel =
-    sm.budgetMin != null || sm.budgetMax != null
-      ? `${formatMoney(sm.budgetMin) ?? '—'} – ${formatMoney(sm.budgetMax) ?? '—'}`
-      : null;
-
   const prefChips = [
     { key: 'type', label: 'Type', value: sm.propertyType },
     { key: 'loc', label: 'Location', value: sm.location },
@@ -256,9 +248,6 @@ export default function LeadDetailScreen() {
     { key: 'fin', label: 'Financing', value: sm.financing },
     { key: 'time', label: 'Timeline', value: sm.timeline },
   ].filter((c) => c.value);
-
-  const followUp =
-    lead.pendingFollowUp?.dueAt ?? lead.nextFollowupDate ?? null;
 
   async function onCall() {
     const ok = await openPhoneDialer(phone);
@@ -404,18 +393,6 @@ export default function LeadDetailScreen() {
               assignedToName={lead.assignedToName}
               onStepPress={() => setNoteOpen(true)}
             />
-          </View>
-
-          <View style={styles.budgetStrip}>
-            <Text style={styles.budgetLabel}>Budget range</Text>
-            <Text style={styles.budgetValue}>
-              {budgetLabel ?? 'Not set yet'}
-            </Text>
-            {followUp ? (
-              <Text style={styles.followUpHint}>
-                Next follow-up · {formatDateTime(followUp)}
-              </Text>
-            ) : null}
           </View>
 
           {prefChips.length > 0 ? (
@@ -643,25 +620,6 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
     },
-    budgetStrip: {
-      marginHorizontal: spacing.lg,
-      marginBottom: spacing.md,
-      padding: spacing.md,
-      borderRadius: radii.md,
-      backgroundColor: colors.primary50,
-      borderWidth: 1,
-      borderColor: colors.brandSoft,
-      gap: 4,
-    },
-    budgetLabel: {
-      ...typography.caption,
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-      fontWeight: '600',
-    },
-    budgetValue: { ...typography.subtitle, color: colors.text },
-    followUpHint: { ...typography.caption, color: colors.textSecondary },
     prefSection: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,

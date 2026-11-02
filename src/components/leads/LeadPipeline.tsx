@@ -1,12 +1,11 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  LayoutChangeEvent,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 
 import {
@@ -30,8 +29,7 @@ type Props = {
   onStepPress?: (statusId: number | null) => void;
 };
 
-const NODE = 30;
-const MIN_STEP_W = 72;
+const NODE = 28;
 
 export function LeadPipeline({
   statuses,
@@ -41,7 +39,7 @@ export function LeadPipeline({
 }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { width: winW } = useWindowDimensions();
+  const [width, setWidth] = useState(0);
   const steps = useMemo(() => buildPipelineSteps(statuses), [statuses]);
   const currentIdx = steps.findIndex((s) =>
     currentStatusId != null ? s.statusIds.includes(currentStatusId) : false
@@ -56,22 +54,29 @@ export function LeadPipeline({
 
   if (!steps.length) return null;
 
-  const contentW = Math.max(winW - 48, steps.length * MIN_STEP_W);
-  const stepW = contentW / steps.length;
+  const stepW = width > 0 ? width / steps.length : 0;
   const trackInset = stepW / 2;
+  const nodeSize = steps.length > 6 ? 24 : NODE;
+  const iconSize = steps.length > 6 ? 12 : 14;
+  const labelSize = steps.length > 6 ? 9 : 10;
+
+  function onLayout(e: LayoutChangeEvent) {
+    const w = e.nativeEvent.layout.width;
+    if (w > 0 && Math.abs(w - width) > 0.5) setWidth(w);
+  }
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ minWidth: '100%' }}
-    >
-      <View style={[styles.wrap, { width: contentW }]}>
-        <View style={styles.trackRow}>
+    <View style={styles.wrap} onLayout={onLayout}>
+      <View style={[styles.trackRow, { height: nodeSize }]}>
+        {width > 0 ? (
           <View
             style={[
               styles.trackBg,
-              { left: trackInset, right: trackInset },
+              {
+                left: trackInset,
+                right: trackInset,
+                top: nodeSize / 2 - 1.5,
+              },
             ]}
           >
             <View
@@ -86,137 +91,137 @@ export function LeadPipeline({
               ]}
             />
           </View>
+        ) : null}
 
-          <View style={styles.nodesRow}>
-            {steps.map((step, i) => {
-              const done = currentIdx >= 0 && i <= currentIdx;
-              const next = currentIdx >= 0 && i === currentIdx + 1;
-              const current = i === currentIdx;
-              const activeTerminal =
-                step.isTerminal && current
-                  ? step.statuses.find((s) => s.id === currentStatusId)
-                  : null;
-              const stepIsLost = !!(
-                activeTerminal && isLostStatus(activeTerminal)
-              );
-              const stepIsWon = !!(
-                activeTerminal && isWonStatus(activeTerminal)
-              );
-              const nodeColor = stepIsLost
-                ? colors.danger
-                : done || next
-                  ? colors.brand
-                  : '#D1D5DB';
-              const iconColor = done
-                ? '#fff'
-                : next
-                  ? nodeColor
-                  : '#9CA3AF';
-              const stepIcon = stepIsLost
-                ? CancelCircleIcon
-                : stepIsWon
-                  ? TrophyIcon
-                  : step.icon;
-              const opensNote =
-                i > currentIdx &&
-                !/^(draft|assign)$/i.test(
-                  String(step.statuses[0]?.name ?? '').trim()
-                );
-
-              return (
-                <Pressable
-                  key={step.key}
-                  disabled={!opensNote}
-                  onPress={() =>
-                    onStepPress?.(
-                      step.isTerminal ? null : (step.statuses[0]?.id ?? null)
-                    )
-                  }
-                  style={styles.nodeSlot}
-                >
-                  <View
-                    style={[
-                      styles.node,
-                      next && styles.nodeActive,
-                      {
-                        borderColor: nodeColor,
-                        backgroundColor: done ? nodeColor : colors.surface,
-                      },
-                    ]}
-                  >
-                    {done && !activeTerminal ? (
-                      <HugeiconsIcon
-                        icon={Tick02Icon}
-                        size={14}
-                        color="#fff"
-                        strokeWidth={2.2}
-                      />
-                    ) : (
-                      <HugeiconsIcon
-                        icon={stepIcon}
-                        size={14}
-                        color={iconColor}
-                        strokeWidth={done || next ? 2 : 1.7}
-                      />
-                    )}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.labelsRow}>
+        <View style={styles.nodesRow}>
           {steps.map((step, i) => {
+            const done = currentIdx >= 0 && i <= currentIdx;
+            const next = currentIdx >= 0 && i === currentIdx + 1;
             const current = i === currentIdx;
-            const filled = currentIdx >= 0 && i <= currentIdx + 1;
             const activeTerminal =
               step.isTerminal && current
                 ? step.statuses.find((s) => s.id === currentStatusId)
                 : null;
-            let label = activeTerminal
-              ? shortPipelineLabel(String(activeTerminal.name ?? ''))
-              : step.label;
-            if (
-              i <= currentIdx &&
-              assignedToName &&
-              step.statuses[0]?.name?.trim().toLowerCase() === 'assign'
-            ) {
-              label = `Assign by ${assignedToName}`;
-            }
+            const stepIsLost = !!(
+              activeTerminal && isLostStatus(activeTerminal)
+            );
+            const stepIsWon = !!(
+              activeTerminal && isWonStatus(activeTerminal)
+            );
+            const nodeColor = stepIsLost
+              ? colors.danger
+              : done || next
+                ? colors.brand
+                : '#D1D5DB';
+            const iconColor = done ? '#fff' : next ? nodeColor : '#9CA3AF';
+            const stepIcon = stepIsLost
+              ? CancelCircleIcon
+              : stepIsWon
+                ? TrophyIcon
+                : step.icon;
+            const opensNote =
+              i > currentIdx &&
+              !/^(draft|assign)$/i.test(
+                String(step.statuses[0]?.name ?? '').trim()
+              );
+
             return (
-              <View key={`${step.key}-label`} style={styles.labelSlot}>
-                <Text
+              <Pressable
+                key={step.key}
+                disabled={!opensNote}
+                onPress={() =>
+                  onStepPress?.(
+                    step.isTerminal ? null : (step.statuses[0]?.id ?? null)
+                  )
+                }
+                style={styles.nodeSlot}
+              >
+                <View
                   style={[
-                    styles.label,
-                    filled ? styles.labelFilled : styles.labelMuted,
+                    styles.node,
+                    {
+                      width: nodeSize,
+                      height: nodeSize,
+                      borderColor: nodeColor,
+                      backgroundColor: done ? nodeColor : colors.surface,
+                    },
+                    next && styles.nodeActive,
                   ]}
-                  numberOfLines={2}
                 >
-                  {label}
-                </Text>
-              </View>
+                  {done && !activeTerminal ? (
+                    <HugeiconsIcon
+                      icon={Tick02Icon}
+                      size={iconSize}
+                      color="#fff"
+                      strokeWidth={2.2}
+                    />
+                  ) : (
+                    <HugeiconsIcon
+                      icon={stepIcon}
+                      size={iconSize}
+                      color={iconColor}
+                      strokeWidth={done || next ? 2 : 1.7}
+                    />
+                  )}
+                </View>
+              </Pressable>
             );
           })}
         </View>
       </View>
-    </ScrollView>
+
+      <View style={styles.labelsRow}>
+        {steps.map((step, i) => {
+          const current = i === currentIdx;
+          const filled = currentIdx >= 0 && i <= currentIdx + 1;
+          const activeTerminal =
+            step.isTerminal && current
+              ? step.statuses.find((s) => s.id === currentStatusId)
+              : null;
+          let label = activeTerminal
+            ? shortPipelineLabel(String(activeTerminal.name ?? ''))
+            : step.label;
+          if (
+            i <= currentIdx &&
+            assignedToName &&
+            step.statuses[0]?.name?.trim().toLowerCase() === 'assign'
+          ) {
+            const short = assignedToName.split(/\s+/)[0] ?? assignedToName;
+            label = `Assign by ${short}`;
+          }
+          return (
+            <View key={`${step.key}-label`} style={styles.labelSlot}>
+              <Text
+                style={[
+                  styles.label,
+                  { fontSize: labelSize, lineHeight: labelSize + 3 },
+                  filled ? styles.labelFilled : styles.labelMuted,
+                ]}
+                numberOfLines={2}
+              >
+                {label}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     wrap: {
+      width: '100%',
       paddingTop: spacing.sm,
       paddingBottom: spacing.xs,
     },
     trackRow: {
-      height: NODE,
       justifyContent: 'center',
+      width: '100%',
     },
     trackBg: {
       position: 'absolute',
-      top: NODE / 2 - 1.5,
       height: 3,
       borderRadius: 999,
       backgroundColor: '#E5E7EB',
@@ -229,16 +234,16 @@ function createStyles(colors: ThemeColors) {
     nodesRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      width: '100%',
       zIndex: 1,
     },
     nodeSlot: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      minWidth: 0,
     },
     node: {
-      width: NODE,
-      height: NODE,
       borderRadius: 999,
       borderWidth: 2,
       alignItems: 'center',
@@ -255,16 +260,16 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       marginTop: 6,
       alignItems: 'flex-start',
+      width: '100%',
     },
     labelSlot: {
       flex: 1,
       alignItems: 'center',
-      paddingHorizontal: 2,
+      paddingHorizontal: 1,
+      minWidth: 0,
     },
     label: {
       ...typography.caption,
-      fontSize: 10,
-      lineHeight: 13,
       textAlign: 'center',
     },
     labelFilled: {
