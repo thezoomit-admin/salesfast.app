@@ -236,13 +236,13 @@ export default function LeadDetailScreen() {
                   onPress={() => setPriorityOpen(true)}
                   style={({ pressed }) => [
                     styles.priorityChip,
-                    priorityMeta
+                    priorityBadge
                       ? {
-                          backgroundColor: priorityMeta.bg,
-                          borderColor: priorityMeta.border,
+                          backgroundColor: priorityBadge.backgroundColor,
+                          borderColor: priorityBadge.borderColor,
                         }
                       : {
-                          backgroundColor: colors.surface,
+                          backgroundColor: colors.surfaceMuted,
                           borderColor: colors.border,
                         },
                     pressed && styles.pressed,
@@ -252,14 +252,14 @@ export default function LeadDetailScreen() {
                     <HugeiconsIcon
                       icon={PRIORITY_ICON[priority]}
                       size={13}
-                      color={priorityMeta!.color}
+                      color={priorityBadge!.color}
                       strokeWidth={1.5}
                     />
                   ) : null}
                   <Text
                     style={[
                       styles.priorityChipText,
-                      { color: priorityMeta?.color ?? colors.textMuted },
+                      { color: priorityBadge?.color ?? colors.textMuted },
                     ]}
                   >
                     {priorityMeta?.label ?? 'Priority'}
@@ -267,7 +267,7 @@ export default function LeadDetailScreen() {
                   <Ionicons
                     name="chevron-down"
                     size={11}
-                    color={priorityMeta?.color ?? colors.textMuted}
+                    color={priorityBadge?.color ?? colors.textMuted}
                   />
                 </Pressable>
               </View>
@@ -432,6 +432,7 @@ export default function LeadDetailScreen() {
             <Text style={styles.modalTitle}>Priority</Text>
             {PRIORITIES.map((p) => {
               const meta = PRIORITY_META[p];
+              const opt = priorityBadgeColors(p, isDark);
               const selected = p === priority;
               return (
                 <Pressable
@@ -439,8 +440,8 @@ export default function LeadDetailScreen() {
                   style={[
                     styles.priorityOption,
                     selected && {
-                      backgroundColor: meta.bg,
-                      borderColor: meta.border,
+                      backgroundColor: opt.backgroundColor,
+                      borderColor: opt.borderColor,
                     },
                   ]}
                   disabled={priorityMutation.isPending || selected}
@@ -449,16 +450,16 @@ export default function LeadDetailScreen() {
                   <HugeiconsIcon
                     icon={PRIORITY_ICON[p]}
                     size={16}
-                    color={meta.color}
+                    color={opt.color}
                     strokeWidth={1.5}
                   />
                   <Text
-                    style={[styles.priorityOptionText, { color: meta.color }]}
+                    style={[styles.priorityOptionText, { color: opt.color }]}
                   >
                     {meta.label}
                   </Text>
                   {selected ? (
-                    <Ionicons name="checkmark" size={18} color={meta.color} />
+                    <Ionicons name="checkmark" size={18} color={opt.color} />
                   ) : null}
                 </Pressable>
               );
