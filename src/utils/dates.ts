@@ -1,10 +1,10 @@
-import {
-  format,
-  formatDistanceToNow,
-  isToday,
-  isYesterday,
-  parseISO,
-} from 'date-fns';
+// Per-function entry points: the package root re-exports all ~250 helpers,
+// and Metro bundles every one of them.
+import { format } from 'date-fns/format';
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
+import { isToday } from 'date-fns/isToday';
+import { isYesterday } from 'date-fns/isYesterday';
+import { parseISO } from 'date-fns/parseISO';
 
 export function parseDate(value?: string | Date | null) {
   if (!value) return null;

@@ -8,12 +8,12 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import 'react-native-reanimated';
 
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { BrandSplash } from '@/features/auth/components/BrandSplash';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 import { CallSyncBootstrap } from '@/features/call-tracking/CallSyncBootstrap';
+import { installLeadWriteDefaults } from '@/features/leads/leadWrites';
 import { NotificationsBootstrap } from '@/features/notifications/NotificationsBootstrap';
 import { installConnectivityManagers } from '@/lib/connectivity';
 import { installQueryCacheMonitor } from '@/lib/perfMonitor';
@@ -79,6 +79,8 @@ export default function RootLayout() {
           },
         },
       });
+    // Before any saved offline write is restored, so it knows how to run.
+    installLeadWriteDefaults(client);
     installQueryCacheMonitor(client);
     return client;
   });

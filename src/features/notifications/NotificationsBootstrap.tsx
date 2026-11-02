@@ -59,14 +59,14 @@ export function NotificationsBootstrap() {
   // Skip in Expo Go on Android — addPushTokenListener / getExpoPushToken throw (SDK 53+).
   useEffect(() => {
     if (!userId || Platform.OS === 'web' || !pushOk) return;
-    void registerForPushNotifications();
+    void registerForPushNotifications(userId);
 
     const tokenSub = Notifications.addPushTokenListener(() => {
-      void registerForPushNotifications();
+      void registerForPushNotifications(userId);
     });
     const appSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void registerForPushNotifications();
+        void registerForPushNotifications(userId);
         void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
       }
     });

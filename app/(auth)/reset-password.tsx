@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
@@ -16,26 +15,32 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { z } from 'zod';
+import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
 import { resetPasswordRequest } from '@/features/auth/authApi';
 import { authColors } from '@/features/auth/authTheme';
 import { AuthInput } from '@/features/auth/components/AuthInput';
 
-const schema = z
-  .object({
-    identifier: z.string().min(3, 'Email or phone is required'),
-    otp: z.string().regex(/^\d{6}$/, 'Code must be 6 digits'),
-    password: z.string().min(6, 'At least 6 characters'),
-    confirmPassword: z.string().min(1, 'Confirm the new password'),
-  })
-  .refine((v) => v.password === v.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  });
+type FormValues = {
+  identifier: string;
+  otp: string;
+  password: string;
+  confirmPassword: string;
+};
 
-type FormValues = z.infer<typeof schema>;
+const resolver = formResolver<FormValues>(
+  (v) => ({
+    identifier: minLength(v.identifier, 3, 'Email or phone is required'),
+    otp: !/^\d{6}$/.test(v.otp ?? '') && 'Code must be 6 digits',
+    password: minLength(v.password, 6, 'At least 6 characters'),
+    confirmPassword: minLength(v.confirmPassword, 1, 'Confirm the new password'),
+  }),
+  // Only once every field is valid (as zod's refine did).
+  (v) => ({
+    confirmPassword: v.password !== v.confirmPassword && 'Passwords do not match',
+  })
+);
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -51,7 +56,7 @@ export default function ResetPasswordScreen() {
     handleSubmit,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: {
       identifier: typeof preset === 'string' ? preset : '',
       otp: '',

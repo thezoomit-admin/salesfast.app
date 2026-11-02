@@ -3,6 +3,8 @@ import { useSyncExternalStore } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/features/auth/AuthContext';
+import { usePendingWriteCount } from '@/lib/accountWrites';
 import { colors, radii, spacing, typography } from '@/theme';
 
 /** Approximate bottom tab bar height, so the pill floats just above it. */
@@ -15,6 +17,7 @@ export function OfflineBanner() {
     () => onlineManager.isOnline()
   );
   const insets = useSafeAreaInsets();
+  const waiting = usePendingWriteCount(useAuth().user?.id);
   if (online) return null;
 
   return (
@@ -24,7 +27,11 @@ export function OfflineBanner() {
     >
       <View style={styles.pill} accessibilityLiveRegion="polite">
         <View style={styles.dot} />
-        <Text style={styles.text}>Offline · showing saved data</Text>
+        <Text style={styles.text}>
+          {waiting > 0
+            ? `Offline · ${waiting} change${waiting === 1 ? '' : 's'} waiting to sync`
+            : 'Offline · showing saved data'}
+        </Text>
       </View>
     </View>
   );

@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -17,7 +16,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CountryCode } from 'libphonenumber-js';
-import { z } from 'zod';
+import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
 import { AuthInput } from '@/features/auth/components/AuthInput';
@@ -33,12 +32,12 @@ import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { secureStorage } from '@/services/secureStorage';
 
-const schema = z.object({
-  identifier: z.string().min(3, 'Required'),
-  password: z.string().min(1, 'Password is required'),
-});
+type FormValues = { identifier: string; password: string };
 
-type FormValues = z.infer<typeof schema>;
+const resolver = formResolver<FormValues>((v) => ({
+  identifier: minLength(v.identifier, 3, 'Required'),
+  password: minLength(v.password, 1, 'Password is required'),
+}));
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -65,7 +64,7 @@ export default function LoginScreen() {
     clearErrors,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: { identifier: '', password: '' },
   });
 

@@ -1,13 +1,6 @@
-import { useEffect } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withTiming,
-} from 'react-native-reanimated';
 
 import { authColors } from '../authTheme';
 
@@ -29,9 +22,11 @@ type Props = {
 const LOGO_IN_MS = 560;
 const TEXT_DELAY_MS = LOGO_IN_MS + 80;
 const TEXT_IN_MS = 480;
+const EASE_OUT = Easing.out(Easing.cubic);
 
 /**
  * Brand splash — Hisab solid-bg pattern; Salesfast black matches logo plate.
+ * Opacity / transform only, on the native driver (UI thread).
  */
 export function BrandSplash({
   mode = 'logo',
@@ -39,69 +34,56 @@ export function BrandSplash({
   holdMs = 700,
 }: Props) {
   const showLogo = mode !== 'blank';
-  const logoOpacity = useSharedValue(mode === 'animated' ? 0 : 1);
-  const logoScale = useSharedValue(mode === 'animated' ? 0.88 : 1);
-  const textOpacity = useSharedValue(0);
-  const textTranslateY = useSharedValue(28);
+  const animated = mode === 'animated';
+  // 0 → 1 progress of each step; static modes start finished.
+  const [logoIn] = useState(() => new Animated.Value(animated ? 0 : 1));
+  const [textIn] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    if (mode !== 'animated') return;
+    if (!animated) return;
 
-    logoOpacity.value = 0;
-    logoScale.value = 0.88;
-    textOpacity.value = 0;
-    textTranslateY.value = 28;
-
-    logoOpacity.value = withTiming(1, {
-      duration: LOGO_IN_MS,
-      easing: Easing.out(Easing.cubic),
-    });
-    logoScale.value = withTiming(1, {
-      duration: LOGO_IN_MS,
-      easing: Easing.out(Easing.cubic),
-    });
-
-    textOpacity.value = withDelay(
-      TEXT_DELAY_MS,
-      withTiming(1, {
+    logoIn.setValue(0);
+    textIn.setValue(0);
+    const sequence = Animated.parallel([
+      Animated.timing(logoIn, {
+        toValue: 1,
+        duration: LOGO_IN_MS,
+        easing: EASE_OUT,
+        useNativeDriver: true,
+      }),
+      Animated.timing(textIn, {
+        toValue: 1,
+        delay: TEXT_DELAY_MS,
         duration: TEXT_IN_MS,
-        easing: Easing.out(Easing.cubic),
-      })
-    );
-    textTranslateY.value = withDelay(
-      TEXT_DELAY_MS,
-      withTiming(0, {
-        duration: TEXT_IN_MS,
-        easing: Easing.out(Easing.cubic),
-      })
-    );
+        easing: EASE_OUT,
+        useNativeDriver: true,
+      }),
+    ]);
+    sequence.start();
 
-    if (!onFinished) return;
+    const timer = onFinished
+      ? setTimeout(onFinished, TEXT_DELAY_MS + TEXT_IN_MS + holdMs)
+      : null;
 
-    const timer = setTimeout(() => {
-      onFinished();
-    }, TEXT_DELAY_MS + TEXT_IN_MS + holdMs);
+    return () => {
+      sequence.stop();
+      if (timer) clearTimeout(timer);
+    };
+  }, [animated, holdMs, logoIn, onFinished, textIn]);
 
-    return () => clearTimeout(timer);
-  }, [
-    holdMs,
-    logoOpacity,
-    logoScale,
-    mode,
-    onFinished,
-    textOpacity,
-    textTranslateY,
-  ]);
+  const logoStyle = {
+    opacity: logoIn,
+    transform: [
+      { scale: logoIn.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) },
+    ],
+  };
 
-  const logoStyle = useAnimatedStyle(() => ({
-    opacity: logoOpacity.value,
-    transform: [{ scale: logoScale.value }],
-  }));
-
-  const textStyle = useAnimatedStyle(() => ({
-    opacity: textOpacity.value,
-    transform: [{ translateY: textTranslateY.value }],
-  }));
+  const textStyle = {
+    opacity: textIn,
+    transform: [
+      { translateY: textIn.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) },
+    ],
+  };
 
   return (
     <View style={styles.root}>

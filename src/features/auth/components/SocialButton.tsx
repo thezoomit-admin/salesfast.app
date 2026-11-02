@@ -1,4 +1,3 @@
-import { Mail01Icon, SmartPhone01Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import {
   Pressable,
@@ -8,6 +7,7 @@ import {
   ViewStyle,
 } from 'react-native';
 
+import { Mail01Icon, SmartPhone01Icon } from '@/components/icons/hugeicons';
 import { authColors } from '../authTheme';
 
 export type AuthMethod = 'email' | 'phone';

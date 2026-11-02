@@ -49,20 +49,29 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
   return { items, meta };
 }
 
-export async function fetchLeadById(id: number | string) {
+/** Pins a request to one account (see AxiosRequestConfig.accountId). */
+type WriteOptions = { accountId?: string };
+
+export async function fetchLeadById(
+  id: number | string,
+  options: WriteOptions = {}
+) {
   const { data } = await api.get<ApiResponse<LeadDetail>>(`/crm/leads/${id}`, {
     params: { view: 'full' },
+    accountId: options.accountId,
   });
   return data.data;
 }
 
 export async function updateLeadStatus(
   id: number | string,
-  payload: { leadStatusId: number; expectedVersion?: number }
+  payload: { leadStatusId: number; expectedVersion?: number },
+  options: WriteOptions = {}
 ) {
   const { data } = await api.put<ApiResponse<LeadDetail>>(
     `/crm/leads/${id}`,
-    payload
+    payload,
+    { accountId: options.accountId }
   );
   return data.data;
 }
@@ -77,9 +86,18 @@ export async function addLeadNote(
     followupType?: string;
     reminderMinutes?: number;
     completeFollowup?: boolean;
-  }
+  },
+  options: WriteOptions & {
+    /** Same key on every retry → the server creates the note only once. */
+    idempotencyKey?: string;
+  } = {}
 ) {
-  const { data } = await api.post(`/crm/leads/${id}/notes`, payload);
+  const { data } = await api.post(`/crm/leads/${id}/notes`, payload, {
+    accountId: options.accountId,
+    headers: options.idempotencyKey
+      ? { 'Idempotency-Key': options.idempotencyKey }
+      : undefined,
+  });
   return data.data;
 }
 

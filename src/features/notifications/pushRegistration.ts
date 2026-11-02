@@ -60,10 +60,21 @@ function easProjectId() {
 }
 
 /**
+ * Last token bound on the server this app session, and for which account.
+ * Foreground re-checks (permission just granted, token rotated) then cost no
+ * request when nothing changed. Only the latest binding is remembered: the
+ * server keeps one session per device token, so switching accounts (and
+ * back) must bind again.
+ */
+let lastRegistration: { accountId: string; token: string } | null = null;
+
+/**
  * Ask for permission (first run only), fetch this install's Expo push token
  * and bind it to the signed-in session on the backend.
  */
-export async function registerForPushNotifications(): Promise<PushSetupResult> {
+export async function registerForPushNotifications(
+  accountId?: string
+): Promise<PushSetupResult> {
   if (!isPushSupported()) {
     return {
       status: 'unsupported',
@@ -83,10 +94,18 @@ export async function registerForPushNotifications(): Promise<PushSetupResult> {
     const { data: token } = await Notifications.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined
     );
+    if (
+      accountId &&
+      lastRegistration?.accountId === accountId &&
+      lastRegistration.token === token
+    ) {
+      return { status: 'registered', token };
+    }
     await api.put('/auth/mobile/push-token', {
       token,
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
     });
+    lastRegistration = accountId ? { accountId, token } : null;
     return { status: 'registered', token };
   } catch (error) {
     return {
@@ -98,6 +117,8 @@ export async function registerForPushNotifications(): Promise<PushSetupResult> {
 
 /** Stop pushes to this install for the current session (best-effort). */
 export async function unregisterPushNotifications() {
+  // A later sign-in (new session) must bind the token again.
+  lastRegistration = null;
   if (!isPushSupported()) return;
   try {
     await api.delete('/auth/mobile/push-token');

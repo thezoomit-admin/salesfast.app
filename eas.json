@@ -25,13 +25,23 @@
         "EXPO_PUBLIC_API_URL": "https://salesfastapi-dev.thezoomit.com/api"
       }
     },
+    "production-apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "arm64-v8a",
+        "EXPO_PUBLIC_API_URL": "https://salesfastapi.thezoomit.com/api"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
       },
       "env": {
-        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "arm64-v8a",
+        "ORG_GRADLE_PROJECT_reactNativeArchitectures": "armeabi-v7a,arm64-v8a",
         "EXPO_PUBLIC_API_URL": "https://salesfastapi.thezoomit.com/api"
       }
     }

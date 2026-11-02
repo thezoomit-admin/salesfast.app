@@ -7,6 +7,24 @@ import { recordApiTiming } from '@/lib/perfMonitor';
 import { secureStorage } from '@/services/secureStorage';
 import type { ApiResponse, MobileRefreshResult } from '@/types/api';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /**
+     * Send only while this account is the active one. Queued offline writes
+     * use it so a switch of account can never send them with another token.
+     */
+    accountId?: string;
+  }
+}
+
+/** The request belongs to an account that is not signed in right now. */
+export class AccountChangedError extends Error {
+  constructor() {
+    super('Signed-in account changed');
+    this.name = 'AccountChangedError';
+  }
+}
+
 type RetriableConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
   _startedAt?: number;
@@ -26,10 +44,15 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const [token, deviceId] = await Promise.all([
+  const [token, deviceId, activeAccountId] = await Promise.all([
     secureStorage.getAccessToken(),
     secureStorage.getDeviceId(),
+    config.accountId ? secureStorage.getAccountId() : null,
   ]);
+  // Checked in the same step that attaches the token.
+  if (config.accountId && config.accountId !== activeAccountId) {
+    throw new AccountChangedError();
+  }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -90,6 +113,8 @@ api.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
+    // Never sent — says nothing about the network.
+    if (error instanceof AccountChangedError) return Promise.reject(error);
     const original = error.config as RetriableConfig | undefined;
     const status = error.response?.status;
     trackResponse(original, status ?? error.code ?? 'ERR');

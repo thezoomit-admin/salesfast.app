@@ -10,7 +10,7 @@ import {
 
 import { setAuthLostHandler } from '@/api/client';
 import { unregisterPushNotifications } from '@/features/notifications/pushRegistration';
-import { deleteQueryCache } from '@/lib/queryPersistence';
+import { deletePendingWrites, deleteQueryCache } from '@/lib/queryPersistence';
 import { secureStorage } from '@/services/secureStorage';
 import type { AuthUser } from '@/types/api';
 
@@ -206,6 +206,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const activeId = await secureStorage.getAccountId();
       await removeSavedAccount(accountId);
       deleteQueryCache(accountId);
+      // Unsent offline writes belong to the account — gone with it.
+      deletePendingWrites(accountId);
       if (activeId === accountId) {
         await signOut();
       }
