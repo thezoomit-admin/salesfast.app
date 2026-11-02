@@ -14,6 +14,7 @@ import {
 
 import { Search02Icon } from '@/components/icons/hugeicons';
 import { getErrorMessage } from '@/api/client';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/constants/config';
@@ -168,6 +169,8 @@ export default function ProfileScreen() {
   const callSync = useCallSyncStatus();
   const [accounts, setAccounts] = useState<SavedMobileAccount[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const refreshAccounts = useCallback(async () => {
     setAccounts(await getSavedAccounts());
@@ -187,22 +190,22 @@ export default function ProfileScreen() {
     : user?.phone?.trim() || '';
 
   const unsynced = usePendingWriteCount(user?.id);
-  const confirmSignOut = useCallback(() => {
-    const message = unsynced
-      ? `${unsynced} change${unsynced === 1 ? ' is' : 's are'} still waiting to sync. ` +
-        'They stay on this device and are sent the next time you sign in to this account.'
-      : 'End this session on this device?';
-    Alert.alert('Sign out', message, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: () => {
-          void signOut();
-        },
-      },
-    ]);
-  }, [signOut, unsynced]);
+  const signOutMessage = unsynced
+    ? `${unsynced} change${unsynced === 1 ? ' is' : 's are'} still waiting to sync. ` +
+      'They stay on this device and sync the next time you sign in.'
+    : 'End this session on this device? You can sign back in anytime.';
+
+  const onConfirmSignOut = useCallback(async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+      setSignOutOpen(false);
+    } catch (error) {
+      setSigningOut(false);
+      Alert.alert('Sign out failed', getErrorMessage(error));
+    }
+  }, [signOut, signingOut]);
 
   const canContinue = useCallback(
     (a: SavedMobileAccount) =>
@@ -392,7 +395,7 @@ export default function ProfileScreen() {
             icon: 'log-out-outline',
             danger: true,
             showChevron: false,
-            onPress: confirmSignOut,
+            onPress: () => setSignOutOpen(true),
           },
         ],
       },
@@ -405,7 +408,6 @@ export default function ProfileScreen() {
       onRemove,
       onSwitch,
       switchingAccount,
-      confirmSignOut,
     ]
   );
 
@@ -519,6 +521,21 @@ export default function ProfileScreen() {
           }}
         />
       ) : null}
+
+      <ConfirmModal
+        open={signOutOpen}
+        title="Sign out"
+        message={signOutMessage}
+        cancelLabel="Cancel"
+        confirmLabel="Sign out"
+        destructive
+        icon="log-out-outline"
+        loading={signingOut}
+        onCancel={() => {
+          if (!signingOut) setSignOutOpen(false);
+        }}
+        onConfirm={() => void onConfirmSignOut()}
+      />
     </View>
   );
 }
