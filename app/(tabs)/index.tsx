@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,12 +31,15 @@ function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
 }
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 type KpiTile = {
   key: string;
   label: string;
   value: number;
   href: Href;
-  danger?: boolean;
+  icon: IoniconName;
+  tone: 'brand' | 'danger' | 'neutral' | 'accent';
 };
 
 export default function HomeScreen() {
@@ -125,25 +129,32 @@ export default function HomeScreen() {
       label: 'Due today',
       value: kpis.todayFollowUps,
       href: '/(tabs)/follow-ups',
+      icon: 'today-outline',
+      tone: 'brand',
     },
     {
       key: 'overdue',
       label: 'Overdue',
       value: kpis.overdueFollowUps,
       href: '/(tabs)/follow-ups',
-      danger: kpis.overdueFollowUps > 0,
+      icon: 'alert-circle-outline',
+      tone: kpis.overdueFollowUps > 0 ? 'danger' : 'neutral',
     },
     {
       key: 'assigned',
       label: 'Assigned',
       value: kpis.totalAssigned,
       href: '/(tabs)/leads',
+      icon: 'people-outline',
+      tone: 'neutral',
     },
     {
       key: 'new',
       label: 'New (7d)',
       value: kpis.newLeads,
       href: '/(tabs)/leads',
+      icon: 'sparkles-outline',
+      tone: 'accent',
     },
   ];
 
@@ -166,30 +177,49 @@ export default function HomeScreen() {
     >
       {/* 2×2 day-board KPIs */}
       <View style={styles.kpiGrid}>
-        {kpiTiles.map((tile) => (
-          <Pressable
-            key={tile.key}
-            onPress={() => router.navigate(tile.href)}
-            style={({ pressed }) => [
-              styles.kpiTile,
-              tile.danger && styles.kpiTileDanger,
-              pressed && styles.pressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`${tile.label}: ${tile.value}`}
-          >
-            <Text
-              style={[styles.kpiValue, tile.danger && styles.kpiValueDanger]}
+        {kpiTiles.map((tile) => {
+          const toneStyles = kpiToneStyles(colors, tile.tone);
+          return (
+            <Pressable
+              key={tile.key}
+              onPress={() => router.navigate(tile.href)}
+              style={({ pressed }) => [
+                styles.kpiTile,
+                { borderColor: toneStyles.border },
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`${tile.label}: ${tile.value}`}
             >
-              {tile.value}
-            </Text>
-            <Text
-              style={[styles.kpiLabel, tile.danger && styles.kpiLabelDanger]}
-            >
-              {tile.label}
-            </Text>
-          </Pressable>
-        ))}
+              <View
+                style={[styles.kpiAccent, { backgroundColor: toneStyles.accent }]}
+              />
+              <View style={styles.kpiTop}>
+                <View
+                  style={[
+                    styles.kpiIconWrap,
+                    { backgroundColor: toneStyles.iconBg },
+                  ]}
+                >
+                  <Ionicons
+                    name={tile.icon}
+                    size={16}
+                    color={toneStyles.icon}
+                  />
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={14}
+                  color={colors.textMuted}
+                />
+              </View>
+              <Text style={[styles.kpiValue, { color: toneStyles.value }]}>
+                {tile.value}
+              </Text>
+              <Text style={styles.kpiLabel}>{tile.label}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {/* Today's queue — single agenda */}
@@ -329,6 +359,52 @@ function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   }, [screen, hasData, fetched]);
 }
 
+function kpiToneStyles(
+  colors: ThemeColors,
+  tone: KpiTile['tone']
+): {
+  accent: string;
+  icon: string;
+  iconBg: string;
+  value: string;
+  border: string;
+} {
+  switch (tone) {
+    case 'brand':
+      return {
+        accent: colors.brand,
+        icon: colors.brand,
+        iconBg: colors.brandSoft,
+        value: colors.text,
+        border: colors.border,
+      };
+    case 'danger':
+      return {
+        accent: colors.danger,
+        icon: colors.danger,
+        iconBg: colors.dangerSoft,
+        value: colors.danger,
+        border: colors.dangerSoft,
+      };
+    case 'accent':
+      return {
+        accent: colors.brandMuted,
+        icon: colors.brandMuted,
+        iconBg: colors.primary50,
+        value: colors.text,
+        border: colors.border,
+      };
+    default:
+      return {
+        accent: colors.textMuted,
+        icon: colors.textSecondary,
+        iconBg: colors.surfaceMuted,
+        value: colors.text,
+        border: colors.border,
+      };
+  }
+}
+
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screenContent: {
@@ -393,29 +469,49 @@ function createStyles(colors: ThemeColors) {
       width: '48.5%',
       backgroundColor: colors.surface,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      borderRadius: radii.sm,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-      gap: 4,
+      borderRadius: radii.md,
+      paddingLeft: 16,
+      paddingRight: 12,
+      paddingTop: 12,
+      paddingBottom: 14,
+      gap: 8,
+      overflow: 'hidden',
+      minHeight: 112,
     },
-    kpiTileDanger: {
-      backgroundColor: colors.dangerSoft,
-      borderColor: colors.dangerSoft,
+    kpiAccent: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 3,
+    },
+    kpiTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    kpiIconWrap: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     kpiValue: {
       ...typography.display,
-      fontSize: 28,
-      lineHeight: 32,
-      color: colors.text,
+      fontSize: 30,
+      lineHeight: 34,
+      letterSpacing: -0.8,
+      fontWeight: '700',
     },
-    kpiValueDanger: { color: colors.danger },
     kpiLabel: {
       ...typography.caption,
-      fontSize: 13,
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '600',
       color: colors.textSecondary,
+      letterSpacing: 0.2,
     },
-    kpiLabelDanger: { color: colors.danger, fontWeight: '600' },
 
     sectionHeader: {
       flexDirection: 'row',
