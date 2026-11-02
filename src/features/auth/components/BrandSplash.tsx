@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -93,10 +94,50 @@ export function BrandSplash({
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
+
+      {/* Base: deep navy → ink */}
+      <LinearGradient
+        colors={['#1C2A3A', '#15202C', '#0E151C']}
+        locations={[0, 0.45, 1]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Soft brand glow — top left */}
+      <LinearGradient
+        colors={[
+          'rgba(242, 70, 28, 0.34)',
+          'rgba(242, 70, 28, 0.10)',
+          'transparent',
+        ]}
+        locations={[0, 0.35, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.85, y: 0.7 }}
+        style={styles.glowTop}
+        pointerEvents="none"
+      />
+
+      {/* Soft lift near center / logo */}
+      <LinearGradient
+        colors={[
+          'transparent',
+          'rgba(255, 255, 255, 0.04)',
+          'transparent',
+        ]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.5, y: 0.25 }}
+        end={{ x: 0.5, y: 0.85 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
       <View style={styles.center}>
         {showLogo ? (
           <Animated.View style={logoStyle}>
-            <Image source={favicon} style={styles.logo} resizeMode="contain" />
+            <View style={styles.logoGlow}>
+              <Image source={favicon} style={styles.logo} resizeMode="contain" />
+            </View>
           </Animated.View>
         ) : null}
         {mode === 'animated' ? (
@@ -117,9 +158,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  glowTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '62%',
+  },
   center: {
     alignItems: 'center',
     paddingHorizontal: 24,
+    zIndex: 1,
+  },
+  logoGlow: {
+    padding: 14,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   logo: {
     width: 88,
@@ -138,9 +194,8 @@ const styles = StyleSheet.create({
   },
   tagline: {
     marginTop: 8,
-    color: authColors.white,
+    color: 'rgba(255, 255, 255, 0.88)',
     fontSize: 14,
     lineHeight: 20,
-    opacity: 0.95,
   },
 });
