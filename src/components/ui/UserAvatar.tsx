@@ -1,79 +1,40 @@
 import {
   Image,
   StyleSheet,
-  Text,
-  View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 
-import { colors } from '@/theme';
+/** Same default as salesfast.admin `/assets/user-profile.png`. */
+const DEFAULT_AVATAR = require('../../../assets/images/user-profile.png');
 
 type Props = {
   uri?: string | null;
   name?: string | null;
   size?: number;
   style?: StyleProp<ViewStyle>;
-  /** Neutral ash initials — no brand tint. */
+  /** Kept for call-site compat; default image replaces initials. */
   muted?: boolean;
 };
 
-function avatarInitials(name?: string | null) {
-  const parts = (name || '?').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
-}
-
-/** Profile photo, or initials placeholder when none is set. (Hisab UserAvatar) */
-export function UserAvatar({ uri, name, size = 48, style, muted }: Props) {
+/** Profile photo, or admin default avatar when none is set. */
+export function UserAvatar({ uri, size = 48, style }: Props) {
   const radius = size / 2;
 
-  if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        style={[{ width: size, height: size, borderRadius: radius }, style as object]}
-      />
-    );
-  }
-
   return (
-    <View
+    <Image
+      source={uri ? { uri } : DEFAULT_AVATAR}
       style={[
-        styles.placeholder,
-        muted && styles.placeholderMuted,
+        styles.image,
         { width: size, height: size, borderRadius: radius },
-        style,
+        style as object,
       ]}
-    >
-      <Text
-        style={[
-          styles.initials,
-          muted && styles.initialsMuted,
-          { fontSize: Math.max(14, size * 0.36) },
-        ]}
-      >
-        {avatarInitials(name)}
-      </Text>
-    </View>
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  placeholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.brandSoft,
-  },
-  placeholderMuted: {
+  image: {
     backgroundColor: '#EEF2F7',
-  },
-  initials: {
-    color: colors.brand,
-    fontWeight: '700',
-  },
-  initialsMuted: {
-    color: colors.textSecondary,
   },
 });
