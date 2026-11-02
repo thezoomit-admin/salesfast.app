@@ -1,3 +1,4 @@
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { addMonths, format, isBefore, isSameDay, startOfDay, startOfMonth } from 'date-fns';
 import { useMemo, useState } from 'react';
 import {
@@ -9,6 +10,13 @@ import {
   View,
 } from 'react-native';
 
+import {
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+  Calendar03Icon,
+  Cancel01Icon,
+  Clock01Icon,
+} from '@/components/icons/hugeicons';
 import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
@@ -119,7 +127,12 @@ export function FollowupDateTimeField({
           pressed && { opacity: 0.9 },
         ]}
       >
-        <Text style={styles.fieldIcon}>📅</Text>
+        <HugeiconsIcon
+          icon={Calendar03Icon}
+          size={20}
+          color={colors.text}
+          strokeWidth={1.75}
+        />
         <View style={styles.fieldText}>
           <Text style={styles.caption}>Date & time</Text>
           <Text
@@ -134,8 +147,14 @@ export function FollowupDateTimeField({
             hitSlop={8}
             onPress={() => onChange(null)}
             style={styles.clearBtn}
+            accessibilityLabel="Clear"
           >
-            <Text style={styles.clearText}>✕</Text>
+            <HugeiconsIcon
+              icon={Cancel01Icon}
+              size={14}
+              color={colors.textSecondary}
+              strokeWidth={1.75}
+            />
           </Pressable>
         ) : null}
       </Pressable>
@@ -152,8 +171,14 @@ export function FollowupDateTimeField({
                   <Pressable
                     style={styles.navBtn}
                     onPress={() => setViewMonth((m) => addMonths(m, -1))}
+                    accessibilityLabel="Previous month"
                   >
-                    <Text style={styles.navBtnText}>‹</Text>
+                    <HugeiconsIcon
+                      icon={ArrowLeft01Icon}
+                      size={16}
+                      color={colors.text}
+                      strokeWidth={2.25}
+                    />
                   </Pressable>
                   <Text style={styles.monthTitle}>
                     {format(viewMonth, 'MMMM yyyy')}
@@ -161,8 +186,14 @@ export function FollowupDateTimeField({
                   <Pressable
                     style={styles.navBtn}
                     onPress={() => setViewMonth((m) => addMonths(m, 1))}
+                    accessibilityLabel="Next month"
                   >
-                    <Text style={styles.navBtnText}>›</Text>
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      size={16}
+                      color={colors.text}
+                      strokeWidth={2.25}
+                    />
                   </Pressable>
                 </View>
 
@@ -234,15 +265,52 @@ export function FollowupDateTimeField({
             ) : (
               <>
                 <View style={styles.timeHeader}>
-                  <Pressable onPress={() => setStep('date')} hitSlop={8}>
-                    <Text style={styles.backLink}>‹ Back</Text>
+                  <View style={styles.timeHeaderLeft}>
+                    <Pressable
+                      onPress={() => setStep('date')}
+                      style={styles.navBtn}
+                      accessibilityLabel="Back to calendar"
+                    >
+                      <HugeiconsIcon
+                        icon={ArrowLeft01Icon}
+                        size={16}
+                        color={colors.text}
+                        strokeWidth={2.25}
+                      />
+                    </Pressable>
+                    <View style={styles.timeHeaderText}>
+                      <Text style={styles.caption} numberOfLines={1}>
+                        {draftDay
+                          ? format(draftDay, 'EEE, MMMM d, yyyy')
+                          : 'Pick a time'}
+                      </Text>
+                      <View style={styles.timeValueRow}>
+                        <HugeiconsIcon
+                          icon={Clock01Icon}
+                          size={18}
+                          color={colors.text}
+                          strokeWidth={1.75}
+                        />
+                        <Text style={styles.timeValue}>
+                          {value
+                            ? format(value, 'hh:mm a')
+                            : 'Select time'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Pressable
+                    onPress={closePicker}
+                    style={styles.navBtn}
+                    accessibilityLabel="Close"
+                  >
+                    <HugeiconsIcon
+                      icon={Cancel01Icon}
+                      size={16}
+                      color={colors.text}
+                      strokeWidth={1.75}
+                    />
                   </Pressable>
-                  <Text style={styles.timeTitle}>
-                    {draftDay
-                      ? format(draftDay, 'EEE, MMM d')
-                      : 'Pick time'}
-                  </Text>
-                  <View style={{ width: 48 }} />
                 </View>
                 <ScrollView style={styles.timeList} nestedScrollEnabled>
                   {TIME_SLOTS.map((slot) => {
@@ -305,7 +373,6 @@ function createStyles(colors: ThemeColors) {
       paddingHorizontal: 14,
       paddingVertical: 10,
     },
-    fieldIcon: { fontSize: 18 },
     fieldText: { flex: 1, minWidth: 0 },
     caption: {
       fontSize: 12,
@@ -325,7 +392,6 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    clearText: { color: colors.textSecondary, fontSize: 12 },
     backdrop: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.45)',
@@ -353,12 +419,6 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.surfaceMuted,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    navBtnText: {
-      fontSize: 20,
-      color: colors.text,
-      fontWeight: '600',
-      lineHeight: 22,
     },
     monthTitle: {
       fontSize: 17,
@@ -446,16 +506,25 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'space-between',
       marginBottom: spacing.sm,
+      gap: 8,
     },
-    backLink: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: colors.brand,
-      width: 64,
+    timeHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      flex: 1,
+      minWidth: 0,
     },
-    timeTitle: {
+    timeHeaderText: { flex: 1, minWidth: 0 },
+    timeValueRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 2,
+    },
+    timeValue: {
       fontSize: 16,
-      fontWeight: '700',
+      fontWeight: '600',
       color: colors.text,
     },
     timeList: { maxHeight: 320 },
