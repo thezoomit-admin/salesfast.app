@@ -150,7 +150,7 @@ export default function HomeScreen() {
         <MiniKpi
           label="Activities"
           value={kpis.completedActivities}
-          onPress={() => router.push('/(tabs)/activities')}
+          onPress={() => router.push('/activities')}
         />
       </View>
 
@@ -167,13 +167,13 @@ export default function HomeScreen() {
         />
         <QuickAction
           icon="phone"
-          label="Call sync"
-          onPress={() => router.push('/call-sync/setup')}
+          label="Calls"
+          onPress={() => router.push('/(tabs)/calls')}
         />
         <QuickAction
           icon="list-alt"
           label="Activity"
-          onPress={() => router.push('/(tabs)/activities')}
+          onPress={() => router.push('/activities')}
         />
       </View>
 

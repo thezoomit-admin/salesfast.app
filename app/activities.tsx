@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
@@ -11,16 +10,14 @@ import { formatDateTime } from '@/utils/dates';
 
 export default function ActivitiesScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const query = useQuery({
     queryKey: ['mobile-dashboard'],
     queryFn: fetchMobileDashboard,
   });
 
   return (
-    <View style={[styles.safe, { paddingTop: insets.top }]}>
+    <View style={styles.safe}>
       <View style={styles.header}>
-        <Text style={styles.title}>Activities</Text>
         <Text style={styles.subtitle}>
           Recent notes from your assigned leads. Matched calls sync from the Android build.
         </Text>
@@ -73,8 +70,7 @@ export default function ActivitiesScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  header: { padding: spacing.lg, gap: spacing.xs },
-  title: { ...typography.title, color: colors.text },
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.xs },
   subtitle: { ...typography.body, color: colors.textSecondary },
   list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
   card: {

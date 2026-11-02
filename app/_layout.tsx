@@ -101,6 +101,14 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="activities"
+              options={{
+                headerShown: true,
+                title: 'Activities',
+                headerTintColor: colors.brand,
+              }}
+            />
+            <Stack.Screen
               name="call-sync/setup"
               options={{
                 headerShown: true,
