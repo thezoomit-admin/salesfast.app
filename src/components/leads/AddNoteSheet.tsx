@@ -262,10 +262,15 @@ export function AddNoteSheet({
     enabled: visible,
   });
 
-  const recorder = useAudioRecorder({
-    ...RecordingPresets.HIGH_QUALITY,
-    isMeteringEnabled: true,
-  });
+  const recordingOptions = useMemo(
+    () => ({
+      ...RecordingPresets.HIGH_QUALITY,
+      isMeteringEnabled: true,
+      numberOfChannels: 1,
+    }),
+    []
+  );
+  const recorder = useAudioRecorder(recordingOptions);
   const recorderState = useAudioRecorderState(recorder, 250);
 
   const [note, setNote] = useState('');
@@ -404,6 +409,12 @@ export function AddNoteSheet({
       /* ignore */
     }
     if (reset) {
+      try {
+        playerRef.current?.remove();
+      } catch {
+        /* ignore */
+      }
+      playerRef.current = null;
       setPlayingId(null);
       setPaused(false);
       setPlayProgress(0);
@@ -532,22 +543,44 @@ export function AddNoteSheet({
   async function startRecording() {
     try {
       stopPlayback(true);
+
       const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Microphone permission denied');
+        Alert.alert(
+          'Microphone permission needed',
+          'Allow microphone access in system settings to record voice notes.'
+        );
         return;
       }
+
       await setAudioModeAsync({
         allowsRecording: true,
         playsInSilentMode: true,
+        interruptionMode: 'doNotMix',
       });
+
+      // Native recorder throws if prepared twice — reset first.
+      try {
+        const status = recorder.getStatus();
+        if (status.canRecord || status.isRecording) {
+          await recorder.stop();
+        }
+      } catch {
+        /* ignore — nothing to stop */
+      }
+
       await recorder.prepareToRecordAsync();
       recordStartedAt.current = Date.now();
       setRecordSec(0);
       recorder.record();
       setRecording(true);
-    } catch {
-      Alert.alert('Could not start recording');
+    } catch (err) {
+      setRecording(false);
+      const msg = getErrorMessage(err);
+      Alert.alert(
+        'Could not start recording',
+        msg || 'Check microphone permission and try again.'
+      );
     }
   }
 

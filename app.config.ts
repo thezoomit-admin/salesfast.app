@@ -47,7 +47,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     predictiveBackGestureEnabled: false,
     ...(googleServicesFile ? { googleServicesFile } : {}),
-    permissions: ['READ_CALL_LOG', 'POST_NOTIFICATIONS'],
+    permissions: [
+      'READ_CALL_LOG',
+      'POST_NOTIFICATIONS',
+      'RECORD_AUDIO',
+      'MODIFY_AUDIO_SETTINGS',
+    ],
     // Dev API is http:// — required for device → local backend.
     // Expo Android typings omit this field on some SDK versions.
     ...({ usesCleartextTraffic: true } as object),
@@ -60,7 +65,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     '@react-native-community/datetimepicker',
-    'expo-audio',
+    [
+      'expo-audio',
+      {
+        microphonePermission:
+          'Allow Salesfast to record voice notes for leads.',
+        recordAudioAndroid: true,
+      },
+    ],
     'expo-document-picker',
     [
       'expo-splash-screen',
