@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   Alert,
@@ -20,28 +20,20 @@ import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
 import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
-import { LeadCallHistoryPanel } from '@/components/leads/LeadCallHistoryPanel';
-import { LeadHistoryPanel } from '@/components/leads/LeadHistoryPanel';
 import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
-import { LeadViewHistoryPanel } from '@/components/leads/LeadViewHistoryPanel';
 import { Button } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/FilterChip';
 import { Screen } from '@/components/ui/Screen';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { LeadDetailSkeleton } from '@/components/ui/skeletons';
 import {
-  EmptyState,
   ErrorState,
   QueryPlaceholder,
 } from '@/components/ui/StateViews';
 import { TextField } from '@/components/ui/TextField';
 import { useAuth } from '@/features/auth/AuthContext';
 import {
-  fetchLeadById,
-  leadMetaQuery,
   leadStatusesQuery,
   noteChannelsQuery,
-  startLeadView,
 } from '@/features/leads/leadsApi';
 import {
   formatMoney,
@@ -56,20 +48,13 @@ import {
   type AddNoteVars,
   type UpdateStatusVars,
 } from '@/features/leads/leadWrites';
+import { useLeadDetail } from '@/features/leads/useLeadDetail';
 import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 type NoteForm = { note: string; followupAt?: string };
-type MainTab = 'overview' | 'history' | 'calls' | 'views';
 type OverviewView = 'profile' | 'requirements';
-
-const MAIN_TABS: { key: MainTab; label: string }[] = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'history', label: 'History' },
-  { key: 'calls', label: 'Call History' },
-  { key: 'views', label: 'View History' },
-];
 
 const OVERVIEW_PILLS: { key: OverviewView; label: string }[] = [
   { key: 'profile', label: 'Buyer Profile' },
@@ -80,7 +65,7 @@ const noteResolver = formResolver<NoteForm>((v) => ({
   note: minLength(v.note, 1, 'Note is required'),
 }));
 
-export default function LeadDetailScreen() {
+export default function LeadOverviewScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -89,29 +74,11 @@ export default function LeadDetailScreen() {
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<MainTab>('overview');
   const [overviewView, setOverviewView] = useState<OverviewView>('profile');
 
-  const leadQuery = useQuery({
-    queryKey: ['lead', leadId],
-    queryFn: () => fetchLeadById(leadId),
-    enabled: Number.isFinite(leadId),
-  });
+  const { leadQuery, metaQuery } = useLeadDetail(leadId);
   const statusesQuery = useQuery(leadStatusesQuery);
   const channelsQuery = useQuery(noteChannelsQuery);
-  const metaQuery = useQuery(leadMetaQuery);
-
-  // Match web portal: every visit lands in View History.
-  useEffect(() => {
-    if (!Number.isFinite(leadId)) return;
-    void startLeadView(leadId)
-      .then(() =>
-        queryClient.invalidateQueries({ queryKey: ['lead-views', leadId] })
-      )
-      .catch(() => {
-        // Best effort — never block the screen.
-      });
-  }, [leadId, queryClient]);
 
   const callChannelId = useMemo(
     () =>
@@ -178,10 +145,6 @@ export default function LeadDetailScreen() {
     statusMutation.mutate(write, { onSuccess: () => setStatusOpen(false) });
   };
 
-  const pendingNotes = useMutationState({
-    filters: { mutationKey: ADD_NOTE_MUTATION, status: 'pending' },
-    select: (m) => m.state.variables as AddNoteVars,
-  }).filter((v) => v?.leadId === leadId);
   const pendingStatusId = useMutationState({
     filters: { mutationKey: UPDATE_STATUS_MUTATION, status: 'pending' },
     select: (m) => m.state.variables as UpdateStatusVars,
@@ -196,7 +159,7 @@ export default function LeadDetailScreen() {
 
   if (!leadQuery.data) {
     return (
-      <Screen header={<ScreenHeader title="Lead" />}>
+      <Screen embedded>
         {Number.isFinite(leadId) ? (
           <QueryPlaceholder
             query={leadQuery}
@@ -235,7 +198,7 @@ export default function LeadDetailScreen() {
 
   return (
     <Screen
-      header={<ScreenHeader title={name} />}
+      embedded
       scroll
       refreshing={leadQuery.isRefetching}
       onRefresh={() => leadQuery.refetch()}
@@ -322,71 +285,27 @@ export default function LeadDetailScreen() {
         />
       </View>
 
-      {/* Main tabs — same as web portal */}
-      <View style={styles.tabShell}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabRow}
-        >
-          {MAIN_TABS.map((tab) => (
-            <FilterChip
-              key={tab.key}
-              label={tab.label}
-              active={activeTab === tab.key}
-              onPress={() => setActiveTab(tab.key)}
-            />
-          ))}
-        </ScrollView>
-
-        <View style={styles.tabBody}>
-          {activeTab === 'overview' ? (
-            <View style={styles.overviewWrap}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.subTabRow}
-              >
-                {OVERVIEW_PILLS.map((p) => (
-                  <FilterChip
-                    key={p.key}
-                    label={p.label}
-                    active={overviewView === p.key}
-                    onPress={() => setOverviewView(p.key)}
-                  />
-                ))}
-              </ScrollView>
-              {overviewView === 'profile' ? (
-                <LeadBuyerProfilePanel lead={lead} meta={meta} />
-              ) : (
-                <LeadRequirementsPanel lead={lead} meta={meta} />
-              )}
-            </View>
-          ) : null}
-
-          {activeTab === 'history' ? (
-            <View style={styles.notesWrap}>
-              {pendingNotes.map((note) => (
-                <View key={note.clientId} style={styles.pendingNote}>
-                  <Text style={styles.pendingText}>
-                    Waiting to sync · {formatDateTime(new Date(note.queuedAt))}
-                  </Text>
-                  <Text style={styles.noteBody}>{note.note}</Text>
-                </View>
-              ))}
-              <LeadHistoryPanel lead={lead} />
-            </View>
-          ) : null}
-
-          {activeTab === 'calls' ? <LeadCallHistoryPanel lead={lead} /> : null}
-
-          {activeTab === 'views' ? (
-            Number.isFinite(leadId) ? (
-              <LeadViewHistoryPanel leadId={leadId} />
-            ) : (
-              <EmptyState title="Unavailable" message="Lead id is missing." />
-            )
-          ) : null}
+      <View style={styles.tabBody}>
+        <View style={styles.overviewWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.subTabRow}
+          >
+            {OVERVIEW_PILLS.map((p) => (
+              <FilterChip
+                key={p.key}
+                label={p.label}
+                active={overviewView === p.key}
+                onPress={() => setOverviewView(p.key)}
+              />
+            ))}
+          </ScrollView>
+          {overviewView === 'profile' ? (
+            <LeadBuyerProfilePanel lead={lead} meta={meta} />
+          ) : (
+            <LeadRequirementsPanel lead={lead} meta={meta} />
+          )}
         </View>
       </View>
 
@@ -534,20 +453,6 @@ function createStyles(colors: ThemeColors) {
     },
     prefChipValue: { ...typography.body, color: colors.text, fontWeight: '500' },
     actions: { flexDirection: 'row', gap: spacing.sm },
-    tabShell: {
-      backgroundColor: colors.surfaceMuted,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
-      paddingTop: spacing.md,
-      gap: spacing.md,
-    },
-    tabRow: {
-      paddingHorizontal: spacing.md,
-      gap: spacing.sm,
-      alignItems: 'center',
-    },
     subTabRow: {
       gap: spacing.sm,
       alignItems: 'center',
@@ -555,21 +460,14 @@ function createStyles(colors: ThemeColors) {
     },
     tabBody: {
       backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
       padding: spacing.lg,
       minHeight: 160,
     },
     overviewWrap: { gap: spacing.md },
-    notesWrap: { gap: spacing.sm },
-    pendingNote: {
-      borderWidth: 1,
-      borderColor: colors.warningSoft,
-      borderRadius: 12,
-      padding: spacing.md,
-      gap: 4,
-      backgroundColor: colors.warningSoft,
-    },
     pendingText: { ...typography.caption, color: colors.warning },
-    noteBody: { ...typography.body, color: colors.textSecondary },
     modalBackdrop: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.35)',
