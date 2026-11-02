@@ -2,8 +2,8 @@
  * Auth / splash tokens — layout follows Hisab; colors are Salesfast CRM brand.
  */
 export const authColors = {
-  /** Splash / solid brand wash (logo navy). */
-  splash: '#15202C',
+  /** Splash — solid black (matches favicon plate; Hisab-style flat brand bg). */
+  splash: '#000000',
   primary: '#F2461C',
   primaryPressed: '#D93B14',
   primarySoft: '#FBD2C2',

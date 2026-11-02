@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -32,7 +31,7 @@ const TEXT_DELAY_MS = LOGO_IN_MS + 80;
 const TEXT_IN_MS = 480;
 
 /**
- * Brand splash — Hisab text/logo animation, Salesfast brand bg + mark.
+ * Brand splash — Hisab solid-bg pattern; Salesfast black matches logo plate.
  */
 export function BrandSplash({
   mode = 'logo',
@@ -48,7 +47,6 @@ export function BrandSplash({
   useEffect(() => {
     if (mode !== 'animated') return;
 
-    // Reset so replay / Strict Mode always gets a clean Hisab-style sequence
     logoOpacity.value = 0;
     logoScale.value = 0.88;
     textOpacity.value = 0;
@@ -108,27 +106,6 @@ export function BrandSplash({
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-
-      <LinearGradient
-        colors={['#1C2A3A', '#15202C', '#0E151C']}
-        locations={[0, 0.45, 1]}
-        start={{ x: 0.15, y: 0 }}
-        end={{ x: 0.85, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={[
-          'rgba(242, 70, 28, 0.34)',
-          'rgba(242, 70, 28, 0.10)',
-          'transparent',
-        ]}
-        locations={[0, 0.35, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.85, y: 0.7 }}
-        style={styles.glowTop}
-        pointerEvents="none"
-      />
-
       <View style={styles.center}>
         {showLogo ? (
           <Animated.View style={logoStyle}>
@@ -149,21 +126,14 @@ export function BrandSplash({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: authColors.splash,
+    // Solid black — matches favicon plate (Hisab uses solid brand brown).
+    backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  glowTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '62%',
   },
   center: {
     alignItems: 'center',
     paddingHorizontal: 24,
-    zIndex: 1,
   },
   logo: {
     width: 88,
@@ -172,7 +142,6 @@ const styles = StyleSheet.create({
   textBlock: {
     alignItems: 'center',
   },
-  // Text styles / motion match Hisab BrandSplash
   name: {
     marginTop: 22,
     color: authColors.white,
