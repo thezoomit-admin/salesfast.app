@@ -198,7 +198,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Call"
-            hitSlop={6}
+            hitSlop={8}
             disabled={!phone}
             onPress={(e) => {
               e.stopPropagation?.();
@@ -206,17 +206,19 @@ export const LeadListItemCard = memo(function LeadListItemCard({
             }}
             style={({ pressed }) => [
               styles.actionBtn,
-              styles.callBtn,
-              (!phone || pressed) && styles.actionPressed,
-              !phone && styles.actionDisabled,
+              (pressed || !phone) && styles.actionFaded,
             ]}
           >
-            <Ionicons name="call" size={16} color={colors.white} />
+            <Ionicons
+              name="call-outline"
+              size={20}
+              color={phone ? colors.brand : colors.textMuted}
+            />
           </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="WhatsApp"
-            hitSlop={6}
+            hitSlop={8}
             disabled={!whatsapp}
             onPress={(e) => {
               e.stopPropagation?.();
@@ -224,12 +226,14 @@ export const LeadListItemCard = memo(function LeadListItemCard({
             }}
             style={({ pressed }) => [
               styles.actionBtn,
-              styles.waBtn,
-              (!whatsapp || pressed) && styles.actionPressed,
-              !whatsapp && styles.actionDisabled,
+              (pressed || !whatsapp) && styles.actionFaded,
             ]}
           >
-            <Ionicons name="logo-whatsapp" size={17} color={colors.white} />
+            <Ionicons
+              name="logo-whatsapp"
+              size={20}
+              color={whatsapp ? '#25D366' : colors.textMuted}
+            />
           </Pressable>
         </View>
       </View>
@@ -288,23 +292,15 @@ function createStyles(colors: ThemeColors) {
     actions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 4,
       flexShrink: 0,
     },
     actionBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: radii.pill,
+      width: 32,
+      height: 32,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    callBtn: {
-      backgroundColor: colors.brand,
-    },
-    waBtn: {
-      backgroundColor: '#25D366',
-    },
-    actionPressed: { opacity: 0.85 },
-    actionDisabled: { opacity: 0.4 },
+    actionFaded: { opacity: 0.45 },
   });
 }
