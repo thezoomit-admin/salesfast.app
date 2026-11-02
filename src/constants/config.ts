@@ -74,7 +74,7 @@ function resolveApiUrl() {
 
 export const API_BASE_URL = resolveApiUrl();
 
-export const APP_NAME = 'Salesfast- Real estate CRM';
+export const APP_NAME = 'Salesfast- CRM';
 export const APP_VERSION = '1.0.0';
 
 /** Dokploy staging API — used by installed APKs. */

@@ -20,7 +20,7 @@ const googleServicesFile =
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Salesfast- Real estate CRM',
+  name: 'Salesfast- CRM',
   slug: 'salesfast',
   version: '1.0.0',
   owner: 'ibnabdullah01',
