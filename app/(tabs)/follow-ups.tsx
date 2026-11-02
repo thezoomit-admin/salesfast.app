@@ -131,8 +131,7 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       gap: spacing.sm,
       paddingHorizontal: spacing.lg,
-      marginTop: spacing.sm,
-      marginBottom: spacing.sm,
+      marginVertical: 10,
     },
     tab: {
       flex: 1,
@@ -148,7 +147,7 @@ function createStyles(colors: ThemeColors) {
     tabTextActive: { color: colors.white },
     list: {
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
+      paddingTop: 0,
       paddingBottom: spacing.lg,
       gap: spacing.md,
       flexGrow: 1,

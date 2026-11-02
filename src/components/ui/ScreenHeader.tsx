@@ -190,10 +190,10 @@ function createStyles(colors: ThemeColors) {
       borderBottomColor: colors.brandSoft,
       zIndex: 2,
     },
-    /** Tab roots sit directly above chips/tabs — keep the seam tight. */
+    /** Tab roots sit directly above chips/tabs — seam handled by chip/tab margins. */
     wrapTabRoot: {
       marginBottom: 0,
-      paddingBottom: 6,
+      paddingBottom: 0,
     },
     centerSlot: {
       position: 'absolute',

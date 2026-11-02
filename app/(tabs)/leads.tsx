@@ -217,12 +217,11 @@ function createStyles(colors: ThemeColors) {
       paddingVertical: spacing.sm,
     },
     chips: {
-      marginTop: spacing.sm,
-      marginBottom: spacing.sm,
+      marginVertical: 10,
     },
     list: {
       paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
+      paddingTop: 0,
       paddingBottom: spacing.lg,
       gap: spacing.md,
       flexGrow: 1,
