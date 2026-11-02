@@ -1,13 +1,12 @@
 const { getDefaultConfig } = require('expo/metro-config');
-const os = require('os');
 
 const projectRoot = __dirname;
 const config = getDefaultConfig(projectRoot);
 
-// Windows often hits EMFILE during parallel transform + metro-cache reads.
-// Cap workers so BinaryFileStore doesn't open thousands of handles at once.
-// Keep this low on Windows — higher concurrency reliably hits EMFILE.
-config.maxWorkers = 2;
+// Windows EMFILE: Temp metro-cache BinaryFileStore opens too many handles.
+// 1 worker + no persistent cache avoids that failure mode.
+config.maxWorkers = 1;
+config.cacheStores = [];
 
 // Keep watcher scoped to this app only.
 config.watchFolders = [projectRoot];
@@ -17,6 +16,7 @@ config.resolver.blockList = [
   /.*[/\\]android[/\\]\.gradle[/\\].*/,
   /.*[/\\]ios[/\\]Pods[/\\].*/,
   /.*[/\\]ios[/\\]build[/\\].*/,
+  /.*[/\\]node_modules[/\\]\.cache[/\\].*/,
 ];
 
 module.exports = config;
