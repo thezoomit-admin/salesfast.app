@@ -1,14 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
-import type { ComponentProps } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
-import { ChipScroll } from '@/components/ui/ChipScroll';
 import { Screen } from '@/components/ui/Screen';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -19,18 +16,6 @@ import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { markFirstContent } from '@/lib/perfMonitor';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import { formatDate, formatRelative } from '@/utils/dates';
-
-type IoniconName = ComponentProps<typeof Ionicons>['name'];
-type AlertTone = 'danger' | 'warn' | 'muted';
-type AlertKey = 'overdue' | 'callSync' | 'today';
-
-type AlertItem = {
-  key: AlertKey;
-  label: string;
-  icon: IoniconName;
-  tone: AlertTone;
-  href: Href;
-};
 
 function greetingForHour(hour: number) {
   if (hour < 5) return 'Good night';
@@ -45,16 +30,22 @@ function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
 }
 
+type KpiTile = {
+  key: string;
+  label: string;
+  value: number;
+  href: Href;
+  danger?: boolean;
+};
+
 export default function HomeScreen() {
-  const { colors, resolved } = useTheme();
-  const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const callSync = useCallSyncStatus();
   const query = useQuery(dashboardQuery);
-  const [dismissed, setDismissed] = useState<Set<AlertKey>>(new Set());
 
   useFocusEffect(
     useCallback(() => {
@@ -69,6 +60,7 @@ export default function HomeScreen() {
   );
   const syncOk =
     callSync.status === 'configured' || callSync.status === 'unavailable_web';
+  const roleLine = user?.designation?.name?.trim() || 'Sales agent';
 
   const homeHeader = (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -79,35 +71,31 @@ export default function HomeScreen() {
           onPress={() => router.navigate('/(tabs)/profile')}
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <UserAvatar
-            uri={user?.profilePhoto}
-            name={user?.name}
-            size={40}
-          />
+          <UserAvatar uri={user?.profilePhoto} name={user?.name} size={40} />
         </Pressable>
         <View style={styles.headerText}>
           <Text style={styles.greeting} numberOfLines={1}>
             {greeting}
           </Text>
-          <View style={styles.metaRow}>
-            {user?.designation?.name ? (
-              <View style={styles.metaChip}>
-                <Text style={styles.metaChipText} numberOfLines={1}>
-                  {user.designation.name}
-                </Text>
-              </View>
-            ) : null}
-            <View style={styles.syncChip}>
+          <Text style={styles.roleLine} numberOfLines={1}>
+            {roleLine}
+          </Text>
+          {!syncOk ? (
+            <Pressable
+              onPress={() => router.navigate('/call-sync/setup')}
+              hitSlop={6}
+              style={styles.syncWarn}
+              accessibilityRole="button"
+              accessibilityLabel="Set up call sync"
+            >
               <Ionicons
-                name={syncOk ? 'cloud-done-outline' : 'cloud-offline-outline'}
-                size={11}
-                color={colors.textMuted}
+                name="cloud-offline-outline"
+                size={12}
+                color={colors.warning}
               />
-              <Text style={styles.syncChipText} numberOfLines={1}>
-                {syncOk ? 'Call sync on' : 'Call sync off'}
-              </Text>
-            </View>
-          </View>
+              <Text style={styles.syncWarnText}>Set up call sync</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
       <NotificationBell plain />
@@ -130,57 +118,43 @@ export default function HomeScreen() {
   }
 
   const { kpis } = data;
-  const focusTotal = kpis.todayFollowUps + kpis.overdueFollowUps;
-  const attentionClear = focusTotal === 0;
-  const hasFollowUps = kpis.pendingFollowUps > 0;
-  // Only score when there is something to score — 0 pending ≠ 100% healthy.
-  const pulseClamped = hasFollowUps
-    ? Math.max(
-        0,
-        Math.min(
-          100,
-          Math.round(
-            ((kpis.pendingFollowUps - kpis.overdueFollowUps) /
-              kpis.pendingFollowUps) *
-              100
-          )
-        )
-      )
-    : 0;
 
-  const alerts = (
-    [
-      kpis.overdueFollowUps > 0
-        ? {
-            key: 'overdue' as const,
-            label: `${kpis.overdueFollowUps} overdue`,
-            icon: 'time' as const,
-            tone: 'danger' as const,
-            href: '/(tabs)/follow-ups' as Href,
-          }
-        : null,
-      kpis.todayFollowUps > 0
-        ? {
-            key: 'today' as const,
-            label: `${kpis.todayFollowUps} due today`,
-            icon: 'sunny' as const,
-            tone: 'warn' as const,
-            href: '/(tabs)/follow-ups' as Href,
-          }
-        : null,
-      !syncOk
-        ? {
-            key: 'callSync' as const,
-            label: 'Set up call sync',
-            icon: 'sync-outline' as const,
-            tone: 'muted' as const,
-            href: '/call-sync/setup' as Href,
-          }
-        : null,
-    ].filter(Boolean) as AlertItem[]
-  ).filter((a) => !dismissed.has(a.key));
+  const kpiTiles: KpiTile[] = [
+    {
+      key: 'today',
+      label: 'Due today',
+      value: kpis.todayFollowUps,
+      href: '/(tabs)/follow-ups',
+    },
+    {
+      key: 'overdue',
+      label: 'Overdue',
+      value: kpis.overdueFollowUps,
+      href: '/(tabs)/follow-ups',
+      danger: kpis.overdueFollowUps > 0,
+    },
+    {
+      key: 'assigned',
+      label: 'Assigned',
+      value: kpis.totalAssigned,
+      href: '/(tabs)/leads',
+    },
+    {
+      key: 'new',
+      label: 'New (7d)',
+      value: kpis.newLeads,
+      href: '/(tabs)/leads',
+    },
+  ];
 
-  const topFollowUps = data.upcomingFollowUps.slice(0, 2);
+  const queue = [...data.upcomingFollowUps]
+    .sort((a, b) => {
+      const aOver = isOverdue(a.dueAt) ? 0 : 1;
+      const bOver = isOverdue(b.dueAt) ? 0 : 1;
+      if (aOver !== bOver) return aOver - bOver;
+      return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+    })
+    .slice(0, 6);
 
   return (
     <Screen
@@ -190,332 +164,86 @@ export default function HomeScreen() {
       onRefresh={() => query.refetch()}
       contentStyle={styles.screenContent}
     >
-      {alerts.length > 0 ? (
-        <ChipScroll padded={false} style={styles.alertsWrap}>
-          {alerts.map((alert) => (
-            <View
-              key={alert.key}
-              style={[
-                styles.alertChip,
-                alert.tone === 'danger' && styles.alertDanger,
-                alert.tone === 'warn' && styles.alertWarn,
-                alert.tone === 'muted' && styles.alertMuted,
-              ]}
-            >
-              <Pressable
-                onPress={() => router.navigate(alert.href)}
-                style={styles.alertBody}
-                accessibilityRole="button"
-              >
-                <Ionicons
-                  name={alert.icon}
-                  size={14}
-                  color={
-                    alert.tone === 'danger'
-                      ? colors.danger
-                      : alert.tone === 'warn'
-                        ? isDark ? colors.warning : '#B45309'
-                        : colors.textMuted
-                  }
-                />
-                <Text
-                  style={[
-                    styles.alertLabel,
-                    alert.tone === 'danger' && styles.alertLabelDanger,
-                    alert.tone === 'warn' && styles.alertLabelWarn,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {alert.label}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityLabel="Dismiss"
-                hitSlop={6}
-                onPress={() =>
-                  setDismissed((prev) => new Set(prev).add(alert.key))
-                }
-                style={styles.alertDismiss}
-              >
-                <Ionicons
-                  name="close"
-                  size={14}
-                  color={
-                    alert.tone === 'danger'
-                      ? colors.danger
-                      : alert.tone === 'warn'
-                        ? isDark ? colors.warning : '#92400E'
-                        : isDark ? colors.textSecondary : '#4B5563'
-                  }
-                />
-              </Pressable>
-            </View>
-          ))}
-        </ChipScroll>
-      ) : null}
-
-      {/* Hero — deep brand gradient */}
-      <Pressable
-        onPress={() => router.navigate('/(tabs)/follow-ups')}
-        style={({ pressed }) => pressed && styles.pressed}
-      >
-        <LinearGradient
-          colors={['#C43516', '#9A2A12', '#6B1C0C']}
-          locations={[0, 0.5, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.heroSheen} pointerEvents="none" />
-          <View style={styles.heroTop}>
-            <View style={styles.periodPill}>
-              <Text style={styles.periodText}>Today</Text>
-            </View>
-            <View style={styles.heroLinkRow}>
-              <Text style={styles.heroLink}>Follow-ups</Text>
-              <Ionicons name="chevron-forward" size={14} color={colors.white} />
-            </View>
-          </View>
-          <Text style={styles.heroLabel}>Needs attention</Text>
-          <Text style={styles.heroValue}>{focusTotal}</Text>
-          <Text style={styles.heroHint}>
-            {attentionClear
-              ? 'You’re clear — no urgent follow-ups'
-              : `${kpis.todayFollowUps} today · ${kpis.overdueFollowUps} overdue`}
-          </Text>
-          <View style={styles.heroStats}>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Assigned</Text>
-              <Text style={styles.heroStatValue}>{kpis.totalAssigned}</Text>
-            </View>
-            <View style={styles.heroDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>New (7d)</Text>
-              <Text style={styles.heroStatValue}>{kpis.newLeads}</Text>
-            </View>
-            <View style={styles.heroDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Activities</Text>
-              <Text style={styles.heroStatValue}>{kpis.completedActivities}</Text>
-            </View>
-          </View>
-        </LinearGradient>
-      </Pressable>
-
-      {/* Pulse — BudgetPulse pattern → follow-up health */}
-      <Pressable
-        onPress={() => router.navigate('/(tabs)/follow-ups')}
-        style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-      >
-        <View style={styles.pulseHeader}>
-          <Text style={styles.cardTitle}>Follow-up health</Text>
-          <Text style={styles.pulsePct}>
-            {hasFollowUps ? `${pulseClamped}%` : '—'}
-          </Text>
-        </View>
-        <View style={styles.pulseTrack}>
-          <View
-            style={[
-              styles.pulseFill,
-              {
-                width: `${pulseClamped}%`,
-                backgroundColor: !hasFollowUps
-                  ? colors.border
-                  : pulseClamped < 50
-                    ? colors.danger
-                    : pulseClamped < 80
-                      ? colors.warning
-                      : colors.success,
-              },
+      {/* 2×2 day-board KPIs */}
+      <View style={styles.kpiGrid}>
+        {kpiTiles.map((tile) => (
+          <Pressable
+            key={tile.key}
+            onPress={() => router.navigate(tile.href)}
+            style={({ pressed }) => [
+              styles.kpiTile,
+              tile.danger && styles.kpiTileDanger,
+              pressed && styles.pressed,
             ]}
-          />
-        </View>
-        <Text style={styles.pulseMeta}>
-          {!hasFollowUps
-            ? 'No follow-ups set yet — schedule one from a lead'
-            : kpis.overdueFollowUps > 0
-              ? `${kpis.overdueFollowUps} overdue of ${kpis.pendingFollowUps} pending`
-              : `${kpis.pendingFollowUps} pending · none overdue`}
-        </Text>
-      </Pressable>
-
-      {/* Utilities — only destinations not already in the tab bar */}
-      <View>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Utilities</Text>
-        </View>
-        <ChipScroll padded={false}>
-          {(
-            [
-              {
-                key: 'activity',
-                label: 'Activity',
-                icon: 'list-outline' as const,
-                href: '/activities' as Href,
-              },
-              {
-                key: 'notifications',
-                label: 'Notifications',
-                icon: 'notifications-outline' as const,
-                href: '/notifications' as Href,
-              },
-              {
-                key: 'sync',
-                label: syncOk ? 'Call sync' : 'Set up sync',
-                icon: 'sync-outline' as const,
-                href: '/call-sync/setup' as Href,
-              },
-              {
-                key: 'profile',
-                label: 'Personal info',
-                icon: 'person-outline' as const,
-                href: '/settings/edit' as Href,
-              },
-            ] as const
-          ).map((chip) => (
-            <Pressable
-              key={chip.key}
-              onPress={() => router.navigate(chip.href)}
-              style={({ pressed }) => [
-                styles.quickChip,
-                pressed && styles.pressed,
-              ]}
+            accessibilityRole="button"
+            accessibilityLabel={`${tile.label}: ${tile.value}`}
+          >
+            <Text
+              style={[styles.kpiValue, tile.danger && styles.kpiValueDanger]}
             >
-              <Ionicons name={chip.icon} size={16} color={colors.brand} />
-              <Text style={styles.quickChipText}>{chip.label}</Text>
-            </Pressable>
-          ))}
-        </ChipScroll>
+              {tile.value}
+            </Text>
+            <Text
+              style={[styles.kpiLabel, tile.danger && styles.kpiLabelDanger]}
+            >
+              {tile.label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
-      {/* Needs attention snapshot — LedgerSnapshot pattern */}
+      {/* Today's queue — single agenda */}
       <View>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Needs attention</Text>
+          <Text style={styles.sectionTitle}>{"Today's queue"}</Text>
           <Pressable
             onPress={() => router.navigate('/(tabs)/follow-ups')}
             hitSlop={6}
             style={styles.seeAll}
           >
-            <Text style={styles.seeAllText}>See all</Text>
+            <Text style={styles.seeAllText}>Open follow-ups</Text>
             <Ionicons name="chevron-forward" size={14} color={colors.brand} />
           </Pressable>
         </View>
-        <View style={styles.card}>
-          <View style={styles.snapshotTotals}>
-            <Pressable
-              style={styles.snapshotCol}
-              onPress={() => router.navigate('/(tabs)/follow-ups')}
-            >
-              <Text style={styles.snapshotLabel}>Today</Text>
-              <Text style={styles.snapshotValue}>{kpis.todayFollowUps}</Text>
-            </Pressable>
-            <View style={styles.snapshotDivider} />
-            <Pressable
-              style={styles.snapshotCol}
-              onPress={() => router.navigate('/(tabs)/follow-ups')}
-            >
-              <Text style={styles.snapshotLabel}>Overdue</Text>
-              <Text
-                style={[
-                  styles.snapshotValue,
-                  kpis.overdueFollowUps > 0 && styles.snapshotDanger,
-                ]}
-              >
-                {kpis.overdueFollowUps}
-              </Text>
-            </Pressable>
-          </View>
-          {topFollowUps.length === 0 ? (
-            <Text style={styles.inlineEmpty}>Nothing urgent right now.</Text>
-          ) : (
-            topFollowUps.map((item, idx) => {
-              const overdue = isOverdue(item.dueAt);
-              return (
-                <Pressable
-                  key={item.id}
-                  onPress={() => router.push(`/leads/${item.leadId}`)}
-                  style={({ pressed }) => [
-                    styles.personRow,
-                    idx === 0 && styles.personRowBorder,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.listCopy}>
-                    <Text style={styles.rowTitle} numberOfLines={1}>
-                      {item.leadName}
-                    </Text>
-                    <Text style={styles.rowMeta} numberOfLines={1}>
-                      {item.type || 'Follow-up'} · {formatDate(item.dueAt)}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.dueTag,
-                      overdue ? styles.dueTagWarn : styles.dueTagOk,
-                    ]}
-                  >
-                    {overdue ? 'Overdue' : 'Due'}
-                  </Text>
-                </Pressable>
-              );
-            })
-          )}
-        </View>
-      </View>
-
-      {/* Upcoming list */}
-      <View>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Upcoming follow-ups</Text>
-          <Pressable
-            onPress={() => router.navigate('/(tabs)/follow-ups')}
-            hitSlop={6}
-            style={styles.seeAll}
-          >
-            <Text style={styles.seeAllText}>See all</Text>
-            <Ionicons name="chevron-forward" size={14} color={colors.brand} />
-          </Pressable>
-        </View>
-        <View style={styles.card}>
-          {data.upcomingFollowUps.length === 0 ? (
+        <View style={styles.panel}>
+          {queue.length === 0 ? (
             <EmptyState
-              icon="calendar-outline"
-              title="No upcoming follow-ups"
-              message="Schedule the next touch from a lead."
+              icon="checkmark-circle-outline"
+              title="Queue is clear"
+              message="No follow-ups lined up. Pick a lead and schedule the next touch."
               actionLabel="Browse leads"
               onAction={() => router.navigate('/(tabs)/leads')}
             />
           ) : (
-            data.upcomingFollowUps.slice(0, 5).map((item, index) => {
+            queue.map((item, index) => {
               const overdue = isOverdue(item.dueAt);
               return (
                 <Pressable
                   key={item.id}
                   style={({ pressed }) => [
-                    styles.listRow,
-                    index === 0 && styles.listRowFirst,
+                    styles.queueRow,
+                    index > 0 && styles.rowDivider,
                     pressed && styles.pressed,
                   ]}
                   onPress={() => router.push(`/leads/${item.leadId}`)}
                 >
                   <View
                     style={[
-                      styles.timeChip,
-                      overdue ? styles.timeChipWarn : styles.timeChipDefault,
+                      styles.timeCol,
+                      overdue ? styles.timeColWarn : styles.timeColDefault,
                     ]}
                   >
                     <Text
                       style={[
-                        styles.timeChipText,
-                        overdue && styles.timeChipTextWarn,
+                        styles.timeColText,
+                        overdue && styles.timeColTextWarn,
                       ]}
                       numberOfLines={2}
                     >
                       {formatDate(item.dueAt)}
                     </Text>
                   </View>
-                  <View style={styles.listCopy}>
+                  <View style={styles.rowCopy}>
                     <Text style={styles.rowTitle} numberOfLines={1}>
                       {item.leadName}
                     </Text>
@@ -524,11 +252,15 @@ export default function HomeScreen() {
                       {item.leadPhone ? ` · ${item.leadPhone}` : ''}
                     </Text>
                   </View>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={14}
-                    color={colors.textMuted}
-                  />
+                  {overdue ? (
+                    <Text style={styles.overdueMark}>Overdue</Text>
+                  ) : (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={14}
+                      color={colors.textMuted}
+                    />
+                  )}
                 </Pressable>
               );
             })
@@ -536,10 +268,10 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Recent leads */}
+      {/* Pipeline updates */}
       <View>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent lead updates</Text>
+          <Text style={styles.sectionTitle}>Pipeline updates</Text>
           <Pressable
             onPress={() => router.navigate('/(tabs)/leads')}
             hitSlop={6}
@@ -549,26 +281,26 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={14} color={colors.brand} />
           </Pressable>
         </View>
-        <View style={styles.card}>
+        <View style={styles.panel}>
           {data.recentLeads.length === 0 ? (
-            <Text style={styles.inlineEmpty}>No recent leads.</Text>
+            <Text style={styles.inlineEmpty}>No recent lead activity.</Text>
           ) : (
             data.recentLeads.slice(0, 5).map((lead, index) => (
               <Pressable
                 key={lead.id}
                 style={({ pressed }) => [
-                  styles.listRow,
-                  index === 0 && styles.listRowFirst,
+                  styles.pipelineRow,
+                  index > 0 && styles.rowDivider,
                   pressed && styles.pressed,
                 ]}
                 onPress={() => router.push(`/leads/${lead.id}`)}
               >
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>
+                <View style={styles.pipelineMark}>
+                  <Text style={styles.pipelineMarkText}>
                     {(lead.name || '?').charAt(0).toUpperCase()}
                   </Text>
                 </View>
-                <View style={styles.listCopy}>
+                <View style={styles.rowCopy}>
                   <Text style={styles.rowTitle} numberOfLines={1}>
                     {lead.name}
                   </Text>
@@ -597,10 +329,10 @@ function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   }, [screen, hasData, fetched]);
 }
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
+function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screenContent: {
-      gap: 12,
+      gap: 16,
       paddingBottom: spacing.xxl,
       paddingTop: spacing.sm,
     },
@@ -623,7 +355,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       marginRight: 12,
       minWidth: 0,
     },
-    headerText: { flexShrink: 1, minWidth: 0, marginLeft: 10 },
+    headerText: { flexShrink: 1, minWidth: 0, marginLeft: 10, gap: 2 },
     greeting: {
       ...typography.subtitle,
       fontSize: 17,
@@ -631,196 +363,59 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       fontWeight: '700',
       color: colors.text,
     },
-    metaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 2,
-      flexWrap: 'wrap',
-    },
-    metaChip: {
-      backgroundColor: colors.accentSoft,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: radii.pill,
-      maxWidth: 160,
-    },
-    metaChipText: {
-      ...typography.caption,
-      fontSize: 11,
-      lineHeight: 16,
-      color: colors.text,
-    },
-    syncChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 3,
-      backgroundColor: colors.surfaceMuted,
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderRadius: radii.pill,
-      maxWidth: 140,
-    },
-    syncChipText: {
-      ...typography.caption,
-      fontSize: 10,
-      lineHeight: 14,
-      color: colors.textMuted,
-      flexShrink: 1,
-    },
-
-    alertsWrap: { marginBottom: 0 },
-    alertChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderRadius: radii.pill,
-      borderWidth: 0.5,
-      paddingLeft: 10,
-      paddingRight: 4,
-      paddingVertical: 6,
-      gap: 2,
-    },
-    alertDanger: {
-      backgroundColor: colors.dangerSoft,
-      borderColor: isDark ? colors.danger : '#FECDCA',
-    },
-    alertWarn: {
-      backgroundColor: colors.warningSoft,
-      borderColor: isDark ? colors.warning : '#FEDF89',
-    },
-    alertMuted: { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
-    alertBody: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingRight: 4,
-    },
-    alertLabel: {
+    roleLine: {
       ...typography.caption,
       fontSize: 13,
+      lineHeight: 18,
+      color: colors.textSecondary,
+    },
+    syncWarn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginTop: 2,
+      alignSelf: 'flex-start',
+    },
+    syncWarnText: {
+      ...typography.caption,
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.warning,
+    },
+
+    kpiGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 10,
+    },
+    kpiTile: {
+      width: '48.5%',
+      backgroundColor: colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      borderRadius: radii.sm,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      gap: 4,
+    },
+    kpiTileDanger: {
+      backgroundColor: colors.dangerSoft,
+      borderColor: colors.dangerSoft,
+    },
+    kpiValue: {
+      ...typography.display,
+      fontSize: 28,
+      lineHeight: 32,
       color: colors.text,
     },
-    alertLabelDanger: { color: colors.danger, fontWeight: '600' },
-    alertLabelWarn: {
-      color: isDark ? colors.warning : '#B45309',
-      fontWeight: '600',
-    },
-    alertDismiss: { padding: 4 },
-
-    hero: {
-      borderRadius: radii.md,
-      paddingHorizontal: 16,
-      paddingTop: 14,
-      paddingBottom: 14,
-      overflow: 'hidden',
-    },
-    heroSheen: {
-      position: 'absolute',
-      width: 200,
-      height: 200,
-      borderRadius: 100,
-      backgroundColor: 'rgba(255,255,255,0.12)',
-      top: -70,
-      right: -45,
-    },
-    heroTop: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-    },
-    periodPill: {
-      backgroundColor: 'rgba(255,255,255,0.18)',
-      paddingHorizontal: 12,
-      paddingVertical: 5,
-      borderRadius: radii.pill,
-    },
-    periodText: {
+    kpiValueDanger: { color: colors.danger },
+    kpiLabel: {
       ...typography.caption,
-      color: colors.white,
-      fontWeight: '600',
-    },
-    heroLinkRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 2,
-    },
-    heroLink: {
-      ...typography.caption,
-      color: colors.white,
-      fontWeight: '700',
-    },
-    heroLabel: {
-      ...typography.caption,
-      color: 'rgba(255,255,255,0.78)',
-      marginBottom: 2,
-    },
-    heroValue: {
-      fontSize: 40,
-      lineHeight: 46,
-      fontWeight: '700',
-      letterSpacing: -1,
-      color: colors.white,
-    },
-    heroHint: {
-      ...typography.caption,
-      color: 'rgba(255,255,255,0.82)',
-      marginTop: 2,
-      marginBottom: 12,
-    },
-    heroStats: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: 'rgba(255,255,255,0.22)',
-      paddingTop: 12,
-    },
-    heroStat: { flex: 1, gap: 2 },
-    heroStatLabel: {
-      ...typography.caption,
-      fontSize: 11,
-      color: 'rgba(255,255,255,0.72)',
-    },
-    heroStatValue: {
-      ...typography.subtitle,
-      fontSize: 16,
-      color: colors.white,
-    },
-    heroDivider: {
-      width: StyleSheet.hairlineWidth,
-      height: 28,
-      backgroundColor: 'rgba(255,255,255,0.22)',
-      marginHorizontal: 8,
-    },
-
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: radii.md,
-      borderWidth: 0.5,
-      borderColor: colors.border,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-    },
-    cardTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
-    pulseHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-    },
-    pulsePct: { ...typography.subtitle, color: colors.text, fontSize: 15 },
-    pulseTrack: {
-      height: 8,
-      borderRadius: radii.pill,
-      backgroundColor: colors.surfaceMuted,
-      overflow: 'hidden',
-    },
-    pulseFill: { height: '100%', borderRadius: radii.pill },
-    pulseMeta: {
-      ...typography.caption,
+      fontSize: 13,
       color: colors.textSecondary,
-      marginTop: 8,
     },
+    kpiLabelDanger: { color: colors.danger, fontWeight: '600' },
 
     sectionHeader: {
       flexDirection: 'row',
@@ -841,117 +436,80 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       color: colors.brand,
       fontWeight: '600',
     },
-    quickChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: colors.surface,
-      borderWidth: 0.5,
-      borderColor: colors.border,
-      borderRadius: radii.sm,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-    },
-    quickChipText: {
-      ...typography.caption,
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.text,
-    },
 
-    snapshotTotals: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
-    snapshotCol: { flex: 1, gap: 2 },
-    snapshotLabel: {
-      ...typography.caption,
-      color: colors.textMuted,
-    },
-    snapshotValue: {
-      ...typography.title,
-      fontSize: 24,
-      color: colors.text,
-    },
-    snapshotDanger: { color: colors.danger },
-    snapshotDivider: {
-      width: StyleSheet.hairlineWidth,
-      height: 36,
-      backgroundColor: colors.border,
-      marginHorizontal: 12,
+    panel: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      overflow: 'hidden',
     },
     inlineEmpty: {
       ...typography.caption,
       color: colors.textMuted,
-      paddingTop: 8,
+      paddingVertical: 14,
+      paddingHorizontal: 4,
     },
-    personRow: {
+    rowDivider: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    rowCopy: { flex: 1, gap: 2, minWidth: 0 },
+    rowTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
+    rowMeta: { ...typography.caption, color: colors.textMuted },
+
+    queueRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      paddingTop: 12,
+      paddingVertical: 12,
     },
-    personRowBorder: {
-      marginTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-    },
-    dueTag: {
-      ...typography.caption,
-      fontSize: 11,
-      fontWeight: '700',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: radii.pill,
-      overflow: 'hidden',
-    },
-    dueTagWarn: { backgroundColor: colors.warningSoft, color: colors.warning },
-    dueTagOk: { backgroundColor: colors.brandSoft, color: colors.brand },
-
-    listRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      paddingVertical: spacing.md,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-    },
-    listRowFirst: { borderTopWidth: 0, paddingTop: spacing.xs },
-    listCopy: { flex: 1, gap: 2, minWidth: 0 },
-    rowTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
-    rowMeta: { ...typography.caption, color: colors.textMuted },
-    timeChip: {
-      width: 72,
-      minHeight: 44,
-      borderRadius: radii.sm,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
+    timeCol: {
+      width: 68,
+      minHeight: 40,
+      borderRadius: 6,
+      paddingHorizontal: 6,
+      paddingVertical: 6,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    timeChipDefault: { backgroundColor: colors.surfaceMuted },
-    timeChipWarn: { backgroundColor: colors.warningSoft },
-    timeChipText: {
+    timeColDefault: { backgroundColor: colors.surfaceMuted },
+    timeColWarn: { backgroundColor: colors.warningSoft },
+    timeColText: {
       ...typography.caption,
       color: colors.textSecondary,
       fontSize: 11,
       textAlign: 'center',
       lineHeight: 14,
     },
-    timeChipTextWarn: { color: colors.warning },
-    avatar: {
-      width: 40,
-      height: 40,
-      borderRadius: radii.pill,
-      backgroundColor: colors.brandSoft,
+    timeColTextWarn: { color: colors.warning, fontWeight: '700' },
+    overdueMark: {
+      ...typography.caption,
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.danger,
+    },
+
+    pipelineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 12,
+    },
+    pipelineMark: {
+      width: 36,
+      height: 36,
+      borderRadius: 6,
+      backgroundColor: colors.surfaceMuted,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    avatarText: {
+    pipelineMarkText: {
       ...typography.subtitle,
-      color: colors.brand,
-      fontSize: 15,
+      fontSize: 14,
+      color: colors.textSecondary,
     },
   });
 }
