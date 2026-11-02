@@ -1,4 +1,3 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import {
   useMutation,
   useMutationState,
@@ -17,7 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { z } from 'zod';
+import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
@@ -48,12 +47,11 @@ import { colors, radii, spacing, typography } from '@/theme';
 import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
-const noteSchema = z.object({
-  note: z.string().min(1, 'Note is required'),
-  followupAt: z.string().optional(),
-});
+type NoteForm = { note: string; followupAt?: string };
 
-type NoteForm = z.infer<typeof noteSchema>;
+const noteResolver = formResolver<NoteForm>((v) => ({
+  note: minLength(v.note, 1, 'Note is required'),
+}));
 
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -85,7 +83,7 @@ export default function LeadDetailScreen() {
     reset,
     formState: { errors },
   } = useForm<NoteForm>({
-    resolver: zodResolver(noteSchema),
+    resolver: noteResolver,
     defaultValues: { note: '', followupAt: '' },
   });
 

@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
@@ -15,18 +14,18 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { z } from 'zod';
+import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
 import { forgotPasswordRequest } from '@/features/auth/authApi';
 import { authColors } from '@/features/auth/authTheme';
 import { AuthInput } from '@/features/auth/components/AuthInput';
 
-const schema = z.object({
-  identifier: z.string().min(3, 'Email or phone is required'),
-});
+type FormValues = { identifier: string };
 
-type FormValues = z.infer<typeof schema>;
+const resolver = formResolver<FormValues>((v) => ({
+  identifier: minLength(v.identifier, 3, 'Email or phone is required'),
+}));
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -39,7 +38,7 @@ export default function ForgotPasswordScreen() {
     handleSubmit,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver,
     defaultValues: { identifier: '' },
   });
 
