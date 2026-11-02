@@ -90,6 +90,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         },
       },
     ],
+    // APK/AAB → SalesFast-CRM-v{version}.apk (version from app.config.ts)
+    './plugins/withSalesFastApkName.js',
   ],
   experiments: {
     typedRoutes: true,
