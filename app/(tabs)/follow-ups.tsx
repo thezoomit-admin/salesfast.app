@@ -7,6 +7,7 @@ import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
 import {
   followUpLeadsQuery,
   type FollowUpTab,
@@ -53,9 +54,22 @@ export default function FollowUpsScreen() {
     [openLead]
   );
 
+  const count = query.data?.items.length;
+  const headerSubtitle =
+    count == null
+      ? 'Today · Overdue · Upcoming'
+      : count === 0
+        ? EMPTY_COPY[tab].title
+        : `${count} in ${tab === 'today' ? 'Today' : tab === 'overdue' ? 'Overdue' : 'Upcoming'}`;
+
   return (
     <View style={styles.safe}>
-      <ScreenHeader title="Follow-ups" showBack={false} />
+      <ScreenHeader
+        title="Follow-ups"
+        subtitle={headerSubtitle}
+        showBack={false}
+        right={<NotificationBell plain />}
+      />
       <View style={styles.tabs}>
         {(
           [

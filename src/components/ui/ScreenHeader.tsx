@@ -8,6 +8,8 @@ import { colors, radii, typography } from '@/theme';
 
 type Props = {
   title: string;
+  /** Soft line under the title (tab roots). Ignored when centered. */
+  subtitle?: string;
   /** Center slot (e.g. filter pill). Stays truly centered. */
   center?: ReactNode;
   /** Right slot (e.g. actions). Always far-right. */
@@ -28,6 +30,7 @@ type Props = {
  */
 export function ScreenHeader({
   title,
+  subtitle,
   center,
   right,
   onBack,
@@ -98,14 +101,21 @@ export function ScreenHeader({
           <>
             <View style={styles.leftWithTitle}>
               {backControl}
-              <Text
-                style={[styles.titleInline, !showBack && styles.titleRoot]}
-                numberOfLines={1}
-              >
-                {title}
-              </Text>
+              <View style={styles.titleBlock}>
+                <Text
+                  style={[styles.titleInline, !showBack && styles.titleRoot]}
+                  numberOfLines={1}
+                >
+                  {title}
+                </Text>
+                {subtitle && !centered ? (
+                  <Text style={styles.subtitle} numberOfLines={1}>
+                    {subtitle}
+                  </Text>
+                ) : null}
+              </View>
             </View>
-            <View style={styles.right}>{right}</View>
+            <View style={styles.right}>{right ?? <View style={styles.iconBtn} />}</View>
           </>
         )}
       </View>
@@ -203,7 +213,12 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
     paddingRight: 8,
-    maxWidth: '70%',
+    maxWidth: '72%',
+  },
+  titleBlock: {
+    flexShrink: 1,
+    minWidth: 0,
+    gap: 1,
   },
   iconBtn: {
     width: 40,
@@ -214,15 +229,21 @@ const styles = StyleSheet.create({
   titleInline: {
     ...typography.subtitle,
     fontSize: 17,
-    lineHeight: 26,
+    lineHeight: 24,
     color: colors.text,
     flexShrink: 1,
   },
   titleRoot: {
-    fontSize: 20,
+    fontSize: 22,
     lineHeight: 28,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
     fontWeight: '700',
+  },
+  subtitle: {
+    ...typography.caption,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
   },
   titleCentered: {
     ...typography.subtitle,
