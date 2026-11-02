@@ -8,17 +8,14 @@ import {
 } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
 import {
   Alert,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
 import {
@@ -26,6 +23,7 @@ import {
   FlameIcon,
   MinusSignIcon,
 } from '@/components/icons/hugeicons';
+import { AddNoteSheet } from '@/components/leads/AddNoteSheet';
 import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
 import { LeadCallHistoryPanel } from '@/components/leads/LeadCallHistoryPanel';
 import {
@@ -37,7 +35,6 @@ import { LeadPipeline } from '@/components/leads/LeadPipeline';
 import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
 import { LeadSectionShell } from '@/components/leads/LeadSectionShell';
 import { LeadViewHistoryPanel } from '@/components/leads/LeadViewHistoryPanel';
-import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import {
   HeaderAddButton,
@@ -48,11 +45,9 @@ import {
   ErrorState,
   QueryPlaceholder,
 } from '@/components/ui/StateViews';
-import { TextField } from '@/components/ui/TextField';
 import { useAuth } from '@/features/auth/AuthContext';
 import {
   leadStatusesQuery,
-  noteChannelsQuery,
   updateLeadPriority,
 } from '@/features/leads/leadsApi';
 import {
@@ -62,9 +57,6 @@ import {
 import { summarizeLead } from '@/features/leads/leadSummary';
 import {
   ADD_NOTE_MUTATION,
-  leadWriteScope,
-  newLeadWrite,
-  onWriteQueued,
   UPDATE_STATUS_MUTATION,
   type AddNoteVars,
   type UpdateStatusVars,
@@ -81,18 +73,6 @@ import type { LeadPriority } from '@/types/api';
 import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
-type NoteForm = { note: string; followupAt?: string };
-type OverviewView = 'profile' | 'requirements';
-
-const OVERVIEW_PILLS = [
-  { key: 'profile' as const, label: 'Buyer Profile' },
-  { key: 'requirements' as const, label: 'Requirements' },
-];
-
-const noteResolver = formResolver<NoteForm>((v) => ({
-  note: minLength(v.note, 1, 'Note is required'),
-}));
-
 const PRIORITY_ICON = {
   LOW: ArrowDownDoubleIcon,
   MEDIUM: MinusSignIcon,
@@ -107,37 +87,16 @@ export default function LeadDetailScreen() {
   const accountId = useAuth().user?.id ?? '';
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
+  const [noteStageId, setNoteStageId] = useState<number | null>(null);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<LeadDetailTab>('overview');
-  const [overviewView, setOverviewView] = useState<OverviewView>('profile');
+  const [overviewPill, setOverviewPill] = useState<'profile' | 'requirements'>(
+    'profile'
+  );
 
   const { leadQuery, metaQuery } = useLeadDetail(leadId);
   const statusesQuery = useQuery(leadStatusesQuery);
-  const channelsQuery = useQuery(noteChannelsQuery);
 
-  const callChannelId = useMemo(
-    () =>
-      channelsQuery.data?.find((c) =>
-        c.name.toLowerCase().includes('call')
-      )?.id,
-    [channelsQuery.data]
-  );
-
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<NoteForm>({
-    resolver: noteResolver,
-    defaultValues: { note: '', followupAt: '' },
-  });
-
-  const scope = leadWriteScope(accountId);
-  const noteMutation = useMutation<unknown, Error, AddNoteVars>({
-    mutationKey: ADD_NOTE_MUTATION,
-    scope,
-  });
   const priorityMutation = useMutation({
     mutationFn: (priority: LeadPriority) =>
       updateLeadPriority(
@@ -166,33 +125,6 @@ export default function LeadDetailScreen() {
     },
   });
 
-  const submitNote = (values: NoteForm) => {
-    const write: AddNoteVars = {
-      ...newLeadWrite(accountId, leadId),
-      note: values.note.trim(),
-      channelId: callChannelId,
-      followupAt: values.followupAt?.trim() || undefined,
-    };
-    let queued = false;
-    onWriteQueued(queryClient, write.clientId, () => {
-      queued = true;
-      setNoteOpen(false);
-      reset();
-      Alert.alert(
-        'Saved offline',
-        'This note will be sent automatically when you are back online.'
-      );
-    });
-    noteMutation.mutate(write, {
-      onSuccess: () => {
-        if (queued) return;
-        setNoteOpen(false);
-        reset();
-        Alert.alert('Saved', 'Note added successfully.');
-      },
-    });
-  };
-
   const pendingNotes = useMutationState({
     filters: { mutationKey: ADD_NOTE_MUTATION, status: 'pending' },
     select: (m) => m.state.variables as AddNoteVars,
@@ -214,11 +146,13 @@ export default function LeadDetailScreen() {
     leadQuery.data?.buyerPersona?.fullName?.trim() ||
     (Number.isFinite(leadId) ? `Lead #${leadId}` : 'Lead');
 
+  function openNote(stageId: number | null = null) {
+    setNoteStageId(stageId);
+    setNoteOpen(true);
+  }
+
   const headerRight = (
-    <HeaderAddButton
-      label="Add Note"
-      onPress={() => setNoteOpen(true)}
-    />
+    <HeaderAddButton label="Add Note" onPress={() => openNote(null)} />
   );
 
   if (!leadQuery.data) {
@@ -284,10 +218,9 @@ export default function LeadDetailScreen() {
       onRefresh={() => leadQuery.refetch()}
     >
       {activeTab === 'overview' ? (
-        <View style={styles.overviewStack}>
+        <View style={styles.overviewBlock}>
           <View style={styles.summaryCard}>
             <View style={styles.summaryHero}>
-              {/* Row 1: Name + Priority */}
               <View style={styles.nameRow}>
                 <Text style={styles.name} numberOfLines={1}>
                   {name}
@@ -334,7 +267,6 @@ export default function LeadDetailScreen() {
                 </Pressable>
               </View>
 
-              {/* Row 2: Number + Call + WhatsApp + Source */}
               <View style={styles.contactRow}>
                 {phone || whatsapp ? (
                   <Text style={styles.subLine} numberOfLines={1}>
@@ -382,7 +314,6 @@ export default function LeadDetailScreen() {
                 ) : null}
               </View>
 
-              {/* Row 3: Assign BY */}
               <Text style={styles.assignLine} numberOfLines={1}>
                 Assign BY- {lead.assignedToName?.trim() || '—'}
               </Text>
@@ -402,7 +333,7 @@ export default function LeadDetailScreen() {
                 statuses={statusesQuery.data ?? []}
                 currentStatusId={currentStatusId}
                 assignedToName={lead.assignedToName}
-                onStepPress={() => setNoteOpen(true)}
+                onStepPress={(statusId) => openNote(statusId)}
               />
             </View>
 
@@ -422,11 +353,16 @@ export default function LeadDetailScreen() {
           </View>
 
           <LeadSectionShell
-            pills={OVERVIEW_PILLS}
-            activeKey={overviewView}
-            onPillChange={(key) => setOverviewView(key as OverviewView)}
+            pills={[
+              { key: 'profile', label: 'Buyer Profile' },
+              { key: 'requirements', label: 'Requirements' },
+            ]}
+            activeKey={overviewPill}
+            onPillChange={(k) =>
+              setOverviewPill(k as 'profile' | 'requirements')
+            }
           >
-            {overviewView === 'profile' ? (
+            {overviewPill === 'profile' ? (
               <LeadBuyerProfilePanel lead={lead} meta={metaQuery.data} />
             ) : (
               <LeadRequirementsPanel lead={lead} meta={metaQuery.data} />
@@ -464,52 +400,20 @@ export default function LeadDetailScreen() {
         </View>
       ) : null}
 
-      <Modal visible={noteOpen} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Add note</Text>
-            <Controller
-              control={control}
-              name="note"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextField
-                  label="Note"
-                  multiline
-                  style={{ minHeight: 100, textAlignVertical: 'top' }}
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  error={errors.note?.message}
-                />
-              )}
-            />
-            <Controller
-              control={control}
-              name="followupAt"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <TextField
-                  label="Follow-up (ISO datetime, optional)"
-                  placeholder="2026-11-02T15:00:00"
-                  autoCapitalize="none"
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                />
-              )}
-            />
-            <Button
-              title="Save note"
-              loading={noteMutation.isPending}
-              onPress={handleSubmit(submitNote)}
-            />
-            <Button
-              title="Cancel"
-              variant="ghost"
-              onPress={() => setNoteOpen(false)}
-            />
-          </View>
-        </View>
-      </Modal>
+      <AddNoteSheet
+        visible={noteOpen}
+        lead={lead}
+        statuses={statusesQuery.data ?? []}
+        accountId={accountId}
+        initialStageId={noteStageId}
+        onClose={() => {
+          setNoteOpen(false);
+          setNoteStageId(null);
+        }}
+        onSaved={() => {
+          void leadQuery.refetch();
+        }}
+      />
 
       <Modal visible={priorityOpen} animationType="fade" transparent>
         <Pressable
@@ -543,7 +447,9 @@ export default function LeadDetailScreen() {
                     color={meta.color}
                     strokeWidth={1.5}
                   />
-                  <Text style={[styles.priorityOptionText, { color: meta.color }]}>
+                  <Text
+                    style={[styles.priorityOptionText, { color: meta.color }]}
+                  >
                     {meta.label}
                   </Text>
                   {selected ? (
@@ -555,7 +461,6 @@ export default function LeadDetailScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-
     </Screen>
   );
 }
@@ -563,7 +468,7 @@ export default function LeadDetailScreen() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     pressed: { opacity: 0.85 },
-    overviewStack: { gap: spacing.md },
+    overviewBlock: { gap: spacing.md },
     summaryCard: {
       backgroundColor: colors.surface,
       borderRadius: radii.lg,
@@ -688,18 +593,6 @@ function createStyles(colors: ThemeColors) {
     },
     pendingText: { ...typography.caption, color: colors.warning },
     noteBody: { ...typography.body, color: colors.textSecondary },
-    modalBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      justifyContent: 'flex-end',
-    },
-    modalCard: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: radii.lg,
-      borderTopRightRadius: radii.lg,
-      padding: spacing.xl,
-      gap: spacing.md,
-    },
     dropdownBackdrop: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.35)',

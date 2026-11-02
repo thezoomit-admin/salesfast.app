@@ -148,9 +148,8 @@ export function HeaderAddButton({
       onPress={onPress}
       style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
     >
-      <Ionicons name="add" size={16} color={colors.white} />
       <Text style={styles.addBtnLabel} numberOfLines={1}>
-        {label}
+        + {label}
       </Text>
     </Pressable>
   );
@@ -227,6 +226,7 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
+      flexShrink: 0,
       gap: 2,
     },
     leftWithTitle: {
@@ -278,6 +278,7 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
+      flexShrink: 0,
       minHeight: 40,
       gap: 2,
     },
@@ -285,17 +286,17 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 2,
-      minHeight: 30,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+      flexShrink: 0,
+      minHeight: 28,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
       borderRadius: radii.pill,
       backgroundColor: colors.brand,
     },
     addBtnLabel: {
       ...typography.caption,
-      fontSize: 12,
-      lineHeight: 16,
+      fontSize: 11,
+      lineHeight: 14,
       fontWeight: '600',
       color: colors.white,
     },

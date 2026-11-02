@@ -32,7 +32,6 @@ import {
   followupTypeOf,
   formatFollowupDateOnly,
   formatFollowupDisplay,
-  isColdCalling,
   isLostStageName,
   isVisitInterest,
   isVisited,
