@@ -13,6 +13,7 @@ import {
 import { authColors } from '../authTheme';
 
 type Props = TextInputProps & {
+  /** Shown above the field (design-kit style). */
   label?: string;
   error?: string;
   password?: boolean;
@@ -20,7 +21,7 @@ type Props = TextInputProps & {
   containerStyle?: ViewStyle;
 };
 
-/** Outlined auth field — Hisab-style white input, brand focus. */
+/** Outlined field — label above, placeholder inside, brand focus. */
 export function AuthInput({
   label,
   error,
@@ -28,6 +29,7 @@ export function AuthInput({
   prefix,
   containerStyle,
   style,
+  placeholder,
   ...rest
 }: Props) {
   const [focused, setFocused] = useState(false);
@@ -37,6 +39,7 @@ export function AuthInput({
 
   return (
     <View style={[styles.wrap, containerStyle]}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <View
         style={[
           styles.field,
@@ -47,7 +50,7 @@ export function AuthInput({
         {prefix ? <Text style={styles.prefix}>{prefix}</Text> : null}
         <TextInput
           {...rest}
-          placeholder={label ?? rest.placeholder}
+          placeholder={placeholder}
           placeholderTextColor={authColors.textMuted}
           secureTextEntry={secure}
           style={[styles.input, password ? styles.inputWithEye : null, style]}
@@ -83,11 +86,17 @@ export function AuthInput({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 14,
+    marginBottom: 18,
+  },
+  label: {
+    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: authColors.text,
   },
   field: {
     minHeight: 52,
-    borderRadius: authColors.radius,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: authColors.border,
     backgroundColor: authColors.white,
@@ -122,8 +131,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   error: {
-    marginTop: 4,
-    marginLeft: 12,
+    marginTop: 6,
     fontSize: 12,
     color: authColors.danger,
   },

@@ -73,6 +73,7 @@ export function CountryPhoneInput({
 
   return (
     <View style={styles.wrap}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <View
         style={[
           styles.field,
@@ -100,7 +101,7 @@ export function CountryPhoneInput({
             onChangeNational(national);
             emit(country, national);
           }}
-          placeholder={label}
+          placeholder="Enter your phone number"
           placeholderTextColor={authColors.textMuted}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
@@ -174,7 +175,13 @@ export function CountryPhoneInput({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 14,
+    marginBottom: 18,
+  },
+  label: {
+    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: authColors.text,
   },
   field: {
     minHeight: 52,

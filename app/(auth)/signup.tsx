@@ -93,6 +93,7 @@ export default function SignUpScreen() {
           render={({ field: { onChange, onBlur, value } }) => (
             <AuthInput
               label="First name"
+              placeholder="First name"
               autoCapitalize="words"
               value={value}
               onBlur={onBlur}
@@ -108,6 +109,7 @@ export default function SignUpScreen() {
           render={({ field: { onChange, onBlur, value } }) => (
             <AuthInput
               label="Last name"
+              placeholder="Last name"
               autoCapitalize="words"
               value={value}
               onBlur={onBlur}
@@ -124,7 +126,8 @@ export default function SignUpScreen() {
         name="email"
         render={({ field: { onChange, onBlur, value } }) => (
           <AuthInput
-            label="Email"
+            label="Email Address"
+            placeholder="Enter your email address"
             autoCapitalize="none"
             keyboardType="email-address"
             value={value}
@@ -136,6 +139,7 @@ export default function SignUpScreen() {
       />
 
       <CountryPhoneInput
+        label="Phone Number"
         value={phoneNational}
         countryCode={countryCode}
         onChangeCountry={setCountryCode}
@@ -151,6 +155,7 @@ export default function SignUpScreen() {
         render={({ field: { onChange, onBlur, value } }) => (
           <AuthInput
             label="Password"
+            placeholder="Enter your password"
             password
             value={value}
             onBlur={onBlur}
@@ -166,6 +171,7 @@ export default function SignUpScreen() {
         render={({ field: { onChange, onBlur, value } }) => (
           <AuthInput
             label="Confirm password"
+            placeholder="Confirm your password"
             password
             value={value}
             onBlur={onBlur}
