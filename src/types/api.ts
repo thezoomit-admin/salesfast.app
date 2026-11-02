@@ -94,12 +94,65 @@ export type LeadNote = {
   followupDate?: string | null;
 };
 
+export type LeadPropertyInterest = {
+  inventoryId: number;
+  position?: number;
+  inventory?: {
+    id?: number;
+    name?: string | null;
+    projectName?: string | null;
+    price?: number | null;
+    status?: string | null;
+    isDeleted?: boolean;
+  } | null;
+};
+
+/** Lead Entry / qualification fields shown on web Overview → Requirements. */
 export type LeadDetail = LeadListItem & {
   preferredLocations?: string[];
   propertyTypes?: string[];
   purchasePurpose?: string[];
   budgetMin?: number | null;
   budgetMax?: number | null;
+  sourceDetail?: string | null;
+  leadProject?: string | null;
+  referralSource?: string | null;
+  occupationCategory?: string | null;
+  occupationDetail?: string | null;
+  buyerType?: string | null;
+  decisionAuthority?: string | null;
+  unitSizeMin?: number | null;
+  unitSizeMax?: number | null;
+  bedrooms?: string | null;
+  mustHaveRequirements?: string | null;
+  alsoConsidering?: string | null;
+  financingRequired?: string | null;
+  preferredPaymentMethod?: string | null;
+  downPaymentAvailable?: number | null;
+  monthlyHouseholdIncome?: string | null;
+  budgetFlexibility?: string | null;
+  purchaseTimeline?: string | null;
+  targetPurchaseDate?: string | null;
+  urgency?: string | null;
+  timelineReason?: string | null;
+  currentLivingSituation?: string | null;
+  currentLocation?: string | null;
+  familySize?: number | null;
+  currentMonthlyRent?: number | null;
+  ownsExistingProperty?: string | null;
+  existingPropertyNotes?: string | null;
+  problemCategory?: string[];
+  problemDescription?: string | null;
+  problemSeverity?: string | null;
+  impactOfCurrentProblem?: string | null;
+  financialImpact?: string | null;
+  familyBusinessImpact?: string | null;
+  riskOfNotSolving?: string | null;
+  urgencyToSolve?: string | null;
+  desiredOutcome?: string | null;
+  preferredPropertySolution?: string | null;
+  expectedBenefit?: string | null;
+  propertyInterests?: LeadPropertyInterest[];
   notes?: LeadNote[];
   meetings?: unknown[];
   tasks?: unknown[];
@@ -112,6 +165,15 @@ export type LeadDetail = LeadListItem & {
     remindAt?: string | null;
   } | null;
   version?: number;
+};
+
+export type LeadOptionRow = { id?: number; key: string; label: string };
+
+export type LeadMeta = {
+  options: Record<string, LeadOptionRow[]>;
+  removed: Record<string, LeadOptionRow[]>;
+  fixed: Record<string, LeadOptionRow[]>;
+  limits?: Record<string, number>;
 };
 
 export type MobileDashboard = {

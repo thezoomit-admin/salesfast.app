@@ -6,6 +6,7 @@ import type {
   ApiResponse,
   LeadDetail,
   LeadListItem,
+  LeadMeta,
   LeadStatus,
 } from '@/types/api';
 

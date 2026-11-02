@@ -30,6 +30,13 @@ export function formatDate(value?: string | Date | null) {
   return format(d, 'dd MMM yyyy');
 }
 
+/** Calendar date only — e.g. target purchase (matches web portal DD MMM YYYY). */
+export function formatCalendarDate(value?: string | Date | null) {
+  const d = parseDate(value);
+  if (!d) return '—';
+  return format(d, 'dd MMM yyyy');
+}
+
 /** Compact relative time — "Just now", "5m ago", "2h ago", "3d ago". */
 export function formatRelative(value?: string | Date | null) {
   const d = parseDate(value);
