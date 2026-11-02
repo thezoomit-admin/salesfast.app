@@ -97,10 +97,18 @@ function writePendingWrites(client: QueryClient, userId: string) {
     if (file.exists) file.delete();
     return;
   }
-  // Restored writes must resume, including ones that were mid-request.
   const mutations = state.mutations.map((m) => ({
     ...m,
-    state: { ...m.state, isPaused: true },
+    state: {
+      ...m.state,
+      // Restored writes must resume, including ones that were mid-request.
+      isPaused: true,
+      // A failed attempt's AxiosError serializes its request config — with
+      // the Authorization header. Tokens never leave SecureStore.
+      error: null,
+      failureReason: null,
+      failureCount: 0,
+    },
   }));
   if (!file.exists) file.create();
   file.write(JSON.stringify({ version: CACHE_VERSION, userId, mutations }));

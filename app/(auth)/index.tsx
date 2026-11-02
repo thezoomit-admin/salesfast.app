@@ -1,4 +1,3 @@
-import { CallIcon } from '@/components/icons/hugeicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -7,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CallIcon } from '@/components/icons/hugeicons';
 import { AuthProviderButton } from '@/features/auth/components/AuthProviderButton';
 import { BrandMark } from '@/features/auth/components/BrandMark';
 import { BrandSplash } from '@/features/auth/components/BrandSplash';

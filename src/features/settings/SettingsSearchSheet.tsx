@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Search02Icon } from '@/components/icons/hugeicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import type { ComponentProps } from 'react';
 import { useMemo, useState } from 'react';
@@ -15,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Search02Icon } from '@/components/icons/hugeicons';
 import { colors, typography } from '@/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];

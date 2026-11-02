@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Search02Icon } from '@/components/icons/hugeicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import type { ComponentProps } from 'react';
@@ -13,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { Search02Icon } from '@/components/icons/hugeicons';
 import { getErrorMessage } from '@/api/client';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -20,6 +20,7 @@ import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
+import { usePendingWriteCount } from '@/lib/accountWrites';
 import {
   SettingsSearchSheet,
   type SettingsSearchItem,
@@ -185,8 +186,13 @@ export default function ProfileScreen() {
     ? maskEmail(user.email.trim())
     : user?.phone?.trim() || '';
 
+  const unsynced = usePendingWriteCount(user?.id);
   const confirmSignOut = useCallback(() => {
-    Alert.alert('Sign out', 'End this session on this device?', [
+    const message = unsynced
+      ? `${unsynced} change${unsynced === 1 ? ' is' : 's are'} still waiting to sync. ` +
+        'They stay on this device and are sent the next time you sign in to this account.'
+      : 'End this session on this device?';
+    Alert.alert('Sign out', message, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign out',
@@ -196,7 +202,7 @@ export default function ProfileScreen() {
         },
       },
     ]);
-  }, [signOut]);
+  }, [signOut, unsynced]);
 
   const canContinue = useCallback(
     (a: SavedMobileAccount) =>

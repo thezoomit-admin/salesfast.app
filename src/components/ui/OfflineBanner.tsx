@@ -1,9 +1,10 @@
-import { onlineManager, useIsMutating } from '@tanstack/react-query';
+import { onlineManager } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/features/auth/AuthContext';
+import { usePendingWriteCount } from '@/lib/accountWrites';
 import { colors, radii, spacing, typography } from '@/theme';
 
 /** Approximate bottom tab bar height, so the pill floats just above it. */
@@ -16,14 +17,7 @@ export function OfflineBanner() {
     () => onlineManager.isOnline()
   );
   const insets = useSafeAreaInsets();
-  const accountId = useAuth().user?.id;
-  // This account's offline writes still waiting for the server.
-  const waiting = useIsMutating({
-    predicate: (m) =>
-      m.meta?.offline === true &&
-      (m.state.variables as { accountId?: string } | undefined)?.accountId ===
-        accountId,
-  });
+  const waiting = usePendingWriteCount(useAuth().user?.id);
   if (online) return null;
 
   return (

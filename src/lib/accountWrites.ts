@@ -1,4 +1,16 @@
+import { useIsMutating } from '@tanstack/react-query';
+
 import { AccountChangedError } from '@/api/client';
+
+/** Offline writes (`meta.offline`) of this account not yet accepted by the server. */
+export function usePendingWriteCount(accountId: string | undefined) {
+  return useIsMutating({
+    predicate: (m) =>
+      m.meta?.offline === true &&
+      (m.state.variables as { accountId?: string } | undefined)?.accountId ===
+        accountId,
+  });
+}
 
 /**
  * Writes queued by one account wait here while another account is active
