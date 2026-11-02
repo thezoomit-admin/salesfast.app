@@ -18,13 +18,17 @@ import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import {
+  EmptyState,
+  ErrorState,
+  QueryPlaceholder,
+} from '@/components/ui/StateViews';
 import { TextField } from '@/components/ui/TextField';
 import {
   addLeadNote,
   fetchLeadById,
-  fetchLeadStatuses,
-  fetchNoteChannels,
+  leadStatusesQuery,
+  noteChannelsQuery,
   updateLeadStatus,
 } from '@/features/leads/leadsApi';
 import { colors, radii, spacing, typography } from '@/theme';
@@ -50,14 +54,8 @@ export default function LeadDetailScreen() {
     queryFn: () => fetchLeadById(leadId),
     enabled: Number.isFinite(leadId),
   });
-  const statusesQuery = useQuery({
-    queryKey: ['lead-statuses'],
-    queryFn: fetchLeadStatuses,
-  });
-  const channelsQuery = useQuery({
-    queryKey: ['note-channels'],
-    queryFn: fetchNoteChannels,
-  });
+  const statusesQuery = useQuery(leadStatusesQuery);
+  const channelsQuery = useQuery(noteChannelsQuery);
 
   const callChannelId = useMemo(
     () =>
@@ -77,13 +75,12 @@ export default function LeadDetailScreen() {
     defaultValues: { note: '', followupAt: '' },
   });
 
+  // Only this lead gates the UI; the lists refresh in the background.
   const invalidate = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['lead', leadId] }),
-      queryClient.invalidateQueries({ queryKey: ['my-leads'] }),
-      queryClient.invalidateQueries({ queryKey: ['mobile-dashboard'] }),
-      queryClient.invalidateQueries({ queryKey: ['follow-up-leads'] }),
-    ]);
+    void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
+    void queryClient.invalidateQueries({ queryKey: ['mobile-dashboard'] });
+    void queryClient.invalidateQueries({ queryKey: ['follow-up-leads'] });
+    await queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
   };
 
   const noteMutation = useMutation({
@@ -119,21 +116,19 @@ export default function LeadDetailScreen() {
     },
   });
 
-  if (leadQuery.isLoading) {
+  // A cached copy renders immediately (also offline); fresh data follows.
+  if (!leadQuery.data) {
     return (
       <Screen header={<ScreenHeader title="Lead" />}>
-        <LoadingState />
-      </Screen>
-    );
-  }
-
-  if (leadQuery.isError || !leadQuery.data) {
-    return (
-      <Screen header={<ScreenHeader title="Lead" />}>
-        <ErrorState
-          message={getErrorMessage(leadQuery.error, 'Lead not found')}
-          onRetry={() => leadQuery.refetch()}
-        />
+        {Number.isFinite(leadId) ? (
+          <QueryPlaceholder
+            query={leadQuery}
+            rows={3}
+            errorMessage={getErrorMessage(leadQuery.error, 'Lead not found')}
+          />
+        ) : (
+          <ErrorState message="Lead not found" />
+        )}
       </Screen>
     );
   }

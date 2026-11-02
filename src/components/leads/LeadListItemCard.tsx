@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radii, spacing, typography } from '@/theme';
@@ -7,17 +8,21 @@ import { formatPhoneDisplay } from '@/utils/phone';
 
 type Props = {
   lead: LeadListItem;
-  onPress: () => void;
+  /** Keep this stable (useCallback) — rows are memoized. */
+  onPress: (lead: LeadListItem) => void;
 };
 
-export function LeadListItemCard({ lead, onPress }: Props) {
+export const LeadListItemCard = memo(function LeadListItemCard({
+  lead,
+  onPress,
+}: Props) {
   const name = lead.buyerPersona?.fullName || 'Unnamed lead';
   const phone = lead.buyerPersona?.phone;
   const statusColor = lead.leadStatus?.color || colors.brand;
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => onPress(lead)}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.row}>
@@ -51,7 +56,7 @@ export function LeadListItemCard({ lead, onPress }: Props) {
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

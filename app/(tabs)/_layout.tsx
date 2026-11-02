@@ -1,8 +1,16 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
 
-import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
+import { dashboardQuery } from '@/features/dashboard/dashboardApi';
+import {
+  FOLLOW_UP_TABS,
+  followUpLeadsQuery,
+  leadStatusesQuery,
+  myLeadsQuery,
+  noteChannelsQuery,
+} from '@/features/leads/leadsApi';
 import { colors } from '@/theme';
 
 function TabIcon(props: {
@@ -21,11 +29,21 @@ function TabIcon(props: {
 
 export default function TabLayout() {
   // Shares the Home dashboard cache, so this adds no extra request.
-  const dashboard = useQuery({
-    queryKey: ['mobile-dashboard'],
-    queryFn: fetchMobileDashboard,
-  });
+  const dashboard = useQuery(dashboardQuery);
   const overdue = dashboard.data?.kpis.overdueFollowUps ?? 0;
+
+  // Warm the other tabs after Home loads so switching tabs shows data at once.
+  const queryClient = useQueryClient();
+  const homeReady = !dashboard.isPending;
+  useEffect(() => {
+    if (!homeReady) return;
+    void queryClient.prefetchInfiniteQuery(myLeadsQuery('', undefined));
+    for (const tab of FOLLOW_UP_TABS) {
+      void queryClient.prefetchQuery(followUpLeadsQuery(tab));
+    }
+    void queryClient.prefetchQuery(leadStatusesQuery);
+    void queryClient.prefetchQuery(noteChannelsQuery);
+  }, [homeReady, queryClient]);
 
   return (
     <Tabs

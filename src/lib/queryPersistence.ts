@@ -1,0 +1,169 @@
+import {
+  dehydrate,
+  hydrate,
+  type DehydratedState,
+  type Query,
+  type QueryClient,
+} from '@tanstack/react-query';
+import { File, Paths } from 'expo-file-system';
+import { AppState, Platform } from 'react-native';
+
+/**
+ * Disk copy of the React Query cache so screens paint saved data on a cold
+ * start (and offline) while the network refresh runs in the background.
+ *
+ * - One file per signed-in account; it is only ever loaded for that account.
+ * - Lives in the app's private documents dir (not shared with other apps).
+ *   Tokens are never in the query cache — they stay in SecureStore.
+ * - Bump CACHE_VERSION whenever a cached API response shape changes.
+ */
+const CACHE_VERSION = 1;
+const MAX_AGE_MS = 7 * 24 * 60 * 60_000;
+const WRITE_THROTTLE_MS = 1_500;
+/** Lead detail payloads are large — keep only the most recently viewed. */
+const MAX_LEAD_DETAILS = 30;
+
+/** Query roots worth keeping across restarts. Device call log is excluded (Date objects, local-only). */
+const PERSISTED_ROOTS = new Set([
+  'mobile-dashboard',
+  'my-leads',
+  'follow-up-leads',
+  'lead',
+  'lead-statuses',
+  'note-channels',
+  'notifications',
+]);
+
+type PersistedCache = {
+  version: number;
+  userId: string;
+  savedAt: number;
+  state: DehydratedState;
+};
+
+const supported = Platform.OS !== 'web';
+
+/** Stop functions of running persisters, so a delete can't be undone by a pending write. */
+const activePersisters = new Map<string, () => void>();
+
+function cacheFile(userId: string) {
+  return new File(
+    Paths.document,
+    `query-cache-${userId.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`
+  );
+}
+
+function shouldPersist(query: Query) {
+  return (
+    query.state.status === 'success' &&
+    PERSISTED_ROOTS.has(String(query.queryKey[0]))
+  );
+}
+
+function snapshot(client: QueryClient, userId: string): PersistedCache {
+  const state = dehydrate(client, { shouldDehydrateQuery: shouldPersist });
+  const details = state.queries
+    .filter((q) => q.queryKey[0] === 'lead')
+    .sort((a, b) => b.state.dataUpdatedAt - a.state.dataUpdatedAt)
+    .slice(MAX_LEAD_DETAILS);
+  const dropped = new Set(details.map((q) => q.queryHash));
+  return {
+    version: CACHE_VERSION,
+    userId,
+    savedAt: Date.now(),
+    state: {
+      ...state,
+      queries: state.queries.filter((q) => !dropped.has(q.queryHash)),
+    },
+  };
+}
+
+/**
+ * Loads the account's saved cache into the client. `hydrate` never replaces a
+ * query that already holds newer data, so a fast network response wins.
+ */
+export async function restoreQueryCache(client: QueryClient, userId: string) {
+  if (!supported) return;
+  try {
+    const file = cacheFile(userId);
+    if (!file.exists) return;
+    const saved = JSON.parse(await file.text()) as PersistedCache;
+    if (
+      saved.version !== CACHE_VERSION ||
+      saved.userId !== userId ||
+      Date.now() - saved.savedAt > MAX_AGE_MS
+    ) {
+      file.delete();
+      return;
+    }
+    hydrate(client, saved.state);
+  } catch {
+    // Corrupt / unreadable cache — start cold.
+  }
+}
+
+/** Writes the cache to disk after successful fetches. Returns a stop function. */
+export function persistQueryCache(client: QueryClient, userId: string) {
+  if (!supported) return () => undefined;
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+
+  const write = () => {
+    timer = null;
+    if (stopped) return;
+    try {
+      const file = cacheFile(userId);
+      if (!file.exists) file.create();
+      file.write(JSON.stringify(snapshot(client, userId)));
+    } catch {
+      // Disk full / IO error — the in-memory cache still works.
+    }
+  };
+
+  const schedule = () => {
+    if (!timer && !stopped) timer = setTimeout(write, WRITE_THROTTLE_MS);
+  };
+
+  const unsubscribe = client.getQueryCache().subscribe((event) => {
+    if (
+      event.type === 'updated' &&
+      event.action.type === 'success' &&
+      shouldPersist(event.query)
+    ) {
+      schedule();
+    }
+  });
+
+  // Flush before the OS can kill a backgrounded app.
+  const appSub = AppState.addEventListener('change', (state) => {
+    if (state !== 'active' && timer) {
+      clearTimeout(timer);
+      write();
+    }
+  });
+
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    if (timer) clearTimeout(timer);
+    unsubscribe();
+    appSub.remove();
+    if (activePersisters.get(userId) === stop) activePersisters.delete(userId);
+  };
+  activePersisters.get(userId)?.();
+  activePersisters.set(userId, stop);
+  return stop;
+}
+
+/** Removes an account's saved cache (sign-out, session lost, account removed). */
+export function deleteQueryCache(userId: string | null | undefined) {
+  if (!supported || !userId) return;
+  activePersisters.get(userId)?.();
+  try {
+    const file = cacheFile(userId);
+    if (file.exists) file.delete();
+  } catch {
+    // ignore
+  }
+}

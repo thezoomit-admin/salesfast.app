@@ -1,38 +1,35 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
-import { fetchMyLeads } from '@/features/leads/leadsApi';
+import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import {
+  followUpLeadsQuery,
+  type FollowUpTab,
+} from '@/features/leads/leadsApi';
+import type { LeadListItem } from '@/types/api';
 import { colors, radii, spacing, typography } from '@/theme';
-import { endOfLocalDayIso, startOfLocalDayIso } from '@/utils/dates';
-
-type TabKey = 'today' | 'overdue' | 'upcoming';
 
 export default function FollowUpsScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState<TabKey>('today');
+  const [tab, setTab] = useState<FollowUpTab>('today');
 
-  const params =
-    tab === 'overdue'
-      ? { followupOverdue: true as const }
-      : tab === 'today'
-        ? {
-            followupFrom: startOfLocalDayIso(),
-            followupTo: endOfLocalDayIso(),
-          }
-        : {
-            followupFrom: endOfLocalDayIso(),
-          };
+  const query = useQuery(followUpLeadsQuery(tab));
 
-  const query = useQuery({
-    queryKey: ['follow-up-leads', tab],
-    queryFn: () => fetchMyLeads({ ...params, per_page: 50 }),
-  });
+  const openLead = useCallback(
+    (lead: LeadListItem) => router.push(`/leads/${lead.id}`),
+    [router]
+  );
+  const renderLead = useCallback(
+    ({ item }: { item: LeadListItem }) => (
+      <LeadListItemCard lead={item} onPress={openLead} />
+    ),
+    [openLead]
+  );
 
   return (
     <View style={styles.safe}>
@@ -57,16 +54,14 @@ export default function FollowUpsScreen() {
         ))}
       </View>
 
-      {query.isLoading ? (
-        <LoadingState />
-      ) : query.isError ? (
-        <ErrorState
-          message={getErrorMessage(query.error)}
-          onRetry={() => query.refetch()}
+      {!query.data ? (
+        <QueryPlaceholder
+          query={query}
+          errorMessage={getErrorMessage(query.error)}
         />
       ) : (
         <FlatList
-          data={query.data?.items ?? []}
+          data={query.data.items}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           refreshing={query.isRefetching}
@@ -77,12 +72,11 @@ export default function FollowUpsScreen() {
               message="Nothing in this bucket right now."
             />
           }
-          renderItem={({ item }) => (
-            <LeadListItemCard
-              lead={item}
-              onPress={() => router.push(`/leads/${item.id}`)}
-            />
-          )}
+          renderItem={renderLead}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
         />
       )}
     </View>

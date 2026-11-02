@@ -4,11 +4,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
 import { setAuthLostHandler } from '@/api/client';
 import { unregisterPushNotifications } from '@/features/notifications/pushRegistration';
+import { deleteQueryCache } from '@/lib/queryPersistence';
 import { secureStorage } from '@/services/secureStorage';
 import type { AuthUser } from '@/types/api';
 
@@ -65,6 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [bootstrapping, setBootstrapping] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
   const [switchingAccount, setSwitchingAccount] = useState(false);
+  // The API client clears stored ids before reporting a lost session.
+  const userIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    userIdRef.current = user?.id ?? null;
+  }, [user]);
 
   useEffect(() => {
     let mounted = true;
@@ -91,6 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void (async () => {
         const accountId = await secureStorage.getAccountId();
         if (accountId) await markAccountSignedOut(accountId);
+        // Session is dead (revoked / deactivated) — drop its offline copy.
+        deleteQueryCache(userIdRef.current);
         setUser(null);
       })();
     });
@@ -130,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await logoutRequest();
     } finally {
       if (accountId) await markAccountSignedOut(accountId);
+      deleteQueryCache(accountId);
       await secureStorage.clearSession();
       setUser(null);
     }
@@ -195,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (accountId: string) => {
       const activeId = await secureStorage.getAccountId();
       await removeSavedAccount(accountId);
+      deleteQueryCache(accountId);
       if (activeId === accountId) {
         await signOut();
       }

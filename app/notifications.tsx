@@ -18,7 +18,7 @@ import {
 
 import { getErrorMessage } from '@/api/client';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import {
   type AppNotification,
   fetchNotifications,
@@ -107,22 +107,13 @@ export default function NotificationsScreen() {
     />
   );
 
-  if (query.isLoading) {
+  if (!query.data) {
     return (
       <View style={styles.safe}>
         {header}
-        <LoadingState label="Loading notifications…" />
-      </View>
-    );
-  }
-
-  if (query.isError) {
-    return (
-      <View style={styles.safe}>
-        {header}
-        <ErrorState
-          message={getErrorMessage(query.error)}
-          onRetry={() => query.refetch()}
+        <QueryPlaceholder
+          query={query}
+          errorMessage={getErrorMessage(query.error)}
         />
       </View>
     );

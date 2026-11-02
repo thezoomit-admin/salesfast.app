@@ -1,17 +1,18 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import { QueryPlaceholder } from '@/components/ui/StateViews';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
-import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
+import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
+import { markFirstContent } from '@/lib/perfMonitor';
 import { colors, radii, spacing, typography } from '@/theme';
 import { formatDate, formatRelative } from '@/utils/dates';
 
@@ -29,10 +30,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const callSync = useCallSyncStatus();
-  const query = useQuery({
-    queryKey: ['mobile-dashboard'],
-    queryFn: fetchMobileDashboard,
-  });
+  const query = useQuery(dashboardQuery);
 
   useFocusEffect(
     useCallback(() => {
@@ -53,30 +51,18 @@ export default function HomeScreen() {
     />
   );
 
-  if (query.isLoading) {
-    return (
-      <Screen header={homeHeader}>
-        <LoadingState label="Loading dashboard…" />
-      </Screen>
-    );
-  }
-
-  if (query.isError) {
-    return (
-      <Screen header={homeHeader}>
-        <ErrorState
-          message={getErrorMessage(query.error)}
-          onRetry={() => query.refetch()}
-        />
-      </Screen>
-    );
-  }
-
   const data = query.data;
+  useFirstContent('home', query.data !== undefined, query.isFetchedAfterMount);
+
+  // Cached data always wins over loading / error / offline states.
   if (!data) {
     return (
       <Screen header={homeHeader}>
-        <EmptyState title="No dashboard data" />
+        <QueryPlaceholder
+          query={query}
+          rows={4}
+          errorMessage={getErrorMessage(query.error)}
+        />
       </Screen>
     );
   }
@@ -294,6 +280,13 @@ export default function HomeScreen() {
       </Section>
     </Screen>
   );
+}
+
+/** Dev metric: when a screen first had content, and whether it came from cache. */
+function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
+  useEffect(() => {
+    if (hasData) markFirstContent(screen, !fetched);
+  }, [screen, hasData, fetched]);
 }
 
 function FocusStat({

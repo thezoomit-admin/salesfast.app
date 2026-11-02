@@ -4,17 +4,14 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
-import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
+import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { colors, radii, spacing, typography } from '@/theme';
 import { formatDateTime } from '@/utils/dates';
 
 export default function ActivitiesScreen() {
   const router = useRouter();
-  const query = useQuery({
-    queryKey: ['mobile-dashboard'],
-    queryFn: fetchMobileDashboard,
-  });
+  const query = useQuery(dashboardQuery);
 
   return (
     <View style={styles.safe}>
@@ -24,16 +21,14 @@ export default function ActivitiesScreen() {
         build.
       </Text>
 
-      {query.isLoading ? (
-        <LoadingState />
-      ) : query.isError ? (
-        <ErrorState
-          message={getErrorMessage(query.error)}
-          onRetry={() => query.refetch()}
+      {!query.data ? (
+        <QueryPlaceholder
+          query={query}
+          errorMessage={getErrorMessage(query.error)}
         />
       ) : (
         <FlatList
-          data={query.data?.recentNotes ?? []}
+          data={query.data.recentNotes}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
           refreshing={query.isRefetching}

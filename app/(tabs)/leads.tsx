@@ -1,7 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -19,8 +23,9 @@ import {
   HeaderIconButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
-import { EmptyState, ErrorState } from '@/components/ui/StateViews';
-import { fetchLeadStatuses, fetchMyLeads } from '@/features/leads/leadsApi';
+import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { leadStatusesQuery, myLeadsQuery } from '@/features/leads/leadsApi';
+import type { LeadListItem } from '@/types/api';
 import { colors, radii, spacing, typography } from '@/theme';
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -40,28 +45,35 @@ export default function LeadsScreen() {
   const [statusId, setStatusId] = useState<number | undefined>();
   const debouncedSearch = useDebounced(search);
 
-  const statuses = useQuery({
-    queryKey: ['lead-statuses'],
-    queryFn: fetchLeadStatuses,
-  });
+  const statuses = useQuery(leadStatusesQuery);
 
+  // Keep the current list on screen while a new search / filter loads.
   const leads = useInfiniteQuery({
-    queryKey: ['my-leads', debouncedSearch, statusId],
-    initialPageParam: 1,
-    queryFn: ({ pageParam }) =>
-      fetchMyLeads({
-        page: pageParam,
-        search: debouncedSearch,
-        leadStatusId: statusId,
-      }),
-    getNextPageParam: (last) => {
-      const current = last.meta.current_page ?? last.meta.page ?? 1;
-      const lastPage = last.meta.last_page ?? last.meta.totalPages ?? current;
-      return current < lastPage ? current + 1 : undefined;
-    },
+    ...myLeadsQuery(debouncedSearch, statusId),
+    placeholderData: keepPreviousData,
   });
 
-  const items = leads.data?.pages.flatMap((p) => p.items) ?? [];
+  const items = useMemo(
+    () => leads.data?.pages.flatMap((p) => p.items) ?? [],
+    [leads.data]
+  );
+  const filterChips = useMemo(
+    () => [
+      { id: 0, name: 'All' },
+      ...(Array.isArray(statuses.data) ? statuses.data : []),
+    ],
+    [statuses.data]
+  );
+  const openLead = useCallback(
+    (lead: LeadListItem) => router.push(`/leads/${lead.id}`),
+    [router]
+  );
+  const renderLead = useCallback(
+    ({ item }: { item: LeadListItem }) => (
+      <LeadListItemCard lead={item} onPress={openLead} />
+    ),
+    [openLead]
+  );
 
   const toggleSearch = () => {
     setSearchOpen((open) => {
@@ -120,10 +132,7 @@ export default function LeadsScreen() {
 
       <FlatList
         horizontal
-        data={[
-          { id: 0, name: 'All' },
-          ...(Array.isArray(statuses.data) ? statuses.data : []),
-        ]}
+        data={filterChips}
         keyExtractor={(item) => String(item.id)}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filters}
@@ -143,21 +152,18 @@ export default function LeadsScreen() {
         }}
       />
 
-      {leads.isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.brand} size="large" />
-        </View>
-      ) : leads.isError ? (
-        <ErrorState
-          message={getErrorMessage(leads.error)}
-          onRetry={() => leads.refetch()}
+      {!leads.data ? (
+        <QueryPlaceholder
+          query={leads}
+          errorMessage={getErrorMessage(leads.error)}
         />
       ) : (
         <FlatList
           data={items}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
-          refreshing={leads.isRefetching}
+          style={leads.isPlaceholderData && styles.stale}
+          refreshing={leads.isRefetching && !leads.isPlaceholderData}
           onRefresh={() => leads.refetch()}
           onEndReached={() => {
             if (leads.hasNextPage && !leads.isFetchingNextPage) {
@@ -181,12 +187,11 @@ export default function LeadsScreen() {
               <View />
             )
           }
-          renderItem={({ item }) => (
-            <LeadListItemCard
-              lead={item}
-              onPress={() => router.push(`/leads/${item.id}`)}
-            />
-          )}
+          renderItem={renderLead}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
         />
       )}
     </View>
@@ -232,5 +237,5 @@ const styles = StyleSheet.create({
   chipText: { ...typography.caption, color: colors.textSecondary },
   chipTextActive: { color: colors.white },
   list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  stale: { opacity: 0.6 },
 });

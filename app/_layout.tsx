@@ -10,18 +10,26 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { BrandSplash } from '@/features/auth/components/BrandSplash';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 import { CallSyncBootstrap } from '@/features/call-tracking/CallSyncBootstrap';
 import { NotificationsBootstrap } from '@/features/notifications/NotificationsBootstrap';
+import { installConnectivityManagers } from '@/lib/connectivity';
+import { installQueryCacheMonitor } from '@/lib/perfMonitor';
+import { useAccountQueryCache } from '@/lib/useAccountQueryCache';
 import { colors } from '@/theme';
 
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
+installConnectivityManagers();
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, bootstrapping } = useAuth();
+  const { user, bootstrapping: authBootstrapping } = useAuth();
+  // Hold the splash until this account's saved data is in memory, so the
+  // first screen paints with content instead of a spinner.
+  const bootstrapping = useAccountQueryCache(user?.id ?? null, authBootstrapping);
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
@@ -48,6 +56,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.gate}>
       {children}
+      <OfflineBanner />
       {bootstrapping ? (
         <View style={styles.splashOverlay} pointerEvents="auto">
           <BrandSplash mode="logo" />
@@ -58,17 +67,21 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
+  const [queryClient] = useState(() => {
+    const client = new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 30_000,
+            // Cached data renders instantly; screens refresh in the background
+            // once it is older than this. Mutations invalidate what they touch.
+            staleTime: 2 * 60_000,
+            gcTime: 30 * 60_000,
             retry: 1,
           },
         },
-      })
-  );
+      });
+    installQueryCacheMonitor(client);
+    return client;
+  });
 
   return (
     <QueryClientProvider client={queryClient}>

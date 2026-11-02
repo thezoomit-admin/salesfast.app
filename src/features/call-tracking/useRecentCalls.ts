@@ -7,7 +7,7 @@ import {
   isCallLogModuleAvailable,
 } from 'android-call-log';
 
-import { fetchCallMatchDirectory, type CallSyncDirection } from './callSyncApi';
+import { getCallMatchDirectory, type CallSyncDirection } from './callSyncApi';
 import { mapAndroidCallType } from './mapCallDirection';
 import { phoneMatchKey } from './phoneMatch';
 
@@ -39,7 +39,7 @@ async function loadRecentCalls(): Promise<RecentCallsResult> {
 
   const [rows, directory] = await Promise.all([
     getRecentCalls(150, 0),
-    fetchCallMatchDirectory(),
+    getCallMatchDirectory(),
   ]);
 
   const byKey = new Map(directory.entries.map((e) => [e.phoneKey, e]));
