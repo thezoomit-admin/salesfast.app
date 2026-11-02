@@ -21,7 +21,7 @@ import {
   myLeadsQuery,
   noteChannelsQuery,
 } from '@/features/leads/leadsApi';
-import { colors } from '@/theme';
+import { useThemeColors } from '@/theme';
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 
@@ -32,22 +32,25 @@ function HugeTabIcon({
   icon,
   color,
   size,
+  fallback,
 }: {
   icon: HugeIconData;
   color: ColorValue;
   size: number;
+  fallback: string;
 }) {
   return (
     <HugeiconsIcon
       icon={icon}
       size={size ?? 24}
-      color={typeof color === 'string' ? color : colors.textMuted}
+      color={typeof color === 'string' ? color : fallback}
       strokeWidth={1.8}
     />
   );
 }
 
 export default function TabLayout() {
+  const colors = useThemeColors();
   // Shares the Home dashboard cache, so this adds no extra request.
   const dashboard = useQuery(dashboardQuery);
   const overdue = dashboard.data?.kpis.overdueFollowUps ?? 0;
@@ -96,7 +99,12 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <HugeTabIcon icon={Home03Icon} color={color} size={size} />
+            <HugeTabIcon
+              icon={Home03Icon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
@@ -105,7 +113,12 @@ export default function TabLayout() {
         options={{
           title: 'Leads',
           tabBarIcon: ({ color, size }) => (
-            <HugeTabIcon icon={AddTeam02Icon} color={color} size={size} />
+            <HugeTabIcon
+              icon={AddTeam02Icon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
@@ -116,7 +129,12 @@ export default function TabLayout() {
           tabBarBadge: overdue > 0 ? (overdue > 99 ? '99+' : overdue) : undefined,
           tabBarBadgeStyle: { backgroundColor: colors.brand, color: colors.white },
           tabBarIcon: ({ color, size }) => (
-            <HugeTabIcon icon={Calendar03Icon} color={color} size={size} />
+            <HugeTabIcon
+              icon={Calendar03Icon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
@@ -125,7 +143,12 @@ export default function TabLayout() {
         options={{
           title: 'Calls',
           tabBarIcon: ({ color, size }) => (
-            <HugeTabIcon icon={CallIcon} color={color} size={size} />
+            <HugeTabIcon
+              icon={CallIcon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />
@@ -134,7 +157,12 @@ export default function TabLayout() {
         options={{
           title: 'More',
           tabBarIcon: ({ color, size }) => (
-            <HugeTabIcon icon={Settings01Icon} color={color} size={size} />
+            <HugeTabIcon
+              icon={Settings01Icon}
+              color={color}
+              size={size}
+              fallback={colors.textMuted}
+            />
           ),
         }}
       />

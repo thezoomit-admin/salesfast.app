@@ -18,13 +18,15 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { updateProfileRequest } from '@/features/auth/authApi';
 import { AuthInput } from '@/features/auth/components/AuthInput';
 import { PhotoChangeSheet } from '@/features/settings';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 /**
  * Personal info — Hisab settings/edit pattern.
  * Photo UI matches Hisab; upload not wired yet.
  */
 export default function EditProfileScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const { user, updateUser } = useAuth();
 
@@ -238,160 +240,162 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    gap: spacing.md,
-  },
-  pressedOpacity: { opacity: 0.88 },
-  savePill: {
-    minWidth: 64,
-    height: 34,
-    paddingHorizontal: 14,
-    borderRadius: radii.pill,
-    backgroundColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  savePillDisabled: {
-    backgroundColor: colors.border,
-  },
-  savePillText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.white,
-  },
-  hero: {
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 12,
-  },
-  avatarWrap: {
-    width: 96,
-    height: 96,
-    marginBottom: 14,
-  },
-  avatarRing: {
-    width: 96,
-    height: 96,
-    borderRadius: radii.pill,
-    borderWidth: 2.5,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    backgroundColor: '#EEF2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarEdit: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 30,
-    height: 30,
-    borderRadius: radii.pill,
-    backgroundColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  heroName: {
-    ...typography.title,
-    fontSize: 20,
-    color: colors.text,
-  },
-  heroMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  heroRole: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  completeCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  completeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  completeLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  completePct: {
-    ...typography.subtitle,
-    fontSize: 14,
-    color: colors.text,
-  },
-  completeTrack: {
-    height: 6,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surfaceMuted,
-    overflow: 'hidden',
-  },
-  completeFill: {
-    height: '100%',
-    borderRadius: radii.pill,
-    backgroundColor: colors.brand,
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.dangerSoft,
-    borderRadius: radii.md,
-    padding: spacing.md,
-  },
-  errorText: {
-    ...typography.caption,
-    color: colors.danger,
-    flex: 1,
-  },
-  form: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  readOnly: {
-    marginBottom: 18,
-  },
-  readOnlyLabel: {
-    marginBottom: 8,
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  readOnlyValue: {
-    minHeight: 52,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: colors.textSecondary,
-  },
-  readOnlyHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 6,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      gap: spacing.md,
+    },
+    pressedOpacity: { opacity: 0.88 },
+    savePill: {
+      minWidth: 64,
+      height: 34,
+      paddingHorizontal: 14,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    savePillDisabled: {
+      backgroundColor: colors.border,
+    },
+    savePillText: {
+      ...typography.caption,
+      fontWeight: '700',
+      color: colors.white,
+    },
+    hero: {
+      alignItems: 'center',
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
+    avatarWrap: {
+      width: 96,
+      height: 96,
+      marginBottom: 14,
+    },
+    avatarRing: {
+      width: 96,
+      height: 96,
+      borderRadius: radii.pill,
+      borderWidth: 2.5,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      backgroundColor: colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarEdit: {
+      position: 'absolute',
+      right: 0,
+      bottom: 0,
+      width: 30,
+      height: 30,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: colors.surface,
+    },
+    heroName: {
+      ...typography.title,
+      fontSize: 20,
+      color: colors.text,
+    },
+    heroMeta: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    heroRole: {
+      ...typography.caption,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    completeCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      padding: spacing.md,
+      gap: spacing.sm,
+    },
+    completeHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    completeLabel: {
+      ...typography.caption,
+      color: colors.textSecondary,
+    },
+    completePct: {
+      ...typography.subtitle,
+      fontSize: 14,
+      color: colors.text,
+    },
+    completeTrack: {
+      height: 6,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surfaceMuted,
+      overflow: 'hidden',
+    },
+    completeFill: {
+      height: '100%',
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+    },
+    errorBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: colors.dangerSoft,
+      borderRadius: radii.md,
+      padding: spacing.md,
+    },
+    errorText: {
+      ...typography.caption,
+      color: colors.danger,
+      flex: 1,
+    },
+    form: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      padding: spacing.lg,
+      paddingBottom: spacing.sm,
+    },
+    readOnly: {
+      marginBottom: 18,
+    },
+    readOnlyLabel: {
+      marginBottom: 8,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    readOnlyValue: {
+      minHeight: 52,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceMuted,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      fontSize: 15,
+      color: colors.textSecondary,
+    },
+    readOnlyHint: {
+      ...typography.caption,
+      color: colors.textMuted,
+      marginTop: 6,
+    },
+  });
+}

@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
+import { useMemo } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -9,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { colors, radii, typography } from '@/theme';
+import { radii, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -40,12 +41,12 @@ export function ConfirmModal({
   onCancel,
   onConfirm,
 }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const iconName =
     icon ?? (destructive ? 'log-out-outline' : 'alert-circle-outline');
   const iconColor = destructive ? colors.danger : colors.brand;
-  const iconBg = destructive
-    ? 'rgba(240, 68, 56, 0.12)'
-    : 'rgba(242, 70, 28, 0.12)';
+  const iconBg = destructive ? colors.dangerSoft : colors.primary50;
 
   return (
     <Modal
@@ -105,83 +106,85 @@ export function ConfirmModal({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 24, 39, 0.45)',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 16,
-    alignItems: 'center',
-    borderWidth: 0.5,
-    borderColor: colors.border,
-  },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  title: {
-    ...typography.subtitle,
-    fontSize: 18,
-    lineHeight: 26,
-    color: colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  message: {
-    ...typography.body,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textSecondary,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    alignSelf: 'stretch',
-  },
-  btn: {
-    flex: 1,
-    borderRadius: radii.sm,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  cancelBtn: {
-    backgroundColor: colors.background,
-  },
-  confirmBtn: {
-    backgroundColor: colors.brand,
-  },
-  destructiveBtn: {
-    backgroundColor: colors.danger,
-  },
-  cancelText: {
-    ...typography.subtitle,
-    fontSize: 15,
-    color: colors.text,
-  },
-  confirmText: {
-    ...typography.subtitle,
-    fontSize: 15,
-    color: colors.white,
-  },
-  pressed: {
-    opacity: 0.88,
-  },
-  disabled: {
-    opacity: 0.55,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(17, 24, 39, 0.45)',
+      justifyContent: 'center',
+      paddingHorizontal: 28,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      paddingHorizontal: 20,
+      paddingTop: 24,
+      paddingBottom: 16,
+      alignItems: 'center',
+      borderWidth: 0.5,
+      borderColor: colors.border,
+    },
+    iconWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 14,
+    },
+    title: {
+      ...typography.subtitle,
+      fontSize: 18,
+      lineHeight: 26,
+      color: colors.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    message: {
+      ...typography.body,
+      fontSize: 15,
+      lineHeight: 22,
+      color: colors.textSecondary,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: 10,
+      alignSelf: 'stretch',
+    },
+    btn: {
+      flex: 1,
+      borderRadius: radii.sm,
+      paddingVertical: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 44,
+    },
+    cancelBtn: {
+      backgroundColor: colors.background,
+    },
+    confirmBtn: {
+      backgroundColor: colors.brand,
+    },
+    destructiveBtn: {
+      backgroundColor: colors.danger,
+    },
+    cancelText: {
+      ...typography.subtitle,
+      fontSize: 15,
+      color: colors.text,
+    },
+    confirmText: {
+      ...typography.subtitle,
+      fontSize: 15,
+      color: colors.white,
+    },
+    pressed: {
+      opacity: 0.88,
+    },
+    disabled: {
+      opacity: 0.55,
+    },
+  });
+}

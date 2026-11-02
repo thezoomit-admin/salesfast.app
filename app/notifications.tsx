@@ -26,7 +26,7 @@ import {
   markNotificationRead,
   NOTIFICATIONS_KEY,
 } from '@/features/notifications/notificationsApi';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 import { formatRelative } from '@/utils/dates';
 
 type IconName = React.ComponentProps<typeof FontAwesome>['name'];
@@ -52,6 +52,8 @@ function routeFor(item: AppNotification): Href | null {
 }
 
 export default function NotificationsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -203,49 +205,51 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  list: { flex: 1 },
-  content: { padding: spacing.lg, gap: spacing.sm },
-  emptyContent: { flexGrow: 1 },
-  footer: { paddingVertical: spacing.lg },
-  headerActionBtn: {
-    minHeight: 40,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
-  },
-  headerAction: { ...typography.caption, color: colors.brand, fontWeight: '700' },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  rowUnread: { backgroundColor: colors.brandSoft, borderColor: colors.brandSoft },
-  pressed: { opacity: 0.75 },
-  icon: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceMuted,
-  },
-  iconUnread: { backgroundColor: colors.surface },
-  body: { flex: 1, gap: 2 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  title: { ...typography.subtitle, fontSize: 15, color: colors.text, flexShrink: 1 },
-  titleUnread: { fontWeight: '700' },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: radii.pill,
-    backgroundColor: colors.brand,
-  },
-  message: { ...typography.body, fontSize: 14, lineHeight: 20, color: colors.textSecondary },
-  time: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  chevron: { alignSelf: 'center' },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    list: { flex: 1 },
+    content: { padding: spacing.lg, gap: spacing.sm },
+    emptyContent: { flexGrow: 1 },
+    footer: { paddingVertical: spacing.lg },
+    headerActionBtn: {
+      minHeight: 40,
+      justifyContent: 'center',
+      paddingHorizontal: spacing.sm,
+    },
+    headerAction: { ...typography.caption, color: colors.brand, fontWeight: '700' },
+    row: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    rowUnread: { backgroundColor: colors.brandSoft, borderColor: colors.brandSoft },
+    pressed: { opacity: 0.75 },
+    icon: {
+      width: 36,
+      height: 36,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceMuted,
+    },
+    iconUnread: { backgroundColor: colors.surface },
+    body: { flex: 1, gap: 2 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    title: { ...typography.subtitle, fontSize: 15, color: colors.text, flexShrink: 1 },
+    titleUnread: { fontWeight: '700' },
+    dot: {
+      width: 8,
+      height: 8,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+    },
+    message: { ...typography.body, fontSize: 14, lineHeight: 20, color: colors.textSecondary },
+    time: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+    chevron: { alignSelf: 'center' },
+  });
+}

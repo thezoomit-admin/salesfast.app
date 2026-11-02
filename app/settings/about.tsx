@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 import type { ComponentProps } from 'react';
+import { useMemo } from 'react';
 import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,7 +15,7 @@ import {
   APP_NAME,
   APP_VERSION,
 } from '@/constants/config';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -39,6 +40,8 @@ function platformLabel() {
 }
 
 export default function AboutScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const nativeVersion =
     Constants.nativeApplicationVersion ||
@@ -177,7 +180,7 @@ export default function AboutScreen() {
                     {row.value}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="#C7C7CC" />
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </Pressable>
             </View>
           ))}
@@ -191,122 +194,124 @@ export default function AboutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-  },
-  hero: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    gap: 6,
-  },
-  logoWrap: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-    overflow: 'hidden',
-  },
-  logo: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
-  },
-  appName: {
-    ...typography.title,
-    fontSize: 22,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  tagline: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  versionPill: {
-    marginTop: spacing.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-  },
-  versionPillText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  sectionTitle: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginBottom: 8,
-    marginLeft: 4,
-    marginTop: spacing.sm,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  rowPressed: {
-    backgroundColor: '#EEF2F7',
-  },
-  iconSlot: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.sm,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowBody: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  rowLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  rowValue: {
-    ...typography.subtitle,
-    fontSize: 14,
-    color: colors.text,
-  },
-  rowValueLink: {
-    color: colors.brand,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginLeft: 62,
-  },
-  footer: {
-    ...typography.caption,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginTop: spacing.md,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+    },
+    hero: {
+      alignItems: 'center',
+      paddingVertical: spacing.xl,
+      gap: 6,
+    },
+    logoWrap: {
+      width: 88,
+      height: 88,
+      borderRadius: 22,
+      backgroundColor: colors.surface,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+      overflow: 'hidden',
+    },
+    logo: {
+      width: 72,
+      height: 72,
+      borderRadius: 16,
+    },
+    appName: {
+      ...typography.title,
+      fontSize: 22,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    tagline: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    versionPill: {
+      marginTop: spacing.sm,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surface,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+    },
+    versionPillText: {
+      ...typography.caption,
+      fontWeight: '700',
+      color: colors.textSecondary,
+    },
+    sectionTitle: {
+      ...typography.caption,
+      color: colors.textMuted,
+      marginBottom: 8,
+      marginLeft: 4,
+      marginTop: spacing.sm,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      marginBottom: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      gap: 12,
+    },
+    rowPressed: {
+      backgroundColor: colors.surfaceMuted,
+    },
+    iconSlot: {
+      width: 36,
+      height: 36,
+      borderRadius: radii.sm,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowBody: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
+    rowLabel: {
+      ...typography.caption,
+      color: colors.textMuted,
+    },
+    rowValue: {
+      ...typography.subtitle,
+      fontSize: 14,
+      color: colors.text,
+    },
+    rowValueLink: {
+      color: colors.brand,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginLeft: 62,
+    },
+    footer: {
+      ...typography.caption,
+      color: colors.textMuted,
+      textAlign: 'center',
+      lineHeight: 18,
+      marginTop: spacing.md,
+    },
+  });
+}

@@ -1,9 +1,10 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, typography } from '@/theme';
+import { radii, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 import { fetchUnreadCount, UNREAD_COUNT_KEY } from './notificationsApi';
 
@@ -14,6 +15,8 @@ export function NotificationBell({
   plain?: boolean;
 }) {
   const router = useRouter();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { data: unread = 0 } = useQuery({
     queryKey: UNREAD_COUNT_KEY,
     queryFn: fetchUnreadCount,
@@ -46,49 +49,51 @@ export function NotificationBell({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  plain: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: { opacity: 0.7 },
-  badge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 20,
-    height: 20,
-    paddingHorizontal: 5,
-    borderRadius: radii.pill,
-    backgroundColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  badgePlain: {
-    top: 2,
-    right: 2,
-    minWidth: 18,
-    height: 18,
-    borderWidth: 0,
-  },
-  badgeText: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.white,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    button: {
+      width: 44,
+      height: 44,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    plain: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pressed: { opacity: 0.7 },
+    badge: {
+      position: 'absolute',
+      top: -4,
+      right: -4,
+      minWidth: 20,
+      height: 20,
+      paddingHorizontal: 5,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: colors.background,
+    },
+    badgePlain: {
+      top: 2,
+      right: 2,
+      minWidth: 18,
+      height: 18,
+      borderWidth: 0,
+    },
+    badgeText: {
+      ...typography.caption,
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.white,
+    },
+  });
+}

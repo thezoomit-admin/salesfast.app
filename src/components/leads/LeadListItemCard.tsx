@@ -1,7 +1,7 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 import type { LeadListItem } from '@/types/api';
 import { formatDate, formatRelative } from '@/utils/dates';
 import { formatPhoneDisplay } from '@/utils/phone';
@@ -16,6 +16,8 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   lead,
   onPress,
 }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const name = lead.buyerPersona?.fullName || 'Unnamed lead';
   const phone = lead.buyerPersona?.phone;
   const statusColor = lead.leadStatus?.color || colors.brand;
@@ -58,27 +60,29 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   );
 });
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.sm,
-  },
-  pressed: { opacity: 0.92 },
-  row: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-  main: { flex: 1, gap: 2 },
-  name: { ...typography.subtitle, color: colors.text },
-  phone: { ...typography.body, color: colors.textSecondary },
-  badge: {
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    maxWidth: 120,
-  },
-  badgeText: { ...typography.caption, fontWeight: '700' },
-  meta: { gap: 2 },
-  metaText: { ...typography.caption, color: colors.textMuted },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      padding: spacing.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      gap: spacing.sm,
+    },
+    pressed: { opacity: 0.92 },
+    row: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+    main: { flex: 1, gap: 2 },
+    name: { ...typography.subtitle, color: colors.text },
+    phone: { ...typography.body, color: colors.textSecondary },
+    badge: {
+      borderRadius: radii.pill,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      maxWidth: 120,
+    },
+    badgeText: { ...typography.caption, fontWeight: '700' },
+    meta: { gap: 2 },
+    metaText: { ...typography.caption, color: colors.textMuted },
+  });
+}

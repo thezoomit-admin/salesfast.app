@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import {
   RefreshControl,
   ScrollView,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, spacing } from '@/theme';
+import { spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
   children: ReactNode;
@@ -30,6 +30,8 @@ export function Screen({
   style,
   contentStyle,
 }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const edges = header
     ? (['left', 'right'] as const)
     : (['top', 'left', 'right'] as const);
@@ -62,7 +64,9 @@ export function Screen({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  content: { flexGrow: 1, padding: spacing.lg, gap: spacing.md },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    content: { flexGrow: 1, padding: spacing.lg, gap: spacing.md },
+  });
+}

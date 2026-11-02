@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -7,7 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radii } from '@/theme';
+import { radii, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
   label: string;
@@ -19,6 +20,8 @@ type Props = {
 
 /** Compact filter pill — Hisab FilterChip, Salesfast brand tokens. */
 export function FilterChip({ label, active = false, onPress, style }: Props) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <Pressable
       accessibilityRole="button"
@@ -35,30 +38,32 @@ export function FilterChip({ label, active = false, onPress, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  chip: {
-    flexShrink: 0,
-    minHeight: 36,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: radii.sm,
-    borderWidth: 0.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  label: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  labelActive: {
-    color: colors.white,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    chip: {
+      flexShrink: 0,
+      minHeight: 36,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: radii.sm,
+      borderWidth: 0.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    chipActive: {
+      backgroundColor: colors.brand,
+      borderColor: colors.brand,
+    },
+    label: {
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    labelActive: {
+      color: colors.white,
+    },
+  });
+}

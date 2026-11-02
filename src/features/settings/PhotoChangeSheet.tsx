@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
+import { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -25,6 +26,8 @@ type ActionRowProps = {
 };
 
 function ActionRow({ icon, label, hint, danger, onPress }: ActionRowProps) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const iconColor = danger ? colors.danger : colors.brand;
   const iconBg = danger ? colors.dangerSoft : colors.primary50;
   const labelColor = danger ? colors.danger : colors.text;
@@ -66,6 +69,8 @@ export function PhotoChangeSheet({
   onRemove,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <Modal
@@ -149,107 +154,109 @@ export function PhotoChangeSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(17, 24, 39, 0.4)',
-  },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 10,
-    paddingHorizontal: spacing.lg,
-    shadowColor: '#111827',
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    elevation: 20,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D1D5DB',
-    marginBottom: 14,
-  },
-  header: {
-    marginBottom: spacing.md,
-    paddingHorizontal: 2,
-  },
-  title: {
-    ...typography.subtitle,
-    fontSize: 18,
-    color: colors.text,
-  },
-  subtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  group: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  removeGroup: {
-    marginTop: spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-  },
-  iconSlot: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowMeta: {
-    flex: 1,
-    minWidth: 0,
-  },
-  rowLabel: {
-    ...typography.subtitle,
-    fontSize: 15,
-  },
-  rowHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginLeft: 62,
-  },
-  cancelBtn: {
-    marginTop: spacing.md,
-    marginBottom: 4,
-    paddingVertical: 14,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  cancelText: {
-    ...typography.subtitle,
-    fontSize: 15,
-    color: colors.text,
-  },
-  pressed: {
-    opacity: 0.88,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(17, 24, 39, 0.4)',
+    },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingTop: 10,
+      paddingHorizontal: spacing.lg,
+      shadowColor: colors.black,
+      shadowOffset: { width: 0, height: -6 },
+      shadowOpacity: 0.16,
+      shadowRadius: 16,
+      elevation: 20,
+    },
+    handle: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+      marginBottom: 14,
+    },
+    header: {
+      marginBottom: spacing.md,
+      paddingHorizontal: 2,
+    },
+    title: {
+      ...typography.subtitle,
+      fontSize: 18,
+      color: colors.text,
+    },
+    subtitle: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    group: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    removeGroup: {
+      marginTop: spacing.sm,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 13,
+    },
+    iconSlot: {
+      width: 36,
+      height: 36,
+      borderRadius: radii.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    rowMeta: {
+      flex: 1,
+      minWidth: 0,
+    },
+    rowLabel: {
+      ...typography.subtitle,
+      fontSize: 15,
+    },
+    rowHint: {
+      ...typography.caption,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginLeft: 62,
+    },
+    cancelBtn: {
+      marginTop: spacing.md,
+      marginBottom: 4,
+      paddingVertical: 14,
+      borderRadius: radii.md,
+      backgroundColor: colors.surface,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    cancelText: {
+      ...typography.subtitle,
+      fontSize: 15,
+      color: colors.text,
+    },
+    pressed: {
+      opacity: 0.88,
+    },
+  });
+}

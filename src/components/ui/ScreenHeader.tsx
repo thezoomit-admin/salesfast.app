@@ -1,10 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radii, typography } from '@/theme';
+import { radii, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
   title: string;
@@ -40,6 +41,8 @@ export function ScreenHeader({
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const centered = titleCentered ?? (showBack && !center);
 
   const handleBack = () => {
@@ -130,6 +133,8 @@ export function HeaderAddButton({
   onPress: () => void;
   label?: string;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <Pressable
       accessibilityRole="button"
@@ -151,6 +156,8 @@ export function HeaderIconButton({
   label: string;
   children: ReactNode;
 }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <Pressable
       accessibilityRole="button"
@@ -164,110 +171,112 @@ export function HeaderIconButton({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    minHeight: 48,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#FDDFCF',
-    zIndex: 2,
-  },
-  centerSlot: {
-    position: 'absolute',
-    left: 56,
-    right: 56,
-    top: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 0,
-    pointerEvents: 'box-none',
-  },
-  sideRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 1,
-  },
-  side: {
-    minWidth: 40,
-    minHeight: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sideEnd: {
-    minWidth: 40,
-    minHeight: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 2,
-  },
-  leftWithTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-    minWidth: 0,
-    paddingRight: 8,
-    maxWidth: '72%',
-  },
-  titleBlock: {
-    flexShrink: 1,
-    minWidth: 0,
-    gap: 1,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titleInline: {
-    ...typography.subtitle,
-    fontSize: 17,
-    lineHeight: 24,
-    color: colors.text,
-    flexShrink: 1,
-  },
-  titleRoot: {
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.3,
-    fontWeight: '700',
-  },
-  subtitle: {
-    ...typography.caption,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textSecondary,
-  },
-  titleCentered: {
-    ...typography.subtitle,
-    fontSize: 18,
-    lineHeight: 26,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  right: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    minHeight: 40,
-    gap: 2,
-  },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.pill,
-    backgroundColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    wrap: {
+      minHeight: 48,
+      marginBottom: 12,
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.brandSoft,
+      zIndex: 2,
+    },
+    centerSlot: {
+      position: 'absolute',
+      left: 56,
+      right: 56,
+      top: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 0,
+      pointerEvents: 'box-none',
+    },
+    sideRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      zIndex: 1,
+    },
+    side: {
+      minWidth: 40,
+      minHeight: 40,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    sideEnd: {
+      minWidth: 40,
+      minHeight: 40,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 2,
+    },
+    leftWithTitle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexShrink: 1,
+      minWidth: 0,
+      paddingRight: 8,
+      maxWidth: '72%',
+    },
+    titleBlock: {
+      flexShrink: 1,
+      minWidth: 0,
+      gap: 1,
+    },
+    iconBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    titleInline: {
+      ...typography.subtitle,
+      fontSize: 17,
+      lineHeight: 24,
+      color: colors.text,
+      flexShrink: 1,
+    },
+    titleRoot: {
+      fontSize: 22,
+      lineHeight: 28,
+      letterSpacing: -0.3,
+      fontWeight: '700',
+    },
+    subtitle: {
+      ...typography.caption,
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.textSecondary,
+    },
+    titleCentered: {
+      ...typography.subtitle,
+      fontSize: 18,
+      lineHeight: 26,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    right: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      minHeight: 40,
+      gap: 2,
+    },
+    addBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+  });
+}

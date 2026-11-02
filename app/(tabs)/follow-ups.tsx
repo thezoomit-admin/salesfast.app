@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
@@ -13,7 +13,7 @@ import {
   type FollowUpTab,
 } from '@/features/leads/leadsApi';
 import type { LeadListItem } from '@/types/api';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 const EMPTY_COPY: Record<
   FollowUpTab,
@@ -37,6 +37,8 @@ const EMPTY_COPY: Record<
 };
 
 export default function FollowUpsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const [tab, setTab] = useState<FollowUpTab>('today');
 
@@ -122,25 +124,27 @@ export default function FollowUpsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  tabs: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tabActive: { backgroundColor: colors.brand, borderColor: colors.brand },
-  tabText: { ...typography.caption, color: colors.textSecondary },
-  tabTextActive: { color: colors.white },
-  list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    tabs: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      marginBottom: spacing.md,
+    },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderRadius: radii.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    tabActive: { backgroundColor: colors.brand, borderColor: colors.brand },
+    tabText: { ...typography.caption, color: colors.textSecondary },
+    tabTextActive: { color: colors.white },
+    list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
+  });
+}

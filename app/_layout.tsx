@@ -6,6 +6,7 @@ import {
   useSegments,
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -18,7 +19,7 @@ import { NotificationsBootstrap } from '@/features/notifications/NotificationsBo
 import { installConnectivityManagers } from '@/lib/connectivity';
 import { installQueryCacheMonitor } from '@/lib/perfMonitor';
 import { useAccountQueryCache } from '@/lib/useAccountQueryCache';
-import { colors } from '@/theme';
+import { ThemeProvider, useTheme } from '@/theme';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -66,6 +67,32 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ThemedStack() {
+  const { colors, resolved } = useTheme();
+
+  return (
+    <>
+      <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="leads/[id]" />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="activities" />
+        <Stack.Screen name="call-sync/setup" />
+        <Stack.Screen name="settings/edit" />
+        <Stack.Screen name="settings/about" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+    </>
+  );
+}
+
 export default function RootLayout() {
   const [queryClient] = useState(() => {
     const client = new QueryClient({
@@ -87,28 +114,15 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AuthGate>
-          <CallSyncBootstrap />
-          <NotificationsBootstrap />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="leads/[id]" />
-            <Stack.Screen name="notifications" />
-            <Stack.Screen name="activities" />
-            <Stack.Screen name="call-sync/setup" />
-            <Stack.Screen name="settings/edit" />
-            <Stack.Screen name="settings/about" />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-        </AuthGate>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AuthGate>
+            <CallSyncBootstrap />
+            <NotificationsBootstrap />
+            <ThemedStack />
+          </AuthGate>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

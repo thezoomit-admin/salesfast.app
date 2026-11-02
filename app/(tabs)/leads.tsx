@@ -27,7 +27,7 @@ import {
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { leadStatusesQuery, myLeadsQuery } from '@/features/leads/leadsApi';
 import type { LeadListItem } from '@/types/api';
-import { colors, radii, spacing } from '@/theme';
+import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 function useDebounced<T>(value: T, delay = 350) {
   const [debounced, setDebounced] = useState(value);
@@ -39,6 +39,8 @@ function useDebounced<T>(value: T, delay = 350) {
 }
 
 export default function LeadsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -191,27 +193,29 @@ export default function LeadsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    minHeight: 44,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.text,
-    fontSize: 15,
-    paddingVertical: spacing.sm,
-  },
-  list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
-  stale: { opacity: 0.6 },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    searchWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginHorizontal: spacing.lg,
+      marginBottom: spacing.md,
+      minHeight: 44,
+      borderRadius: radii.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingHorizontal: spacing.md,
+    },
+    searchInput: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 15,
+      paddingVertical: spacing.sm,
+    },
+    list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
+    stale: { opacity: 0.6 },
+  });
+}

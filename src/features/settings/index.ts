@@ -3,3 +3,4 @@ export {
   SettingsSearchSheet,
   type SettingsSearchItem,
 } from './SettingsSearchSheet';
+export { ThemeModeSheet } from './ThemeModeSheet';
