@@ -1,0 +1,39 @@
+import { Image, StyleSheet, View } from 'react-native';
+
+const favicon = require('../../../../assets/images/salesfast-favicon.png');
+const fullLogo = require('../../../../assets/images/salesfast-logo.png');
+
+type Props = {
+  /** `wordmark` = full Salesfast CRM logo. `icon` = favicon mark only. */
+  variant?: 'wordmark' | 'icon';
+  size?: number;
+};
+
+export function BrandMark({ variant = 'wordmark', size = 56 }: Props) {
+  if (variant === 'icon') {
+    return (
+      <Image
+        source={favicon}
+        style={{ width: size, height: size }}
+        resizeMode="cover"
+      />
+    );
+  }
+
+  return (
+    <View style={styles.wordmarkWrap}>
+      <Image source={fullLogo} style={styles.fullLogo} resizeMode="contain" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wordmarkWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullLogo: {
+    width: 200,
+    height: 56,
+  },
+});

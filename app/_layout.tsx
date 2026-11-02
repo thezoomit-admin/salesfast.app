@@ -2,9 +2,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { BrandSplash } from '@/features/auth/components/BrandSplash';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 import { CallSyncBootstrap } from '@/features/call-tracking/CallSyncBootstrap';
 import { NotificationsBootstrap } from '@/features/notifications/NotificationsBootstrap';
@@ -23,7 +23,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (bootstrapping) return;
     const inAuth = segments[0] === '(auth)';
     if (!user && !inAuth) {
-      router.replace('/(auth)/login');
+      router.replace('/(auth)/index');
     } else if (user && inAuth) {
       router.replace('/(tabs)');
     }
@@ -36,18 +36,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [bootstrapping]);
 
   if (bootstrapping) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.brand} />
-      </View>
-    );
+    return <BrandSplash mode="logo" />;
   }
 
   return <>{children}</>;

@@ -1,27 +1,35 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import { z } from 'zod';
 
 import { getErrorMessage } from '@/api/client';
-import { Button } from '@/components/ui/Button';
-import { Screen } from '@/components/ui/Screen';
-import { TextField } from '@/components/ui/TextField';
-import { API_BASE_URL, APP_NAME } from '@/constants/config';
+import { AuthInput } from '@/features/auth/components/AuthInput';
+import { AuthShell } from '@/features/auth/components/AuthShell';
+import { authColors } from '@/features/auth/authTheme';
 import { useAuth } from '@/features/auth/AuthContext';
-import { colors, radii, spacing, typography } from '@/theme';
 
 const schema = z.object({
-  identifier: z.string().min(3, 'Email or phone is required'),
+  identifier: z.string().min(3, 'Required'),
   password: z.string().min(1, 'Password is required'),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 export default function LoginScreen() {
+  const router = useRouter();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const phoneMode = mode === 'phone';
   const { signIn, signingIn } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
+
   const {
     control,
     handleSubmit,
@@ -34,7 +42,7 @@ export default function LoginScreen() {
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
     const identifier = values.identifier.trim();
-    const isEmail = identifier.includes('@');
+    const isEmail = !phoneMode && identifier.includes('@');
     try {
       await signIn({
         password: values.password,
@@ -46,71 +54,113 @@ export default function LoginScreen() {
   });
 
   return (
-    <Screen>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}
-      >
-        <View style={styles.hero}>
-          <Text style={styles.brand}>{APP_NAME}</Text>
-          <Text style={styles.tagline}>
-            Sign in with your CRM account to manage leads on the go.
-          </Text>
-        </View>
+    <AuthShell
+      title="Salesfast"
+      subtitle={
+        phoneMode
+          ? 'Sign in with your phone number'
+          : 'Sign in to smarter lead management'
+      }
+      switchPrompt="Don't have an account?"
+      switchAction={
+        <Pressable onPress={() => router.push('/(auth)/signup')}>
+          <Text style={styles.switchLink}>Sign up</Text>
+        </Pressable>
+      }
+    >
+      <Controller
+        control={control}
+        name="identifier"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <AuthInput
+            label={phoneMode ? 'Phone number' : 'Email'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType={phoneMode ? 'phone-pad' : 'email-address'}
+            textContentType={phoneMode ? 'telephoneNumber' : 'emailAddress'}
+            autoComplete={phoneMode ? 'tel' : 'email'}
+            prefix={phoneMode ? '+1' : undefined}
+            value={value}
+            onBlur={onBlur}
+            onChangeText={onChange}
+            error={errors.identifier?.message}
+            returnKeyType="next"
+          />
+        )}
+      />
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <AuthInput
+            label="Password"
+            password
+            textContentType="password"
+            autoComplete="password"
+            value={value}
+            onBlur={onBlur}
+            onChangeText={onChange}
+            error={errors.password?.message ?? formError ?? undefined}
+            returnKeyType="done"
+            onSubmitEditing={() => void onSubmit()}
+          />
+        )}
+      />
 
-        <View style={styles.card}>
-          <Controller
-            control={control}
-            name="identifier"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextField
-                label="Email or phone"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={errors.identifier?.message}
-              />
-            )}
-          />
-          <Controller
-            control={control}
-            name="password"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextField
-                label="Password"
-                secureTextEntry
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                error={errors.password?.message}
-              />
-            )}
-          />
-          {formError ? <Text style={styles.error}>{formError}</Text> : null}
-          <Text style={styles.apiHint}>API: {API_BASE_URL}</Text>
-          <Button title="Sign in" onPress={onSubmit} loading={signingIn} />
-        </View>
-      </KeyboardAvoidingView>
-    </Screen>
+      <Pressable
+        accessibilityRole="button"
+        style={styles.forgotPress}
+        onPress={() => {}}
+      >
+        <Text style={styles.forgotText}>Forgot Password?</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={signingIn}
+        onPress={() => void onSubmit()}
+        style={[styles.button, signingIn ? styles.buttonDisabled : null]}
+      >
+        {signingIn ? (
+          <ActivityIndicator color={authColors.white} />
+        ) : (
+          <Text style={styles.buttonText}>Sign in</Text>
+        )}
+      </Pressable>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, justifyContent: 'center', gap: spacing.xl },
-  hero: { gap: spacing.sm },
-  brand: { ...typography.display, color: colors.brand },
-  tagline: { ...typography.body, color: colors.textSecondary, maxWidth: 320 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.xl,
-    gap: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+  switchLink: {
+    color: authColors.primary,
+    fontWeight: '700',
+    fontSize: 14,
   },
-  error: { ...typography.caption, color: colors.danger },
-  apiHint: { ...typography.caption, color: colors.textMuted },
+  forgotPress: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+    marginBottom: 10,
+    paddingVertical: 4,
+  },
+  forgotText: {
+    color: authColors.primary,
+    fontSize: 14,
+  },
+  button: {
+    marginTop: 8,
+    backgroundColor: authColors.primary,
+    borderRadius: authColors.radius,
+    minHeight: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: authColors.white,
+    fontWeight: '700',
+    fontSize: 16,
+  },
 });
