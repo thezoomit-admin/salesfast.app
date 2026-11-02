@@ -7,8 +7,8 @@
 ## Shipping approach
 
 1. Local Expo Module `modules/android-call-log` reads Android call log (permission: `READ_CALL_LOG` only).
-2. Consent screen + `syncFromAt` privacy window (no history before enable).
-3. Client matches numbers to CRM lead directory, uploads only matches.
+2. Consent screen; scans recent device call history (matched leads only).
+3. Client matches numbers to CRM lead directory (any assignee — number match only), uploads only matches.
 4. Backend `POST /api/crm/mobile/call-sync` creates Call-channel notes (idempotent via `[call-sync:…]` marker). `createdAt` = real call time → admin Call History “Called at”.
 5. Requires **development build** (`expo-dev-client`). **Expo Go cannot read call logs.**
 

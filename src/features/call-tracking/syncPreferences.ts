@@ -11,7 +11,10 @@ export type CallSyncPrefs = {
   enabled: boolean;
   /** Temporary pause without wiping consent. */
   paused: boolean;
-  /** Only calls at/after this instant are considered (privacy window). */
+  /**
+   * Legacy field. Call sync no longer cuts off by enable time; kept for
+   * older installs / prefs shape compatibility.
+   */
   syncFromAt: string | null;
   lastSyncedAt: string | null;
   updatedAt: string | null;

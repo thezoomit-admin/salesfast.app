@@ -42,10 +42,16 @@ export async function fetchCallMatchDirectory() {
   return data.data;
 }
 
-export async function uploadMatchedCalls(calls: CallSyncUploadItem[]) {
+export async function uploadMatchedCalls(
+  calls: CallSyncUploadItem[],
+  devicePhone?: string | null
+) {
   const { data } = await api.post<ApiResponse<CallSyncUploadResult>>(
     '/crm/mobile/call-sync',
-    { calls }
+    {
+      calls,
+      ...(devicePhone?.trim() ? { devicePhone: devicePhone.trim() } : {}),
+    }
   );
   return data.data;
 }
