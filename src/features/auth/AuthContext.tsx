@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { setAuthLostHandler } from '@/api/client';
+import { unregisterPushNotifications } from '@/features/notifications/pushRegistration';
 import { secureStorage } from '@/services/secureStorage';
 import type { AuthUser } from '@/types/api';
 
@@ -82,6 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
+      // While still authenticated: stop pushes to this phone for this user.
+      await unregisterPushNotifications();
       await logoutRequest();
     } finally {
       await secureStorage.clearSession();
