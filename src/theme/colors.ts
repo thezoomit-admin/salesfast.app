@@ -2,21 +2,22 @@
  * Salesfast CRM brand — matched to logo + admin palette.
  *
  *   Primary  #F2461C · pressed #D93B14 · soft #FBD2C2
- *   primary-50 #FEF2EC (page wash) · Navy #15202C
+ *   Page wash #F7F7F7 (Hisab surface) · Navy #15202C
  */
 export const colors = {
   brand: '#F2461C',
   brandMuted: '#D93B14',
   brandSoft: '#FBD2C2',
-  /** Tailwind primary-50 — light page background */
+  /** Brand soft tint — icon chips / accents (not page wash). */
   primary50: '#FEF2EC',
   /** Logo navy — secondary ink / accents */
   accent: '#15202C',
   accentSoft: '#E7EAED',
-  background: '#FEF2EC',
+  /** Hisab page wash */
+  background: '#F7F7F7',
   surface: '#FFFFFF',
-  surfaceMuted: '#FDDFCF',
-  border: '#F0E0D8',
+  surfaceMuted: '#EEF0F2',
+  border: '#E5E7EB',
   text: '#15202C',
   textSecondary: '#5B6B7A',
   textMuted: '#98A2B3',
