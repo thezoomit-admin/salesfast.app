@@ -1,6 +1,6 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { memo, useMemo } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { memo, useMemo } from "react";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   radii,
@@ -8,14 +8,14 @@ import {
   typography,
   useTheme,
   type ThemeColors,
-} from '@/theme';
-import type { LeadListItem, LeadPriority } from '@/types/api';
-import { formatDate, formatRelative } from '@/utils/dates';
+} from "@/theme";
+import type { LeadListItem, LeadPriority } from "@/types/api";
+import { formatDate, formatRelative } from "@/utils/dates";
 import {
   formatPhoneDisplay,
   openPhoneDialer,
   openWhatsApp,
-} from '@/utils/phone';
+} from "@/utils/phone";
 
 type Props = {
   lead: LeadListItem;
@@ -24,13 +24,13 @@ type Props = {
 };
 
 function parseRgb(hex: string): { r: number; g: number; b: number } | null {
-  const raw = hex.trim().replace('#', '');
+  const raw = hex.trim().replace("#", "");
   const full =
     raw.length === 3
       ? raw
-          .split('')
+          .split("")
           .map((c) => c + c)
-          .join('')
+          .join("")
       : raw;
   if (full.length !== 6) return null;
   const n = Number.parseInt(full, 16);
@@ -42,21 +42,21 @@ function toHex(r: number, g: number, b: number): string {
   const h = (c: number) =>
     Math.max(0, Math.min(255, Math.round(c)))
       .toString(16)
-      .padStart(2, '0');
+      .padStart(2, "0");
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
 function mix(
   hex: string,
   target: { r: number; g: number; b: number },
-  amount: number
+  amount: number,
 ): string {
   const rgb = parseRgb(hex);
   if (!rgb) return hex;
   return toHex(
     rgb.r + (target.r - rgb.r) * amount,
     rgb.g + (target.g - rgb.g) * amount,
-    rgb.b + (target.b - rgb.b) * amount
+    rgb.b + (target.b - rgb.b) * amount,
   );
 }
 
@@ -78,13 +78,10 @@ function stageBadgeStyle(statusColor: string, isDark: boolean) {
   };
 }
 
-const PRIORITY_META: Record<
-  LeadPriority,
-  { label: string; color: string }
-> = {
-  LOW: { label: 'Low', color: '#0ba5ec' },
-  MEDIUM: { label: 'Medium', color: '#d97706' },
-  HIGH: { label: 'High', color: '#f04438' },
+const PRIORITY_META: Record<LeadPriority, { label: string; color: string }> = {
+  LOW: { label: "Low", color: "#0ba5ec" },
+  MEDIUM: { label: "Medium", color: "#d97706" },
+  HIGH: { label: "High", color: "#f04438" },
 };
 
 function priorityBadgeStyle(priority: LeadPriority, isDark: boolean) {
@@ -97,21 +94,21 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   onPress,
 }: Props) {
   const { colors, resolved } = useTheme();
-  const isDark = resolved === 'dark';
+  const isDark = resolved === "dark";
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const name = lead.buyerPersona?.fullName || 'Unnamed lead';
+  const name = lead.buyerPersona?.fullName || "Unnamed lead";
   const phone = lead.buyerPersona?.phone;
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
   const statusColor = lead.leadStatus?.color || colors.brand;
   const stageBadge = useMemo(
     () => stageBadgeStyle(statusColor, isDark),
-    [statusColor, isDark]
+    [statusColor, isDark],
   );
   const priority = lead.priority ?? null;
   const priorityMeta = priority ? PRIORITY_META[priority] : null;
   const priorityBadge = useMemo(
     () => (priority ? priorityBadgeStyle(priority, isDark) : null),
-    [priority, isDark]
+    [priority, isDark],
   );
 
   const metaBits = [
@@ -125,15 +122,15 @@ export const LeadListItemCard = memo(function LeadListItemCard({
 
   async function onCall() {
     const ok = await openPhoneDialer(phone);
-    if (!ok) Alert.alert('Unable to dial', 'No phone number available.');
+    if (!ok) Alert.alert("Unable to dial", "No phone number available.");
   }
 
   async function onWhatsApp() {
     try {
       const ok = await openWhatsApp(whatsapp);
-      if (!ok) Alert.alert('Unable to open WhatsApp', 'No number available.');
+      if (!ok) Alert.alert("Unable to open WhatsApp", "No number available.");
     } catch {
-      Alert.alert('Unable to open WhatsApp');
+      Alert.alert("Unable to open WhatsApp");
     }
   }
 
@@ -162,7 +159,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
             style={[styles.badgeText, { color: stageBadge.color }]}
             numberOfLines={1}
           >
-            {lead.leadStatus?.name || 'No status'}
+            {lead.leadStatus?.name || "No status"}
           </Text>
         </View>
       </View>
@@ -189,7 +186,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
           ) : null}
           {metaBits.length > 0 ? (
             <Text style={styles.metaText} numberOfLines={1}>
-              {metaBits.join(' · ')}
+              {metaBits.join(" · ")}
             </Text>
           ) : null}
         </View>
@@ -212,7 +209,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
             <Ionicons
               name="call-outline"
               size={20}
-              color={phone ? colors.brand : colors.textMuted}
+              color={phone ? colors.textSecondary : colors.textMuted}
             />
           </Pressable>
           <Pressable
@@ -232,7 +229,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
             <Ionicons
               name="logo-whatsapp"
               size={20}
-              color={whatsapp ? '#25D366' : colors.textMuted}
+              color={whatsapp ? "#25D366" : colors.textMuted}
             />
           </Pressable>
         </View>
@@ -252,7 +249,7 @@ function createStyles(colors: ThemeColors) {
       gap: spacing.sm,
     },
     pressed: { opacity: 0.92 },
-    row: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+    row: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
     main: { flex: 1, gap: 2, minWidth: 0 },
     name: { ...typography.subtitle, color: colors.text },
     phone: { ...typography.body, color: colors.textSecondary },
@@ -270,17 +267,17 @@ function createStyles(colors: ThemeColors) {
       borderWidth: StyleSheet.hairlineWidth,
       flexShrink: 0,
     },
-    badgeText: { ...typography.caption, fontWeight: '700' },
+    badgeText: { ...typography.caption, fontWeight: "700" },
     footer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.sm,
       marginTop: 2,
     },
     footerMeta: {
       flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: spacing.sm,
       minWidth: 0,
     },
@@ -290,16 +287,16 @@ function createStyles(colors: ThemeColors) {
       flexShrink: 1,
     },
     actions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
       flexShrink: 0,
     },
     actionBtn: {
-      width: 32,
+      width: 28,
       height: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
+      alignItems: "center",
+      justifyContent: "center",
     },
     actionFaded: { opacity: 0.45 },
   });
