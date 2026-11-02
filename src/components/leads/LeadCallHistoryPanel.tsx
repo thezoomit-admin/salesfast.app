@@ -1,7 +1,14 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
+import type { ComponentProps } from 'react';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import {
+  CallBlockedIcon,
+  PhoneIncomingIcon,
+  PhoneMissedIcon,
+  PhoneOutgoingIcon,
+} from '@/components/icons/hugeicons';
 import {
   DayGroupHeader,
   LeadSectionShell,
@@ -19,6 +26,7 @@ import type { LeadDetail } from '@/types/api';
 
 type Props = { lead: LeadDetail };
 type CallTab = 'all' | CallKind;
+type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 
 const TABS: { key: CallTab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -30,11 +38,12 @@ const TABS: { key: CallTab; label: string }[] = [
 
 const PAGE_SIZE = 30;
 
-const KIND_ICON: Record<CallKind, keyof typeof Ionicons.glyphMap> = {
-  incoming: 'arrow-down-outline',
-  outgoing: 'arrow-up-outline',
-  missed: 'close-outline',
-  failed: 'ban-outline',
+/** Same Hugeicons as web portal LeadCallHistory DIR_AVATAR. */
+const KIND_ICON: Record<CallKind, HugeIconData> = {
+  incoming: PhoneIncomingIcon,
+  outgoing: PhoneOutgoingIcon,
+  missed: PhoneMissedIcon,
+  failed: CallBlockedIcon,
 };
 
 export function LeadCallHistoryPanel({ lead }: Props) {
