@@ -318,12 +318,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 28,
+    marginBottom: 44,
   },
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: authColors.border,
     alignItems: 'center',
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   forgot: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#E8A317',
+    color: authColors.primary,
   },
   loginBtn: {
     minHeight: 54,
