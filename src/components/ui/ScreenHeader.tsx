@@ -163,7 +163,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.surfaceMuted,
+    borderBottomColor: '#FDDFCF',
+    zIndex: 2,
   },
   centerSlot: {
     position: 'absolute',

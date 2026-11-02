@@ -80,9 +80,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: 'More',
           tabBarIcon: ({ color }) => (
-            <TabIcon name="user" color={String(color)} />
+            <TabIcon name="ellipsis-h" color={String(color)} />
           ),
         }}
       />
