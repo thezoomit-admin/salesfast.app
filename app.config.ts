@@ -1,6 +1,20 @@
+import { existsSync } from 'fs';
+import { join } from 'path';
+
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 const isDevClientBuild = process.env.EAS_BUILD_PROFILE === 'development';
+
+/**
+ * Firebase config for Android push (FCM). Download it from the Firebase
+ * console (Android app id com.zoomit.realistcrm). On EAS it can come from a
+ * file env var (GOOGLE_SERVICES_JSON) so the file never needs to be committed.
+ */
+const googleServicesFile =
+  process.env.GOOGLE_SERVICES_JSON ??
+  (existsSync(join(__dirname, 'google-services.json'))
+    ? './google-services.json'
+    : undefined);
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -25,7 +39,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    permissions: ['READ_CALL_LOG'],
+    ...(googleServicesFile ? { googleServicesFile } : {}),
+    permissions: ['READ_CALL_LOG', 'POST_NOTIFICATIONS'],
     // Dev API is http:// — required for device → local backend.
     // Expo Android typings omit this field on some SDK versions.
     ...({ usesCleartextTraffic: true } as object),
@@ -46,6 +61,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-secure-store',
+    [
+      'expo-notifications',
+      {
+        icon: './assets/images/android-icon-monochrome.png',
+        color: '#0F3D3E',
+        defaultChannel: 'default',
+      },
+    ],
     ...(isDevClientBuild ? (['expo-dev-client'] as const) : []),
     [
       'expo-build-properties',
