@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CountryCode } from 'libphonenumber-js';
 
 import {
-  COUNTRIES,
+  listCountries,
   DEFAULT_COUNTRY_CODE,
   findCountry,
   toE164,
@@ -51,8 +51,8 @@ export function CountryPhoneInput({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return COUNTRIES;
-    return COUNTRIES.filter(
+    if (!q) return listCountries();
+    return listCountries().filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.dialCode.includes(q.replace(/^\+/, '')) ||
