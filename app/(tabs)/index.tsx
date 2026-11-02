@@ -1,20 +1,28 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
-import { Button } from '@/components/ui/Button';
-import { KpiCard } from '@/components/ui/KpiCard';
 import { Screen } from '@/components/ui/Screen';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
-import { APP_NAME } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { colors, radii, spacing, typography } from '@/theme';
 import { formatDate, formatRelative } from '@/utils/dates';
+
+function greetingForHour(hour: number) {
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function isOverdue(dueAt: string) {
+  return new Date(dueAt).getTime() < Date.now();
+}
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -30,6 +38,11 @@ export default function HomeScreen() {
       void callSync.refresh();
     }, [callSync.refresh])
   );
+
+  const firstName = user?.name?.split(' ')[0] || 'Agent';
+  const greeting = useMemo(() => greetingForHour(new Date().getHours()), []);
+  const syncOk =
+    callSync.status === 'configured' || callSync.status === 'unavailable_web';
 
   if (query.isLoading) {
     return (
@@ -59,160 +72,529 @@ export default function HomeScreen() {
     );
   }
 
+  const { kpis } = data;
+  const hasOverdue = kpis.overdueFollowUps > 0;
+  const focusTotal = kpis.todayFollowUps + kpis.overdueFollowUps;
+
   return (
     <Screen
       scroll
       refreshing={query.isRefetching}
       onRefresh={() => query.refetch()}
+      contentStyle={styles.screenContent}
     >
       <View style={styles.headerRow}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>{APP_NAME}</Text>
-          <Text style={styles.title}>Hello, {user?.name?.split(' ')[0] || 'Agent'}</Text>
-          <Text style={styles.subtitle}>Your assigned pipeline at a glance.</Text>
+          <Text style={styles.greeting}>
+            {greeting}, {firstName}
+          </Text>
+          <Text style={styles.subtitle}>
+            {focusTotal > 0
+              ? `${focusTotal} follow-up${focusTotal === 1 ? '' : 's'} need attention today.`
+              : 'Your pipeline looks clear — keep momentum going.'}
+          </Text>
         </View>
         <NotificationBell />
       </View>
 
-      <View style={styles.kpiGrid}>
-        <KpiCard label="Assigned leads" value={data.kpis.totalAssigned} tone="accent" />
-        <KpiCard label="New (7 days)" value={data.kpis.newLeads} />
-        <KpiCard label="Pending follow-ups" value={data.kpis.pendingFollowUps} />
-        <KpiCard
-          label="Overdue"
-          value={data.kpis.overdueFollowUps}
-          tone={data.kpis.overdueFollowUps > 0 ? 'warning' : 'default'}
+      {hasOverdue ? (
+        <Pressable
+          style={styles.alertBanner}
+          onPress={() => router.push('/(tabs)/follow-ups')}
+        >
+          <View style={styles.alertIcon}>
+            <FontAwesome name="exclamation" size={14} color={colors.warning} />
+          </View>
+          <View style={styles.alertCopy}>
+            <Text style={styles.alertTitle}>
+              {kpis.overdueFollowUps} overdue follow-up
+              {kpis.overdueFollowUps === 1 ? '' : 's'}
+            </Text>
+            <Text style={styles.alertBody}>Tap to clear them now</Text>
+          </View>
+          <FontAwesome name="chevron-right" size={12} color={colors.warning} />
+        </Pressable>
+      ) : null}
+
+      <View style={styles.focusRow}>
+        <FocusStat
+          label="Today"
+          value={kpis.todayFollowUps}
+          icon="calendar"
+          onPress={() => router.push('/(tabs)/follow-ups')}
         />
-        <KpiCard label="Today's follow-ups" value={data.kpis.todayFollowUps} />
+        <FocusStat
+          label="Overdue"
+          value={kpis.overdueFollowUps}
+          icon="clock-o"
+          tone={hasOverdue ? 'warning' : 'default'}
+          onPress={() => router.push('/(tabs)/follow-ups')}
+        />
+        <FocusStat
+          label="Pending"
+          value={kpis.pendingFollowUps}
+          icon="hourglass-half"
+          onPress={() => router.push('/(tabs)/follow-ups')}
+        />
       </View>
 
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Call synchronization</Text>
-        <Text style={styles.panelBody}>{callSync.message}</Text>
-        <View
-          style={[
-            styles.syncBadge,
-            callSync.status === 'configured' || callSync.status === 'unavailable_web'
-              ? styles.syncBadgeOk
-              : null,
-          ]}
-        >
-          <Text
-            style={[
-              styles.syncBadgeText,
-              callSync.status === 'configured' || callSync.status === 'unavailable_web'
-                ? styles.syncBadgeTextOk
-                : null,
-            ]}
-          >
-            Status: {callSync.label}
-          </Text>
-        </View>
-        <Button
-          title={
-            callSync.status === 'not_configured'
-              ? 'Configure call sync'
-              : 'Manage call sync'
-          }
-          variant="secondary"
+      <View style={styles.kpiStrip}>
+        <MiniKpi
+          label="Assigned"
+          value={kpis.totalAssigned}
+          onPress={() => router.push('/(tabs)/leads')}
+        />
+        <View style={styles.kpiDivider} />
+        <MiniKpi label="New (7d)" value={kpis.newLeads} />
+        <View style={styles.kpiDivider} />
+        <MiniKpi
+          label="Activities"
+          value={kpis.completedActivities}
+          onPress={() => router.push('/(tabs)/activities')}
+        />
+      </View>
+
+      <View style={styles.actionsRow}>
+        <QuickAction
+          icon="users"
+          label="Leads"
+          onPress={() => router.push('/(tabs)/leads')}
+        />
+        <QuickAction
+          icon="calendar-check-o"
+          label="Follow-ups"
+          onPress={() => router.push('/(tabs)/follow-ups')}
+        />
+        <QuickAction
+          icon="phone"
+          label="Call sync"
           onPress={() => router.push('/call-sync/setup')}
         />
+        <QuickAction
+          icon="list-alt"
+          label="Activity"
+          onPress={() => router.push('/(tabs)/activities')}
+        />
       </View>
 
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Upcoming follow-ups</Text>
+      <Pressable
+        style={[styles.syncCard, syncOk ? styles.syncCardOk : styles.syncCardWarn]}
+        onPress={() => router.push('/call-sync/setup')}
+      >
+        <View
+          style={[
+            styles.syncDot,
+            { backgroundColor: syncOk ? colors.success : colors.warning },
+          ]}
+        />
+        <View style={styles.syncCopy}>
+          <Text style={styles.syncTitle}>Call sync · {callSync.label}</Text>
+          <Text style={styles.syncBody} numberOfLines={1}>
+            {callSync.message}
+          </Text>
+        </View>
+        <FontAwesome name="chevron-right" size={12} color={colors.textMuted} />
+      </Pressable>
+
+      <Section
+        title="Upcoming follow-ups"
+        actionLabel="See all"
+        onAction={() => router.push('/(tabs)/follow-ups')}
+      >
         {data.upcomingFollowUps.length === 0 ? (
-          <Text style={styles.panelBody}>No pending follow-ups.</Text>
+          <Text style={styles.emptyCopy}>No pending follow-ups.</Text>
         ) : (
-          data.upcomingFollowUps.slice(0, 5).map((item) => (
-            <Pressable
-              key={item.id}
-              style={styles.row}
-              onPress={() => router.push(`/leads/${item.leadId}`)}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{item.leadName}</Text>
-                <Text style={styles.rowMeta}>{formatDate(item.dueAt)}</Text>
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </Pressable>
-          ))
+          data.upcomingFollowUps.slice(0, 5).map((item, index) => {
+            const overdue = isOverdue(item.dueAt);
+            return (
+              <Pressable
+                key={item.id}
+                style={[styles.listRow, index === 0 && styles.listRowFirst]}
+                onPress={() => router.push(`/leads/${item.leadId}`)}
+              >
+                <View
+                  style={[
+                    styles.timeChip,
+                    overdue ? styles.timeChipWarn : styles.timeChipDefault,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.timeChipText,
+                      overdue ? styles.timeChipTextWarn : null,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {formatDate(item.dueAt)}
+                  </Text>
+                </View>
+                <View style={styles.listCopy}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {item.leadName}
+                  </Text>
+                  <Text style={styles.rowMeta} numberOfLines={1}>
+                    {item.type || 'Follow-up'}
+                    {item.leadPhone ? ` · ${item.leadPhone}` : ''}
+                  </Text>
+                </View>
+                <FontAwesome
+                  name="chevron-right"
+                  size={12}
+                  color={colors.textMuted}
+                />
+              </Pressable>
+            );
+          })
         )}
-      </View>
+      </Section>
 
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Recent lead updates</Text>
+      <Section
+        title="Recent lead updates"
+        actionLabel="All leads"
+        onAction={() => router.push('/(tabs)/leads')}
+      >
         {data.recentLeads.length === 0 ? (
-          <Text style={styles.panelBody}>No recent leads.</Text>
+          <Text style={styles.emptyCopy}>No recent leads.</Text>
         ) : (
-          data.recentLeads.slice(0, 5).map((lead) => (
+          data.recentLeads.slice(0, 5).map((lead, index) => (
             <Pressable
               key={lead.id}
-              style={styles.row}
+              style={[styles.listRow, index === 0 && styles.listRowFirst]}
               onPress={() => router.push(`/leads/${lead.id}`)}
             >
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{lead.name}</Text>
-                <Text style={styles.rowMeta}>
-                  {lead.status?.name || 'No status'} · {formatRelative(lead.updatedAt)}
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {(lead.name || '?').charAt(0).toUpperCase()}
                 </Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <View style={styles.listCopy}>
+                <Text style={styles.rowTitle} numberOfLines={1}>
+                  {lead.name}
+                </Text>
+                <Text style={styles.rowMeta} numberOfLines={1}>
+                  {lead.status?.name || 'No status'} ·{' '}
+                  {formatRelative(lead.updatedAt)}
+                </Text>
+              </View>
+              <FontAwesome
+                name="chevron-right"
+                size={12}
+                color={colors.textMuted}
+              />
             </Pressable>
           ))
         )}
-      </View>
+      </Section>
     </Screen>
   );
 }
 
+function FocusStat({
+  label,
+  value,
+  icon,
+  tone = 'default',
+  onPress,
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentProps<typeof FontAwesome>['name'];
+  tone?: 'default' | 'warning';
+  onPress: () => void;
+}) {
+  const warning = tone === 'warning';
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.focusCard,
+        warning && styles.focusCardWarn,
+        pressed && styles.pressed,
+      ]}
+    >
+      <FontAwesome
+        name={icon}
+        size={16}
+        color={warning ? colors.warning : colors.brand}
+      />
+      <Text style={[styles.focusValue, warning && styles.focusValueWarn]}>
+        {value}
+      </Text>
+      <Text style={styles.focusLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function MiniKpi({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: number;
+  onPress?: () => void;
+}) {
+  const content = (
+    <>
+      <Text style={styles.miniValue}>{value}</Text>
+      <Text style={styles.miniLabel}>{label}</Text>
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={styles.miniKpi}>{content}</View>;
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.miniKpi, pressed && styles.pressed]}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
+function QuickAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: React.ComponentProps<typeof FontAwesome>['name'];
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+    >
+      <View style={styles.actionIcon}>
+        <FontAwesome name={icon} size={16} color={colors.brand} />
+      </View>
+      <Text style={styles.actionLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function Section({
+  title,
+  actionLabel,
+  onAction,
+  children,
+}: {
+  title: string;
+  actionLabel: string;
+  onAction: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.panel}>
+      <View style={styles.panelHeader}>
+        <Text style={styles.panelTitle}>{title}</Text>
+        <Pressable onPress={onAction} hitSlop={8}>
+          <Text style={styles.panelAction}>{actionLabel}</Text>
+        </Pressable>
+      </View>
+      {children}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  screenContent: { gap: spacing.md, paddingBottom: spacing.xxl },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  header: { flex: 1, gap: spacing.xs },
-  eyebrow: { ...typography.label, color: colors.brandMuted },
-  title: { ...typography.display, color: colors.text },
+  header: { flex: 1, gap: 4 },
+  greeting: { ...typography.display, color: colors.text, fontSize: 26 },
   subtitle: { ...typography.body, color: colors.textSecondary },
-  kpiGrid: {
+  pressed: { opacity: 0.85 },
+
+  alertBanner: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: spacing.md,
+    backgroundColor: colors.warningSoft,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: '#F5D08A',
+    padding: spacing.md,
   },
+  alertIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertCopy: { flex: 1, gap: 2 },
+  alertTitle: { ...typography.subtitle, color: colors.warning, fontSize: 14 },
+  alertBody: { ...typography.caption, color: colors.textSecondary },
+
+  focusRow: { flexDirection: 'row', gap: spacing.sm },
+  focusCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  focusCardWarn: {
+    backgroundColor: colors.warningSoft,
+    borderColor: '#F5D08A',
+  },
+  focusValue: { ...typography.title, color: colors.text, fontSize: 22 },
+  focusValueWarn: { color: colors.warning },
+  focusLabel: { ...typography.caption, color: colors.textSecondary },
+
+  kpiStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+  },
+  miniKpi: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: spacing.sm,
+  },
+  miniValue: { ...typography.subtitle, color: colors.text, fontSize: 18 },
+  miniLabel: { ...typography.caption, color: colors.textMuted, fontSize: 11 },
+  kpiDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 28,
+    backgroundColor: colors.border,
+  },
+
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  action: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.md,
+    backgroundColor: colors.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 11,
+  },
+
+  syncCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  syncCardOk: {
+    backgroundColor: colors.successSoft,
+    borderColor: '#A6F4C5',
+  },
+  syncCardWarn: {
+    backgroundColor: colors.warningSoft,
+    borderColor: '#F5D08A',
+  },
+  syncDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radii.pill,
+  },
+  syncCopy: { flex: 1, gap: 2 },
+  syncTitle: { ...typography.subtitle, color: colors.text, fontSize: 14 },
+  syncBody: { ...typography.caption, color: colors.textSecondary },
+
   panel: {
     backgroundColor: colors.surface,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-    gap: spacing.sm,
+    gap: 0,
   },
-  panelTitle: { ...typography.subtitle, color: colors.text },
-  panelBody: { ...typography.body, color: colors.textSecondary },
-  syncBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.warningSoft,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  syncBadgeOk: {
-    backgroundColor: colors.successSoft,
-  },
-  syncBadgeText: { ...typography.caption, color: colors.warning },
-  syncBadgeTextOk: { color: colors.success },
-  row: {
+  panelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  panelTitle: { ...typography.subtitle, color: colors.text },
+  panelAction: { ...typography.caption, color: colors.brandMuted },
+  emptyCopy: {
+    ...typography.body,
+    color: colors.textSecondary,
     paddingVertical: spacing.sm,
+  },
+
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    gap: spacing.sm,
   },
+  listRowFirst: { borderTopWidth: 0, paddingTop: spacing.xs },
+  listCopy: { flex: 1, gap: 2 },
   rowTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
   rowMeta: { ...typography.caption, color: colors.textMuted },
-  chevron: { fontSize: 22, color: colors.textMuted },
+
+  timeChip: {
+    width: 72,
+    minHeight: 44,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeChipDefault: { backgroundColor: colors.surfaceMuted },
+  timeChipWarn: { backgroundColor: colors.warningSoft },
+  timeChipText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  timeChipTextWarn: { color: colors.warning },
+
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.pill,
+    backgroundColor: colors.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    ...typography.subtitle,
+    color: colors.brand,
+    fontSize: 15,
+  },
 });
