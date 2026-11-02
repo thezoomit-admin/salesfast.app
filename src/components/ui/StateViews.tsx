@@ -1,7 +1,10 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import type { ComponentProps } from 'react';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -20,17 +23,39 @@ export function LoadingState({ label = 'Loading…' }: { label?: string }) {
   );
 }
 
+/** Hisab-style empty — soft brand icon + optional CTA. */
 export function EmptyState({
   title,
   message,
+  icon = 'file-tray-outline',
+  actionLabel,
+  onAction,
 }: {
   title: string;
   message?: string;
+  icon?: ComponentProps<typeof Ionicons>['name'];
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
   return (
-    <View style={styles.center}>
+    <View style={styles.empty}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name={icon} size={28} color={colors.brand} />
+      </View>
       <Text style={styles.title}>{title}</Text>
-      {message ? <Text style={styles.caption}>{message}</Text> : null}
+      {message ? <Text style={styles.emptyCaption}>{message}</Text> : null}
+      {actionLabel && onAction ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAction}
+          style={({ pressed }) => [
+            styles.emptyBtn,
+            pressed && styles.emptyBtnPressed,
+          ]}
+        >
+          <Text style={styles.emptyBtnText}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -156,10 +181,47 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.sm,
   },
+  empty: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(242, 70, 28, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
   title: { ...typography.subtitle, color: colors.text, textAlign: 'center' },
   caption: {
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  emptyCaption: {
+    ...typography.caption,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  emptyBtn: {
+    marginTop: spacing.lg,
+    backgroundColor: colors.brand,
+    borderRadius: radii.sm,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  emptyBtnPressed: { opacity: 0.9 },
+  emptyBtnText: {
+    ...typography.subtitle,
+    fontSize: 15,
+    color: colors.white,
   },
 });

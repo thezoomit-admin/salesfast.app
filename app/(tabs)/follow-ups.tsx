@@ -14,11 +14,33 @@ import {
 import type { LeadListItem } from '@/types/api';
 import { colors, radii, spacing, typography } from '@/theme';
 
+const EMPTY_COPY: Record<
+  FollowUpTab,
+  { icon: 'sunny-outline' | 'alert-circle-outline' | 'calendar-outline'; title: string; message: string }
+> = {
+  today: {
+    icon: 'sunny-outline',
+    title: 'All clear for today',
+    message: 'No follow-ups due today. Check overdue or schedule the next touch.',
+  },
+  overdue: {
+    icon: 'alert-circle-outline',
+    title: 'Nothing overdue',
+    message: 'You’re caught up — no missed follow-ups waiting.',
+  },
+  upcoming: {
+    icon: 'calendar-outline',
+    title: 'No upcoming follow-ups',
+    message: 'Nothing scheduled ahead. Open a lead to set the next reminder.',
+  },
+};
+
 export default function FollowUpsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<FollowUpTab>('today');
 
   const query = useQuery(followUpLeadsQuery(tab));
+  const empty = EMPTY_COPY[tab];
 
   const openLead = useCallback(
     (lead: LeadListItem) => router.push(`/leads/${lead.id}`),
@@ -68,8 +90,11 @@ export default function FollowUpsScreen() {
           onRefresh={() => query.refetch()}
           ListEmptyComponent={
             <EmptyState
-              title="No follow-ups"
-              message="Nothing in this bucket right now."
+              icon={empty.icon}
+              title={empty.title}
+              message={empty.message}
+              actionLabel="Browse leads"
+              onAction={() => router.push('/(tabs)/leads')}
             />
           }
           renderItem={renderLead}
