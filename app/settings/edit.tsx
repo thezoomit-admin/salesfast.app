@@ -17,7 +17,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/features/auth/AuthContext';
 import { updateProfileRequest } from '@/features/auth/authApi';
 import { AuthInput } from '@/features/auth/components/AuthInput';
-import { PhotoChangeSheet } from '@/features/settings/PhotoChangeSheet';
+import { PhotoChangeSheet } from '@/features/settings';
 import { colors, radii, spacing, typography } from '@/theme';
 
 /**
