@@ -17,7 +17,7 @@ import { getErrorMessage } from '@/api/client';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/constants/config';
+import { APP_NAME, APP_VERSION } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
@@ -370,12 +370,7 @@ export default function ProfileScreen() {
             label: 'App info',
             icon: 'information-circle-outline',
             value: `v${APP_VERSION}`,
-            onPress: () => {
-              Alert.alert(
-                APP_NAME,
-                `Version ${APP_VERSION}\n\nAPI\n${API_BASE_URL}`
-              );
-            },
+            href: '/settings/about',
           },
         ],
       },
