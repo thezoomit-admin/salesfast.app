@@ -5,6 +5,9 @@ const MARKER = 'SalesFast-CRM artifact naming';
 /**
  * Names Android outputs SalesFast-CRM-v{versionName}.apk / .aab
  * Version comes from app.config.ts → android.defaultConfig.versionName.
+ *
+ * AGP 8+ / Gradle 9: do not use defaultConfig.archivesBaseName or
+ * output.outputFileName — both were removed. Use the base archivesName instead.
  */
 function withSalesFastApkName(config) {
   return withAppBuildGradle(config, (cfg) => {
@@ -13,23 +16,11 @@ function withSalesFastApkName(config) {
       return cfg;
     }
 
-    // AAB + default archive base name (uses versionName from the same defaultConfig)
-    if (/versionName\s+"[^"]+"/.test(contents)) {
-      contents = contents.replace(
-        /versionName\s+"[^"]+"/,
-        (match) =>
-          `${match}\n        // ${MARKER}\n        setProperty("archivesBaseName", "SalesFast-CRM-v\${versionName}")`,
-      );
-    }
-
     contents += `
 
 // ${MARKER}
-android.applicationVariants.configureEach { variant ->
-    variant.outputs.configureEach { output ->
-        def version = variant.versionName ?: "0.0.0"
-        output.outputFileName = "SalesFast-CRM-v\${version}.apk"
-    }
+base {
+    archivesName = "SalesFast-CRM-v\${android.defaultConfig.versionName}"
 }
 `;
 
