@@ -9,12 +9,19 @@ import {
   StyleSheet,
   Text,
 } from 'react-native';
+import type { CountryCode } from 'libphonenumber-js';
 import { z } from 'zod';
 
 import { getErrorMessage } from '@/api/client';
 import { AuthInput } from '@/features/auth/components/AuthInput';
 import { AuthShell } from '@/features/auth/components/AuthShell';
+import { CountryPhoneInput } from '@/features/auth/components/CountryPhoneInput';
 import { authColors } from '@/features/auth/authTheme';
+import {
+  DEFAULT_COUNTRY_CODE,
+  findCountry,
+  toE164,
+} from '@/features/auth/data/countries';
 import { useAuth } from '@/features/auth/AuthContext';
 
 const schema = z.object({
@@ -30,25 +37,42 @@ export default function LoginScreen() {
   const phoneMode = mode === 'phone';
   const { signIn, signingIn } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
+  const [countryCode, setCountryCode] = useState<CountryCode>(
+    DEFAULT_COUNTRY_CODE
+  );
 
   const {
     control,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { identifier: '', password: '' },
   });
 
+  const phoneNational = watch('identifier');
+
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
-    const identifier = values.identifier.trim();
-    const isEmail = !phoneMode && identifier.includes('@');
     try {
-      await signIn({
-        password: values.password,
-        ...(isEmail ? { email: identifier } : { phone: identifier }),
-      });
+      if (phoneMode) {
+        const country = findCountry(countryCode);
+        const phone = toE164(country.dialCode, values.identifier);
+        if (phone.replace(/\D/g, '').length < 8) {
+          setFormError('Enter a valid phone number');
+          return;
+        }
+        await signIn({ password: values.password, phone });
+      } else {
+        const identifier = values.identifier.trim();
+        const isEmail = identifier.includes('@');
+        await signIn({
+          password: values.password,
+          ...(isEmail ? { email: identifier } : { phone: identifier }),
+        });
+      }
     } catch (error) {
       setFormError(getErrorMessage(error, 'Unable to sign in'));
     }
@@ -77,26 +101,38 @@ export default function LoginScreen() {
         </Pressable>
       }
     >
-      <Controller
-        control={control}
-        name="identifier"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <AuthInput
-            label={phoneMode ? 'Phone number' : 'Email'}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType={phoneMode ? 'phone-pad' : 'email-address'}
-            textContentType={phoneMode ? 'telephoneNumber' : 'emailAddress'}
-            autoComplete={phoneMode ? 'tel' : 'email'}
-            prefix={phoneMode ? '+1' : undefined}
-            value={value}
-            onBlur={onBlur}
-            onChangeText={onChange}
-            error={errors.identifier?.message}
-            returnKeyType="next"
-          />
-        )}
-      />
+      {phoneMode ? (
+        <CountryPhoneInput
+          value={phoneNational}
+          countryCode={countryCode}
+          onChangeCountry={setCountryCode}
+          onChangeNational={(national) =>
+            setValue('identifier', national, { shouldValidate: true })
+          }
+          error={errors.identifier?.message}
+        />
+      ) : (
+        <Controller
+          control={control}
+          name="identifier"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <AuthInput
+              label="Email"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              autoComplete="email"
+              value={value}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              error={errors.identifier?.message}
+              returnKeyType="next"
+            />
+          )}
+        />
+      )}
+
       <Controller
         control={control}
         name="password"

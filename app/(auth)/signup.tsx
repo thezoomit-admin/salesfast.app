@@ -10,11 +10,14 @@ import {
   Text,
   View,
 } from 'react-native';
+import type { CountryCode } from 'libphonenumber-js';
 import { z } from 'zod';
 
 import { AuthInput } from '@/features/auth/components/AuthInput';
 import { AuthShell } from '@/features/auth/components/AuthShell';
+import { CountryPhoneInput } from '@/features/auth/components/CountryPhoneInput';
 import { authColors } from '@/features/auth/authTheme';
+import { DEFAULT_COUNTRY_CODE } from '@/features/auth/data/countries';
 
 const schema = z
   .object({
@@ -35,10 +38,15 @@ type FormValues = z.infer<typeof schema>;
 export default function SignUpScreen() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [countryCode, setCountryCode] = useState<CountryCode>(
+    DEFAULT_COUNTRY_CODE
+  );
 
   const {
     control,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -51,6 +59,8 @@ export default function SignUpScreen() {
       confirmPassword: '',
     },
   });
+
+  const phoneNational = watch('phone');
 
   const onSubmit = handleSubmit(async () => {
     setSubmitting(true);
@@ -125,20 +135,14 @@ export default function SignUpScreen() {
         )}
       />
 
-      <Controller
-        control={control}
-        name="phone"
-        render={({ field: { onChange, onBlur, value } }) => (
-          <AuthInput
-            label="Phone number"
-            keyboardType="phone-pad"
-            prefix="+1"
-            value={value}
-            onBlur={onBlur}
-            onChangeText={onChange}
-            error={errors.phone?.message}
-          />
-        )}
+      <CountryPhoneInput
+        value={phoneNational}
+        countryCode={countryCode}
+        onChangeCountry={setCountryCode}
+        onChangeNational={(national) =>
+          setValue('phone', national, { shouldValidate: true })
+        }
+        error={errors.phone?.message}
       />
 
       <Controller

@@ -20,19 +20,12 @@ let splashPlayedThisSession = false;
 export default function WelcomeScreen() {
   const { bootstrapping } = useAuth();
   const [showSplash, setShowSplash] = useState(!splashPlayedThisSession);
-  /** TEMP: remount key so Preview Splash can replay animation. Remove with preview btn. */
-  const [splashKey, setSplashKey] = useState(0);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const onSplashFinished = useCallback(() => {
     splashPlayedThisSession = true;
     setShowSplash(false);
-  }, []);
-
-  const previewSplash = useCallback(() => {
-    setSplashKey((k) => k + 1);
-    setShowSplash(true);
   }, []);
 
   if (bootstrapping) {
@@ -42,7 +35,6 @@ export default function WelcomeScreen() {
   if (showSplash) {
     return (
       <BrandSplash
-        key={splashKey}
         mode="animated"
         onFinished={onSplashFinished}
         holdMs={650}
@@ -134,15 +126,6 @@ export default function WelcomeScreen() {
         </View>
 
         <View style={styles.footer}>
-          {/* TEMP preview — remove when splash UI is final */}
-          <Pressable
-            accessibilityRole="button"
-            onPress={previewSplash}
-            style={styles.previewSplashBtn}
-          >
-            <Text style={styles.previewSplashText}>Preview splash</Text>
-          </Pressable>
-
           <View style={styles.signInRow}>
             <Text style={styles.signInPrompt}>Have an account? </Text>
             <Pressable
@@ -235,22 +218,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    gap: 16,
     paddingTop: 8,
-  },
-  previewSplashBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: authColors.border,
-    backgroundColor: 'rgba(245, 246, 247, 0.9)',
-  },
-  previewSplashText: {
-    color: authColors.muted,
-    fontSize: 13,
-    fontWeight: '600',
   },
   signInRow: {
     flexDirection: 'row',
