@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Search02Icon } from '@hugeicons/core-free-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Search02Icon } from '@/components/icons/hugeicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import type { ComponentProps } from 'react';
 import { useMemo, useState } from 'react';

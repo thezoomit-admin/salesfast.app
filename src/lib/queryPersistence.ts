@@ -2,6 +2,7 @@ import {
   dehydrate,
   hydrate,
   type DehydratedState,
+  type Mutation,
   type Query,
   type QueryClient,
 } from '@tanstack/react-query';
@@ -58,6 +59,100 @@ function shouldPersist(query: Query) {
     query.state.status === 'success' &&
     PERSISTED_ROOTS.has(String(query.queryKey[0]))
   );
+}
+
+/**
+ * Offline writes: mutations declared with `meta: { offline: true }` whose
+ * variables carry the `accountId` that made them. Saved in their own file,
+ * which outlives sign-out — they are the user's unsent work, replayed at that
+ * account's next sign-in. Only removing the account from the device drops them.
+ */
+type OfflineWriteVars = { accountId?: string; clientId?: string };
+
+function pendingFile(userId: string) {
+  return new File(
+    Paths.document,
+    `pending-writes-${userId.replace(/[^a-zA-Z0-9_-]/g, '_')}.json`
+  );
+}
+
+function isOfflineWrite(mutation: Mutation<any, any, any, any>) {
+  return mutation.meta?.offline === true;
+}
+
+function offlineVars(mutation: Mutation<any, any, any, any>) {
+  return (mutation.state.variables ?? {}) as OfflineWriteVars;
+}
+
+function writePendingWrites(client: QueryClient, userId: string) {
+  const state = dehydrate(client, {
+    shouldDehydrateQuery: () => false,
+    shouldDehydrateMutation: (m) =>
+      isOfflineWrite(m) &&
+      m.state.status === 'pending' &&
+      offlineVars(m).accountId === userId,
+  });
+  const file = pendingFile(userId);
+  if (!state.mutations.length) {
+    if (file.exists) file.delete();
+    return;
+  }
+  // Restored writes must resume, including ones that were mid-request.
+  const mutations = state.mutations.map((m) => ({
+    ...m,
+    state: { ...m.state, isPaused: true },
+  }));
+  if (!file.exists) file.create();
+  file.write(JSON.stringify({ version: CACHE_VERSION, userId, mutations }));
+}
+
+/** Loads the account's unsent writes and starts sending them (or waits for the network). */
+export async function restorePendingWrites(client: QueryClient, userId: string) {
+  if (!supported) return;
+  try {
+    const file = pendingFile(userId);
+    if (!file.exists) return;
+    const saved = JSON.parse(await file.text()) as {
+      userId: string;
+      mutations: DehydratedState['mutations'];
+    };
+    if (saved.userId !== userId) return;
+
+    const cache = client.getMutationCache();
+    // Writes still in memory (e.g. waiting while another account was active)
+    // must not be queued twice.
+    const inMemory = new Set(
+      cache.getAll().filter(isOfflineWrite).map((m) => offlineVars(m).clientId)
+    );
+    const fresh = saved.mutations.filter((m) => {
+      const vars = (m.state.variables ?? {}) as OfflineWriteVars;
+      return vars.accountId === userId && !inMemory.has(vars.clientId);
+    });
+    if (!fresh.length) return;
+
+    hydrate(client, { mutations: fresh, queries: [] });
+    const restored = new Set(
+      fresh.map((m) => (m.state.variables as OfflineWriteVars).clientId)
+    );
+    for (const mutation of cache.getAll()) {
+      if (isOfflineWrite(mutation) && restored.has(offlineVars(mutation).clientId)) {
+        void mutation.continue().catch(() => undefined);
+      }
+    }
+  } catch {
+    // Corrupt file — nothing we can safely replay.
+  }
+}
+
+/** Drops an account's unsent writes (account removed from this device). */
+export function deletePendingWrites(userId: string | null | undefined) {
+  if (!supported || !userId) return;
+  try {
+    const file = pendingFile(userId);
+    if (file.exists) file.delete();
+  } catch {
+    // ignore
+  }
 }
 
 function snapshot(client: QueryClient, userId: string): PersistedCache {
@@ -135,6 +230,23 @@ export function persistQueryCache(client: QueryClient, userId: string) {
     }
   });
 
+  // Unsent writes are saved right away (not throttled): they are the one
+  // thing in here that cannot be fetched again.
+  const savePending = () => {
+    try {
+      writePendingWrites(client, userId);
+    } catch {
+      // IO error — the write is still queued in memory.
+    }
+  };
+  const unsubscribeMutations = client.getMutationCache().subscribe((event) => {
+    if (stopped || !event.mutation || !isOfflineWrite(event.mutation)) return;
+    if (offlineVars(event.mutation).accountId !== userId) return;
+    if (event.type === 'added' || event.type === 'removed' || event.type === 'updated') {
+      savePending();
+    }
+  });
+
   // Flush before the OS can kill a backgrounded app.
   const appSub = AppState.addEventListener('change', (state) => {
     if (state !== 'active' && timer) {
@@ -145,9 +257,14 @@ export function persistQueryCache(client: QueryClient, userId: string) {
 
   const stop = () => {
     if (stopped) return;
+    if (timer) {
+      clearTimeout(timer);
+      write();
+    }
+    savePending();
     stopped = true;
-    if (timer) clearTimeout(timer);
     unsubscribe();
+    unsubscribeMutations();
     appSub.remove();
     if (activePersisters.get(userId) === stop) activePersisters.delete(userId);
   };

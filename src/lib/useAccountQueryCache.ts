@@ -1,7 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
-import { persistQueryCache, restoreQueryCache } from './queryPersistence';
+import { abandonParkedWrites, resumeParkedWrites } from './accountWrites';
+import {
+  persistQueryCache,
+  restorePendingWrites,
+  restoreQueryCache,
+} from './queryPersistence';
 
 /** Never hold the splash longer than this waiting for the disk cache. */
 const RESTORE_TIMEOUT_MS = 1_500;
@@ -12,6 +17,10 @@ const RESTORE_TIMEOUT_MS = 1_500;
  *   (reset keeps mounted screens subscribed and refetches with the new token);
  * - sign-out → clear memory;
  * - sign-in / launch → load this account's disk cache, then keep it saved.
+ *
+ * Unsent offline writes follow the account too: they keep waiting (in memory
+ * and on disk) while another account is active, and are reloaded and resumed
+ * when their account signs in again.
  *
  * Returns true while the disk cache is still being restored.
  */
@@ -30,7 +39,12 @@ export function useAccountQueryCache(
     previousUser.current = userId;
     if (previous && previous !== userId) {
       if (userId) void client.resetQueries();
-      else client.clear();
+      else {
+        // Signed out: the account's unsent writes were saved to disk when
+        // its persister stopped; drop the in-memory copies.
+        abandonParkedWrites();
+        client.clear();
+      }
     }
     if (!userId) return;
 
@@ -43,6 +57,10 @@ export function useAccountQueryCache(
       if (cancelled) return;
       stopPersisting = persistQueryCache(client, userId);
       setRestoredFor(userId);
+      // After the persister is running, so resumed writes stay saved.
+      void restorePendingWrites(client, userId).then(() => {
+        if (!cancelled) resumeParkedWrites(userId);
+      });
     });
 
     return () => {

@@ -1,4 +1,4 @@
-import { CallIcon } from '@hugeicons/core-free-icons';
+import { CallIcon } from '@/components/icons/hugeicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';

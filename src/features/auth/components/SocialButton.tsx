@@ -1,4 +1,4 @@
-import { Mail01Icon, SmartPhone01Icon } from '@hugeicons/core-free-icons';
+import { Mail01Icon, SmartPhone01Icon } from '@/components/icons/hugeicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import {
   Pressable,

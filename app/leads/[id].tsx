@@ -1,5 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -24,13 +29,21 @@ import {
   QueryPlaceholder,
 } from '@/components/ui/StateViews';
 import { TextField } from '@/components/ui/TextField';
+import { useAuth } from '@/features/auth/AuthContext';
 import {
-  addLeadNote,
   fetchLeadById,
   leadStatusesQuery,
   noteChannelsQuery,
-  updateLeadStatus,
 } from '@/features/leads/leadsApi';
+import {
+  ADD_NOTE_MUTATION,
+  leadWriteScope,
+  newLeadWrite,
+  onWriteQueued,
+  UPDATE_STATUS_MUTATION,
+  type AddNoteVars,
+  type UpdateStatusVars,
+} from '@/features/leads/leadWrites';
 import { colors, radii, spacing, typography } from '@/theme';
 import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
@@ -45,6 +58,7 @@ type NoteForm = z.infer<typeof noteSchema>;
 export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const leadId = Number(id);
+  const accountId = useAuth().user?.id ?? '';
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
@@ -75,46 +89,75 @@ export default function LeadDetailScreen() {
     defaultValues: { note: '', followupAt: '' },
   });
 
-  // Only this lead gates the UI; the lists refresh in the background.
-  const invalidate = async () => {
-    void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
-    void queryClient.invalidateQueries({ queryKey: ['mobile-dashboard'] });
-    void queryClient.invalidateQueries({ queryKey: ['follow-up-leads'] });
-    await queryClient.invalidateQueries({ queryKey: ['lead', leadId] });
-  };
+  // How these writes run, retry, refresh the lists and report errors lives in
+  // leadWrites (they can also finish after this screen is gone, or after a
+  // restart). Online, the dialogs wait for the server as before; if a write
+  // has to wait for the network it is queued and the dialog closes.
+  const scope = leadWriteScope(accountId);
+  const noteMutation = useMutation<unknown, Error, AddNoteVars>({
+    mutationKey: ADD_NOTE_MUTATION,
+    scope,
+  });
+  const statusMutation = useMutation<unknown, Error, UpdateStatusVars>({
+    mutationKey: UPDATE_STATUS_MUTATION,
+    scope,
+  });
 
-  const noteMutation = useMutation({
-    mutationFn: (values: NoteForm) =>
-      addLeadNote(leadId, {
-        note: values.note.trim(),
-        channelId: callChannelId,
-        followupAt: values.followupAt?.trim() || undefined,
-      }),
-    onSuccess: async () => {
+  const submitNote = (values: NoteForm) => {
+    const write: AddNoteVars = {
+      ...newLeadWrite(accountId, leadId),
+      note: values.note.trim(),
+      channelId: callChannelId,
+      followupAt: values.followupAt?.trim() || undefined,
+    };
+    let queued = false;
+    onWriteQueued(queryClient, write.clientId, () => {
+      queued = true;
       setNoteOpen(false);
       reset();
-      await invalidate();
-      Alert.alert('Saved', 'Note added successfully.');
-    },
-    onError: (error) => {
-      Alert.alert('Could not save note', getErrorMessage(error));
-    },
-  });
+      Alert.alert(
+        'Saved offline',
+        'This note will be sent automatically when you are back online.'
+      );
+    });
+    noteMutation.mutate(write, {
+      onSuccess: () => {
+        if (queued) return; // the dialog already closed as "saved offline"
+        setNoteOpen(false);
+        reset();
+        Alert.alert('Saved', 'Note added successfully.');
+      },
+    });
+  };
 
-  const statusMutation = useMutation({
-    mutationFn: (leadStatusId: number) =>
-      updateLeadStatus(leadId, {
-        leadStatusId,
-        expectedVersion: leadQuery.data?.version,
-      }),
-    onSuccess: async () => {
-      setStatusOpen(false);
-      await invalidate();
-    },
-    onError: (error) => {
-      Alert.alert('Could not update status', getErrorMessage(error));
-    },
-  });
+  const changeStatus = (leadStatusId: number) => {
+    const write: UpdateStatusVars = {
+      ...newLeadWrite(accountId, leadId),
+      leadStatusId,
+      expectedVersion: leadQuery.data?.version,
+    };
+    // Queued: the header shows the pending status until it syncs.
+    onWriteQueued(queryClient, write.clientId, () => setStatusOpen(false));
+    statusMutation.mutate(write, { onSuccess: () => setStatusOpen(false) });
+  };
+
+  // Writes for this lead that have not reached the server yet (also ones
+  // restored after a restart). Shown as such — never as confirmed data.
+  const pendingNotes = useMutationState({
+    filters: { mutationKey: ADD_NOTE_MUTATION, status: 'pending' },
+    select: (m) => m.state.variables as AddNoteVars,
+  }).filter((v) => v?.leadId === leadId);
+  const pendingStatusId = useMutationState({
+    filters: { mutationKey: UPDATE_STATUS_MUTATION, status: 'pending' },
+    select: (m) => m.state.variables as UpdateStatusVars,
+  })
+    .filter((v) => v?.leadId === leadId)
+    .at(-1)?.leadStatusId;
+  const pendingStatusName =
+    pendingStatusId != null
+      ? (statusesQuery.data?.find((s) => s.id === pendingStatusId)?.name ??
+        'New status')
+      : null;
 
   // A cached copy renders immediately (also offline); fresh data follows.
   if (!leadQuery.data) {
@@ -152,6 +195,11 @@ export default function LeadDetailScreen() {
           {lead.leadStatus?.name || 'No status'}
           {lead.assignedToName ? ` · ${lead.assignedToName}` : ''}
         </Text>
+        {pendingStatusName ? (
+          <Text style={styles.pendingText}>
+            Changing to {pendingStatusName} · waiting to sync
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.actions}>
@@ -215,10 +263,18 @@ export default function LeadDetailScreen() {
 
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Notes & timeline</Text>
-        {!lead.notes?.length ? (
+        {pendingNotes.map((note) => (
+          <View key={note.clientId} style={styles.note}>
+            <Text style={styles.pendingText}>
+              Waiting to sync · {formatDateTime(new Date(note.queuedAt))}
+            </Text>
+            <Text style={styles.noteBody}>{note.note}</Text>
+          </View>
+        ))}
+        {!lead.notes?.length && !pendingNotes.length ? (
           <EmptyState title="No notes yet" message="Add the first note for this lead." />
         ) : (
-          lead.notes.map((note) => (
+          (lead.notes ?? []).map((note) => (
             <View key={note.id} style={styles.note}>
               <Text style={styles.noteMeta}>
                 {note.channel?.name || 'Note'} · {note.addedByName || 'Agent'} ·{' '}
@@ -266,7 +322,7 @@ export default function LeadDetailScreen() {
             <Button
               title="Save note"
               loading={noteMutation.isPending}
-              onPress={handleSubmit((values) => noteMutation.mutate(values))}
+              onPress={handleSubmit(submitNote)}
             />
             <Button title="Cancel" variant="ghost" onPress={() => setNoteOpen(false)} />
           </View>
@@ -282,7 +338,8 @@ export default function LeadDetailScreen() {
                 <Pressable
                   key={status.id}
                   style={styles.statusRow}
-                  onPress={() => statusMutation.mutate(status.id)}
+                  disabled={statusMutation.isPending}
+                  onPress={() => changeStatus(status.id)}
                 >
                   <Text style={styles.statusRowText}>{status.name}</Text>
                 </Pressable>
@@ -330,6 +387,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   noteMeta: { ...typography.caption, color: colors.textMuted },
+  pendingText: { ...typography.caption, color: colors.warning },
   noteBody: { ...typography.body, color: colors.textSecondary },
   modalBackdrop: {
     flex: 1,

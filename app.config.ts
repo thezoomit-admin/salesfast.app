@@ -82,14 +82,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           enableShrinkResourcesInReleaseBuilds: true,
           enablePngCrunchInReleaseBuilds: true,
           useLegacyPackaging: true,
+          // Network inspector is a dev-client debugging aid only.
+          networkInspector: isDevClientBuild,
+          // React Native ships its own consumer R8 rules; a blanket keep on
+          // com.facebook.react.** stopped R8 from shrinking the whole RN layer.
           extraProguardRules: [
             '-keep class expo.modules.androidcalllog.** { *; }',
-            '-keep class com.facebook.react.** { *; }',
             '-dontwarn com.facebook.react.**',
           ].join('\n'),
         },
       },
     ],
+    // No GIF/WebP decoders, English-only resources (see plugin).
+    './plugins/withAndroidReleaseSize.js',
     // APK/AAB → SalesFast-CRM-v{version}.apk (version from app.config.ts)
     './plugins/withSalesFastApkName.js',
   ],

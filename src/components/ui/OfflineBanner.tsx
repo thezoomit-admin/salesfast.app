@@ -1,8 +1,9 @@
-import { onlineManager } from '@tanstack/react-query';
+import { onlineManager, useIsMutating } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAuth } from '@/features/auth/AuthContext';
 import { colors, radii, spacing, typography } from '@/theme';
 
 /** Approximate bottom tab bar height, so the pill floats just above it. */
@@ -15,6 +16,14 @@ export function OfflineBanner() {
     () => onlineManager.isOnline()
   );
   const insets = useSafeAreaInsets();
+  const accountId = useAuth().user?.id;
+  // This account's offline writes still waiting for the server.
+  const waiting = useIsMutating({
+    predicate: (m) =>
+      m.meta?.offline === true &&
+      (m.state.variables as { accountId?: string } | undefined)?.accountId ===
+        accountId,
+  });
   if (online) return null;
 
   return (
@@ -24,7 +33,11 @@ export function OfflineBanner() {
     >
       <View style={styles.pill} accessibilityLiveRegion="polite">
         <View style={styles.dot} />
-        <Text style={styles.text}>Offline · showing saved data</Text>
+        <Text style={styles.text}>
+          {waiting > 0
+            ? `Offline · ${waiting} change${waiting === 1 ? '' : 's'} waiting to sync`
+            : 'Offline · showing saved data'}
+        </Text>
       </View>
     </View>
   );
