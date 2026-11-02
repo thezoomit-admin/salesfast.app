@@ -42,3 +42,6 @@ yarn-error.*
 
 # Firebase (Android push) — upload as an EAS file env var instead
 google-services.json
+
+# Gradle build output of local native modules
+modules/*/android/build/
