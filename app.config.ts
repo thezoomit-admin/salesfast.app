@@ -35,7 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: 'com.salesfastcrm',
     adaptiveIcon: {
-      backgroundColor: '#0F3D3E',
+      backgroundColor: '#000000',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -59,7 +59,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         image: './assets/images/splash-icon.png',
         resizeMode: 'contain',
-        backgroundColor: '#0F3D3E',
+        backgroundColor: '#000000',
       },
     ],
     'expo-secure-store',
@@ -67,7 +67,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-notifications',
       {
         icon: './assets/images/android-icon-monochrome.png',
-        color: '#0F3D3E',
+        color: '#F2461C',
         defaultChannel: 'default',
       },
     ],

@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: radii.pill,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.brand,
   },
   message: { ...typography.body, fontSize: 14, lineHeight: 20, color: colors.textSecondary },
   time: { ...typography.caption, color: colors.textMuted, marginTop: 2 },

@@ -131,7 +131,7 @@ export default function ProfileScreen() {
                     style={styles.switchBtn}
                   >
                     {switchingAccount ? (
-                      <ActivityIndicator color={colors.accent} />
+                      <ActivityIndicator color={colors.brand} />
                     ) : (
                       <Text style={styles.switchBtnText}>Switch</Text>
                     )}
@@ -225,10 +225,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     borderRadius: radii.md,
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.brandSoft,
   },
   switchBtnText: {
-    color: colors.accent,
+    color: colors.brand,
     fontWeight: '700',
     fontSize: 13,
   },

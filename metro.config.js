@@ -6,7 +6,8 @@ const config = getDefaultConfig(projectRoot);
 
 // Windows often hits EMFILE during parallel transform + metro-cache reads.
 // Cap workers so BinaryFileStore doesn't open thousands of handles at once.
-config.maxWorkers = Math.max(1, Math.min(4, Math.floor(os.cpus().length / 2) || 2));
+// Keep this low on Windows — higher concurrency reliably hits EMFILE.
+config.maxWorkers = 2;
 
 // Keep watcher scoped to this app only.
 config.watchFolders = [projectRoot];

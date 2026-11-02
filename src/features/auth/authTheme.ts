@@ -1,25 +1,27 @@
+import { colors } from '@/theme';
+
 /**
- * Auth / splash tokens — layout follows Hisab; colors are Salesfast CRM brand.
+ * Auth / splash tokens — layout follows Hisab; colors from shared Salesfast brand.
  */
 export const authColors = {
-  /** Splash — solid black (matches favicon plate; Hisab-style flat brand bg). */
-  splash: '#000000',
-  primary: '#F2461C',
-  primaryPressed: '#D93B14',
-  primarySoft: '#FBD2C2',
-  /** Login page wash — Hisab cream. */
-  cream: '#FAFAFA',
-  background: '#FFFFFF',
+  /** Splash — solid black (matches favicon plate). */
+  splash: colors.black,
+  primary: colors.brand,
+  primaryPressed: colors.brandMuted,
+  primarySoft: colors.brandSoft,
+  /** Login page wash — primary-50. */
+  cream: colors.primary50,
+  background: colors.surface,
   border: '#E0E0E0',
-  borderFocus: '#F2461C',
-  inputBg: '#FFFFFF',
+  borderFocus: colors.brand,
+  inputBg: colors.surface,
   text: '#1A1A1A',
-  textSecondary: '#5B6B7A',
+  textSecondary: colors.textSecondary,
   muted: '#9A9A9A',
   textMuted: '#B0B0B0',
-  link: '#F2461C',
+  link: colors.brand,
   danger: '#C0392B',
-  white: '#FFFFFF',
-  backBtnBg: '#F5F6F7',
+  white: colors.white,
+  backBtnBg: colors.primary50,
   radius: 12,
 } as const;
