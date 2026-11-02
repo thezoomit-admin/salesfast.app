@@ -18,20 +18,6 @@ type Props = {
   onPress: (lead: LeadListItem) => void;
 };
 
-/** Append 8-bit alpha to a #RGB / #RRGGBB color. */
-function withAlpha(hex: string, alphaHex: string): string {
-  const raw = hex.trim().replace('#', '');
-  if (raw.length === 3) {
-    const full = raw
-      .split('')
-      .map((c) => c + c)
-      .join('');
-    return `#${full}${alphaHex}`;
-  }
-  if (raw.length === 6) return `#${raw}${alphaHex}`;
-  return hex;
-}
-
 function parseRgb(hex: string): { r: number; g: number; b: number } | null {
   const raw = hex.trim().replace('#', '');
   const full =
@@ -47,42 +33,46 @@ function parseRgb(hex: string): { r: number; g: number; b: number } | null {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
-/** Relative luminance 0–1 (sRGB). */
-function luminance(hex: string): number {
-  const rgb = parseRgb(hex);
-  if (!rgb) return 0.5;
-  const toLin = (c: number) => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * toLin(rgb.r) + 0.7152 * toLin(rgb.g) + 0.0722 * toLin(rgb.b);
+function toHex(r: number, g: number, b: number): string {
+  const h = (c: number) =>
+    Math.max(0, Math.min(255, Math.round(c)))
+      .toString(16)
+      .padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-/** Mix toward white so stage colors stay readable on #121212. */
-function lightenForDark(hex: string, amount = 0.42): string {
+/** Mix `hex` toward `target` by `amount` (0–1). */
+function mix(hex: string, target: { r: number; g: number; b: number }, amount: number): string {
   const rgb = parseRgb(hex);
   if (!rgb) return hex;
-  const mix = (c: number) => Math.round(c + (255 - c) * amount);
-  const toHex = (c: number) => mix(c).toString(16).padStart(2, '0');
-  return `#${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`;
+  return toHex(
+    rgb.r + (target.r - rgb.r) * amount,
+    rgb.g + (target.g - rgb.g) * amount,
+    rgb.b + (target.b - rgb.b) * amount
+  );
 }
 
+const WHITE = { r: 255, g: 255, b: 255 };
+const BLACK = { r: 0, g: 0, b: 0 };
+
+/**
+ * Stage badge from status color variants:
+ *   bg  = soft tint of the stage color
+ *   text = stronger / readable variant of the same hue
+ */
 function stageBadgeStyle(statusColor: string, isDark: boolean) {
   if (!isDark) {
     return {
-      backgroundColor: withAlpha(statusColor, '22'),
-      borderColor: withAlpha(statusColor, '00'),
-      color: statusColor,
+      backgroundColor: mix(statusColor, WHITE, 0.86),
+      borderColor: mix(statusColor, WHITE, 0.72),
+      color: mix(statusColor, BLACK, 0.12),
     };
   }
 
-  const fg =
-    luminance(statusColor) < 0.45 ? lightenForDark(statusColor) : statusColor;
-
   return {
-    backgroundColor: withAlpha(statusColor, '38'),
-    borderColor: withAlpha(fg, '55'),
-    color: fg,
+    backgroundColor: mix(statusColor, BLACK, 0.72),
+    borderColor: mix(statusColor, BLACK, 0.5),
+    color: mix(statusColor, WHITE, 0.38),
   };
 }
 
