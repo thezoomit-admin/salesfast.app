@@ -110,6 +110,140 @@ function formatDuration(sec: number) {
   return `${m}:${String(r).padStart(2, '0')}`;
 }
 
+/** Playback waveform bars — same silhouette as web NoteComposer. */
+const PLAYBACK_BARS = [
+  5, 9, 6, 14, 8, 16, 7, 12, 10, 15, 6, 11, 9, 17, 8, 13, 5, 14, 10, 16, 7, 12,
+  9, 15, 6, 11, 8, 14, 10, 13, 7, 16, 9, 12, 5, 11, 8, 15, 6, 10,
+];
+
+const WAVE_UNFILLED = '#D0D5DD';
+const STOP_RED = '#E11D48';
+const CHIP_X_BG = '#15202C';
+
+function ProgressWaveform({
+  progress,
+  brand,
+  onSeek,
+}: {
+  progress: number;
+  brand: string;
+  onSeek: (fraction: number) => void;
+}) {
+  const p = Math.min(1, Math.max(0, progress));
+  const widthRef = useRef(0);
+
+  function seekAt(x: number) {
+    const w = widthRef.current;
+    if (!w) return;
+    onSeek(Math.min(1, Math.max(0, x / w)));
+  }
+
+  return (
+    <View
+      accessibilityRole="adjustable"
+      accessibilityLabel="Seek"
+      style={waveStyles.progressTrack}
+      onLayout={(e) => {
+        widthRef.current = e.nativeEvent.layout.width;
+      }}
+      onStartShouldSetResponder={() => true}
+      onMoveShouldSetResponder={() => true}
+      onResponderGrant={(e) => seekAt(e.nativeEvent.locationX)}
+      onResponderMove={(e) => seekAt(e.nativeEvent.locationX)}
+    >
+      {PLAYBACK_BARS.map((h, i) => {
+        const filled = i / PLAYBACK_BARS.length < p;
+        return (
+          <View
+            key={i}
+            style={[
+              waveStyles.playbackBar,
+              {
+                height: h,
+                backgroundColor: filled ? brand : WAVE_UNFILLED,
+              },
+            ]}
+          />
+        );
+      })}
+      <View
+        pointerEvents="none"
+        style={[
+          waveStyles.scrubThumb,
+          { left: `${p * 100}%`, backgroundColor: brand },
+        ]}
+      />
+    </View>
+  );
+}
+
+function LiveWaveform({ levels }: { levels: number[] }) {
+  const bars = levels.length
+    ? levels
+    : Array.from({ length: 28 }, (_, i) => 0.25 + (Math.sin(i) + 1) * 0.2);
+  return (
+    <View style={waveStyles.liveTrack} accessibilityElementsHidden>
+      {bars.map((lvl, i) => {
+        const t = i / Math.max(bars.length - 1, 1);
+        const r = Math.round(168 + (10 - 168) * t);
+        const g = Math.round(85 + (102 - 85) * t);
+        const b = Math.round(247 + (194 - 247) * t);
+        const h = Math.max(3, Math.round(3 + lvl * 22));
+        return (
+          <View
+            key={i}
+            style={[
+              waveStyles.liveBar,
+              { height: h, backgroundColor: `rgb(${r},${g},${b})` },
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+const waveStyles = StyleSheet.create({
+  progressTrack: {
+    position: 'relative',
+    flex: 1,
+    minWidth: 120,
+    height: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1.5,
+  },
+  playbackBar: {
+    width: 2,
+    borderRadius: 999,
+  },
+  scrubThumb: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -6,
+    marginLeft: -6,
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  liveTrack: {
+    width: 140,
+    height: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  liveBar: {
+    width: 2.5,
+    borderRadius: 999,
+  },
+});
+
 export function AddNoteSheet({
   visible,
   lead,
@@ -147,6 +281,9 @@ export function AddNoteSheet({
   const recordStartedAt = useRef(0);
   const [recordSec, setRecordSec] = useState(0);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
+  const [playProgress, setPlayProgress] = useState(0);
+  const [playDisplaySec, setPlayDisplaySec] = useState(0);
   const playerRef = useRef<AudioPlayer | null>(null);
   const versionRef = useRef<number | undefined>(undefined);
 
@@ -196,7 +333,7 @@ export function AddNoteSheet({
     setClips([]);
     setRecording(false);
     setRecordSec(0);
-    stopPlayback();
+    stopPlayback(true);
     setRating((lead.priority as LeadPriority | null) ?? null);
     versionRef.current = lead.version ?? undefined;
     const preset =
@@ -220,6 +357,35 @@ export function AddNoteSheet({
   }, [recording]);
 
   useEffect(() => {
+    if (!playingId || paused) return;
+    const clip = clips.find((c) => c.id === playingId);
+    if (!clip) return;
+    const t = setInterval(() => {
+      const player = playerRef.current;
+      if (!player) return;
+      syncPlayUi(clip);
+      if (!player.playing) {
+        const dur =
+          clip.durationSec > 0
+            ? clip.durationSec
+            : player.duration > 0
+              ? player.duration
+              : 0;
+        if (dur > 0 && player.currentTime >= dur - 0.08) {
+          setPlayingId(null);
+          setPaused(false);
+          setPlayProgress(0);
+          setPlayDisplaySec(clip.durationSec);
+        } else {
+          setPaused(true);
+        }
+      }
+    }, 100);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playingId, paused, clips]);
+
+  useEffect(() => {
     return () => {
       try {
         playerRef.current?.pause();
@@ -231,36 +397,89 @@ export function AddNoteSheet({
     };
   }, []);
 
-  function stopPlayback() {
+  function stopPlayback(reset = false) {
     try {
       playerRef.current?.pause();
     } catch {
       /* ignore */
     }
-    setPlayingId(null);
+    if (reset) {
+      setPlayingId(null);
+      setPaused(false);
+      setPlayProgress(0);
+      setPlayDisplaySec(0);
+    }
+  }
+
+  function syncPlayUi(clip: VoiceClip) {
+    const player = playerRef.current;
+    if (!player) return;
+    const meta = player.duration;
+    const dur =
+      clip.durationSec > 0
+        ? clip.durationSec
+        : Number.isFinite(meta) && meta > 0
+          ? meta
+          : 0;
+    if (!dur) return;
+    const cur = Math.min(player.currentTime || 0, dur);
+    setPlayProgress(Math.min(1, cur / dur));
+    setPlayDisplaySec(Math.max(0, dur - cur));
+  }
+
+  async function ensurePlayer(clip: VoiceClip) {
+    await setAudioModeAsync({
+      allowsRecording: false,
+      playsInSilentMode: true,
+    });
+    if (!playerRef.current) {
+      playerRef.current = createAudioPlayer(clip.uri);
+      setPlayProgress(0);
+      setPlayDisplaySec(clip.durationSec);
+    } else if (playingId !== clip.id) {
+      playerRef.current.replace(clip.uri);
+      setPlayProgress(0);
+      setPlayDisplaySec(clip.durationSec);
+    }
+    setPlayingId(clip.id);
+    return playerRef.current;
   }
 
   async function togglePlay(clip: VoiceClip) {
     try {
-      await setAudioModeAsync({
-        allowsRecording: false,
-        playsInSilentMode: true,
-      });
       if (playingId === clip.id && playerRef.current?.playing) {
         playerRef.current.pause();
-        setPlayingId(null);
+        syncPlayUi(clip);
+        setPaused(true);
         return;
       }
-      if (!playerRef.current) {
-        playerRef.current = createAudioPlayer(clip.uri);
-      } else {
-        playerRef.current.replace(clip.uri);
-      }
-      playerRef.current.play();
-      setPlayingId(clip.id);
+      const player = await ensurePlayer(clip);
+      player.play();
+      setPaused(false);
     } catch {
       Alert.alert('Could not play voice note');
       setPlayingId(null);
+      setPaused(false);
+    }
+  }
+
+  async function seekClip(clip: VoiceClip, fraction: number) {
+    try {
+      const player = await ensurePlayer(clip);
+      const meta = player.duration;
+      const dur =
+        clip.durationSec > 0
+          ? clip.durationSec
+          : Number.isFinite(meta) && meta > 0
+            ? meta
+            : 0;
+      if (!dur) return;
+      await player.seekTo(fraction * dur);
+      setPlayProgress(fraction);
+      setPlayDisplaySec(Math.max(0, dur - fraction * dur));
+      setPaused(!player.playing);
+    } catch {
+      /* ignore seek errors */
     }
   }
 
@@ -312,7 +531,7 @@ export function AddNoteSheet({
 
   async function startRecording() {
     try {
-      stopPlayback();
+      stopPlayback(true);
       const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) {
         Alert.alert('Microphone permission denied');
@@ -500,6 +719,18 @@ export function AddNoteSheet({
   const phone = lead.buyerPersona?.phone;
   const priorityMeta = rating ? PRIORITY_META[rating] : null;
   const meter = recorderState.metering;
+  const liveLevels = useMemo(() => {
+    if (!recording) return [];
+    const base =
+      typeof meter === 'number'
+        ? Math.max(0.12, Math.min(1, (meter + 55) / 55))
+        : 0.28;
+    return Array.from({ length: 28 }, (_, i) => {
+      const wobble =
+        0.35 + 0.65 * Math.abs(Math.sin(recordSec * 2.4 + i * 0.55));
+      return Math.min(1, base * wobble + 0.1);
+    });
+  }, [recording, meter, recordSec]);
 
   return (
     <Modal
@@ -665,48 +896,49 @@ export function AddNoteSheet({
               {clips.length > 0 ? (
                 <View style={styles.clipList}>
                   {clips.map((c) => {
-                    const isPlaying = playingId === c.id;
+                    const isActive = playingId === c.id;
+                    const isPlaying = isActive && !paused;
                     return (
-                      <View key={c.id} style={styles.clipRow}>
+                      <View key={c.id} style={styles.clipChip}>
                         <Pressable
                           accessibilityRole="button"
                           accessibilityLabel={
                             isPlaying ? 'Pause voice note' : 'Play voice note'
                           }
-                          hitSlop={6}
+                          hitSlop={4}
                           onPress={() => void togglePlay(c)}
                           style={styles.playBtn}
                         >
                           <Ionicons
                             name={isPlaying ? 'pause' : 'play'}
-                            size={16}
-                            color={colors.brand}
+                            size={14}
+                            color={colors.white}
+                            style={!isPlaying ? { marginLeft: 1 } : undefined}
                           />
                         </Pressable>
-                        <View style={styles.clipMeta}>
-                          <Text style={styles.clipName} numberOfLines={1}>
-                            {c.name}
-                          </Text>
-                          {c.durationSec > 0 ? (
-                            <Text style={styles.clipDuration}>
-                              {formatDuration(c.durationSec)}
-                            </Text>
-                          ) : null}
-                        </View>
+                        <ProgressWaveform
+                          progress={isActive ? playProgress : 0}
+                          brand={colors.brand}
+                          onSeek={(f) => void seekClip(c, f)}
+                        />
+                        <Text style={styles.clipDuration}>
+                          {formatDuration(
+                            isActive ? playDisplaySec : c.durationSec
+                          )}
+                        </Text>
                         <Pressable
-                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Remove voice note"
+                          hitSlop={6}
                           onPress={() => {
-                            if (playingId === c.id) stopPlayback();
+                            if (playingId === c.id) stopPlayback(true);
                             setClips((prev) =>
                               prev.filter((x) => x.id !== c.id)
                             );
                           }}
+                          style={styles.clipRemove}
                         >
-                          <Ionicons
-                            name="close-circle"
-                            size={18}
-                            color={colors.textMuted}
-                          />
+                          <Ionicons name="close" size={12} color="#FFFFFF" />
                         </Pressable>
                       </View>
                     );
@@ -714,95 +946,95 @@ export function AddNoteSheet({
                 </View>
               ) : null}
 
-              {recording ? (
-                <View style={styles.recordingBar}>
-                  <View style={styles.recDot} />
-                  <Text style={styles.recTimer}>
-                    {formatDuration(recordSec)}
-                  </Text>
-                  <View style={styles.meterRow}>
-                    {Array.from({ length: 12 }).map((_, i) => {
-                      const level =
-                        typeof meter === 'number'
-                          ? Math.max(0.15, Math.min(1, (meter + 50) / 50))
-                          : 0.3 + (i % 3) * 0.15;
-                      return (
-                        <View
-                          key={i}
-                          style={[
-                            styles.meterBar,
-                            { height: 6 + level * 14 },
-                          ]}
-                        />
-                      );
-                    })}
-                  </View>
-                  <Pressable style={styles.stopRecBtn} onPress={() => void stopRecording()}>
-                    <Text style={styles.stopRecText}>Stop</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles.toolbar}>
+              <View style={styles.toolbar}>
+                {!recording ? (
                   <Pressable
                     style={styles.toolBtn}
                     onPress={() => void pickAudioFile()}
-                    accessibilityLabel="Upload audio"
+                    accessibilityLabel="Attach file"
                   >
                     <Ionicons
                       name="attach-outline"
-                      size={20}
+                      size={18}
                       color={colors.textSecondary}
                     />
                   </Pressable>
+                ) : null}
+                {recording ? (
+                  <View style={styles.recordingRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Stop recording"
+                      onPress={() => void stopRecording()}
+                      style={styles.stopRecBtn}
+                    >
+                      <View style={styles.stopRecInner}>
+                        <View style={styles.stopRecSquare} />
+                      </View>
+                    </Pressable>
+                    <LiveWaveform levels={liveLevels} />
+                    <Text style={styles.recTimer}>
+                      {formatDuration(recordSec)}
+                    </Text>
+                  </View>
+                ) : (
                   <Pressable
                     style={styles.toolBtn}
                     onPress={() => void startRecording()}
-                    accessibilityLabel="Record voice"
+                    accessibilityLabel="Voice note"
                   >
                     <Ionicons
                       name="mic-outline"
-                      size={20}
+                      size={18}
                       color={colors.textSecondary}
                     />
                   </Pressable>
-                  {channels.map((c) => {
-                    const active = channelId === c.id;
-                    const icon = CHANNEL_ICON[c.label] ?? 'chatbubble-outline';
-                    return (
-                      <Pressable
-                        key={c.id}
-                        onPress={() =>
-                          setChannelId((cur) => (cur === c.id ? null : c.id))
-                        }
-                        style={[
-                          styles.channelChip,
-                          active && styles.channelChipActive,
-                        ]}
-                      >
-                        <Ionicons
-                          name={icon}
-                          size={14}
-                          color={
-                            active
-                              ? colors.brand
-                              : c.label === 'WhatsApp'
-                                ? '#25D366'
-                                : colors.textSecondary
+                )}
+                {!recording && channels.length > 0 ? (
+                  <>
+                    <View style={styles.toolbarDivider} />
+                    {channels.map((c) => {
+                      const active = channelId === c.id;
+                      const icon =
+                        CHANNEL_ICON[c.label] ?? 'chatbubble-outline';
+                      return (
+                        <Pressable
+                          key={c.id}
+                          onPress={() =>
+                            setChannelId((cur) =>
+                              cur === c.id ? null : c.id
+                            )
                           }
-                        />
-                        <Text
                           style={[
-                            styles.channelLabel,
-                            active && { color: colors.brand },
+                            styles.channelChip,
+                            active && styles.channelChipActive,
                           ]}
                         >
-                          {c.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
+                          <Ionicons
+                            name={icon}
+                            size={14}
+                            color={
+                              active
+                                ? colors.brand
+                                : c.label === 'WhatsApp'
+                                  ? '#25D366'
+                                  : colors.textSecondary
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.channelLabel,
+                              active && { color: colors.brand },
+                            ]}
+                          >
+                            {c.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </>
+                ) : null}
+              </View>
             </View>
 
             {!terminal ? (
@@ -975,70 +1207,100 @@ function createStyles(colors: ThemeColors) {
     noteBox: {
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: radii.md,
-      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      backgroundColor: colors.surfaceMuted,
       overflow: 'hidden',
     },
     noteInput: {
       minHeight: 110,
-      padding: spacing.md,
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.sm,
       fontSize: 15,
       color: colors.text,
       lineHeight: 22,
+      backgroundColor: 'transparent',
     },
     clipList: {
-      gap: 6,
-      paddingHorizontal: spacing.sm,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      paddingHorizontal: spacing.md,
       paddingBottom: spacing.sm,
     },
-    clipRow: {
+    clipChip: {
+      position: 'relative',
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      backgroundColor: colors.primary50,
-      borderRadius: radii.md,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      minWidth: 220,
+      maxWidth: '100%',
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+      paddingVertical: 6,
+      paddingLeft: 6,
+      paddingRight: 14,
+      shadowColor: '#000',
+      shadowOpacity: 0.06,
+      shadowRadius: 3,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 1,
     },
     playBtn: {
       width: 32,
       height: 32,
       borderRadius: 999,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.brandSoft,
+      backgroundColor: colors.brand,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    clipMeta: { flex: 1, minWidth: 0, gap: 1 },
-    clipName: {
-      fontSize: 13,
+    clipDuration: {
+      fontSize: 12,
       fontWeight: '600',
       color: colors.text,
-    },
-    clipDuration: {
-      fontSize: 11,
-      color: colors.textMuted,
       fontVariant: ['tabular-nums'],
+    },
+    clipRemove: {
+      position: 'absolute',
+      right: -6,
+      top: -6,
+      width: 20,
+      height: 20,
+      borderRadius: 999,
+      backgroundColor: CHIP_X_BG,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 2,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 2,
     },
     toolbar: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: spacing.sm,
-      paddingBottom: spacing.sm,
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
-      paddingTop: spacing.sm,
+      backgroundColor: colors.surfaceMuted,
     },
     toolBtn: {
-      width: 34,
-      height: 28,
+      width: 32,
+      height: 32,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: radii.sm,
-      backgroundColor: colors.surfaceMuted,
+    },
+    toolbarDivider: {
+      width: StyleSheet.hairlineWidth,
+      height: 20,
+      backgroundColor: colors.border,
+      marginHorizontal: 6,
     },
     channelChip: {
       height: 28,
@@ -1061,51 +1323,48 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.textSecondary,
     },
-    recordingBar: {
+    recordingRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      backgroundColor: colors.primary50,
+      gap: 8,
+      marginLeft: 2,
+      flex: 1,
+      minWidth: 0,
     },
-    recDot: {
+    stopRecBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: radii.sm,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.06,
+      shadowRadius: 2,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 1,
+    },
+    stopRecInner: {
+      width: 20,
+      height: 20,
+      borderRadius: 999,
+      backgroundColor: STOP_RED,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stopRecSquare: {
       width: 8,
       height: 8,
-      borderRadius: 999,
-      backgroundColor: colors.danger,
+      borderRadius: 1.5,
+      backgroundColor: '#FFFFFF',
     },
     recTimer: {
       fontSize: 13,
-      fontWeight: '700',
+      fontWeight: '500',
       color: colors.text,
       fontVariant: ['tabular-nums'],
-    },
-    meterRow: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 2,
-      height: 22,
-    },
-    meterBar: {
-      width: 3,
-      borderRadius: 2,
-      backgroundColor: colors.brand,
-      opacity: 0.85,
-    },
-    stopRecBtn: {
-      backgroundColor: colors.brand,
-      borderRadius: radii.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-    },
-    stopRecText: {
-      color: colors.white,
-      fontWeight: '700',
-      fontSize: 12,
     },
     saveBtn: {
       marginHorizontal: spacing.lg,

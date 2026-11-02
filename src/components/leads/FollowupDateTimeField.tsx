@@ -311,7 +311,11 @@ export function FollowupDateTimeField({
                     />
                   </Pressable>
                 </View>
-                <ScrollView style={styles.timeList} nestedScrollEnabled>
+                <ScrollView
+                  style={styles.timeList}
+                  contentContainerStyle={styles.timeGrid}
+                  nestedScrollEnabled
+                >
                   {TIME_SLOTS.map((slot) => {
                     const mins = slot.h * 60 + slot.m;
                     const selected = mins === selectedMin;
@@ -320,8 +324,8 @@ export function FollowupDateTimeField({
                         key={mins}
                         onPress={() => selectTime(slot.h, slot.m)}
                         style={[
-                          styles.timeRow,
-                          selected && styles.timeRowSelected,
+                          styles.timeCell,
+                          selected && styles.timeCellSelected,
                         ]}
                       >
                         <Text
@@ -526,28 +530,43 @@ function createStyles(colors: ThemeColors) {
       color: colors.text,
     },
     timeList: { maxHeight: 320 },
-    timeRow: {
+    timeGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 8,
+      paddingBottom: 4,
+    },
+    timeCell: {
+      width: '32%',
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      justifyContent: 'center',
+      gap: 4,
       paddingVertical: 10,
-      paddingHorizontal: 10,
-      borderRadius: radii.md,
+      paddingHorizontal: 4,
+      borderRadius: radii.sm,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
     },
-    timeRowSelected: {
-      backgroundColor: colors.surfaceMuted,
+    timeCellSelected: {
+      borderColor: colors.brand,
+      backgroundColor: colors.brand,
     },
     timeLabel: {
-      fontSize: 14,
+      fontSize: 13,
+      fontWeight: '600',
       fontVariant: ['tabular-nums'],
-      color: colors.textSecondary,
+      color: colors.text,
     },
     timeAmpm: {
-      fontSize: 14,
+      fontSize: 11,
+      fontWeight: '600',
       color: colors.textSecondary,
     },
     timeLabelSelected: {
-      color: colors.text,
+      color: colors.white,
       fontWeight: '700',
     },
   });
