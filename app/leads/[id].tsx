@@ -43,7 +43,7 @@ import {
   type AddNoteVars,
   type UpdateStatusVars,
 } from '@/features/leads/leadWrites';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
@@ -54,6 +54,8 @@ const noteResolver = formResolver<NoteForm>((v) => ({
 }));
 
 export default function LeadDetailScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const leadId = Number(id);
   const accountId = useAuth().user?.id ?? '';
@@ -352,6 +354,8 @@ export default function LeadDetailScreen() {
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
@@ -360,49 +364,51 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  hero: { gap: spacing.xs },
-  name: { ...typography.title, color: colors.text },
-  phone: { ...typography.subtitle, color: colors.brand },
-  status: { ...typography.body, color: colors.textSecondary },
-  actions: { flexDirection: 'row', gap: spacing.sm },
-  panel: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  panelTitle: { ...typography.subtitle, color: colors.text },
-  detailRow: { gap: 2, paddingVertical: 4 },
-  detailLabel: { ...typography.caption, color: colors.textMuted },
-  detailValue: { ...typography.body, color: colors.text },
-  note: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    paddingTop: spacing.sm,
-    gap: 4,
-  },
-  noteMeta: { ...typography.caption, color: colors.textMuted },
-  pendingText: { ...typography.caption, color: colors.warning },
-  noteBody: { ...typography.body, color: colors.textSecondary },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    padding: spacing.xl,
-    gap: spacing.md,
-  },
-  statusRow: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  statusRowText: { ...typography.body, color: colors.text },
-});
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    hero: { gap: spacing.xs },
+    name: { ...typography.title, color: colors.text },
+    phone: { ...typography.subtitle, color: colors.brand },
+    status: { ...typography.body, color: colors.textSecondary },
+    actions: { flexDirection: 'row', gap: spacing.sm },
+    panel: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.lg,
+      gap: spacing.sm,
+    },
+    panelTitle: { ...typography.subtitle, color: colors.text },
+    detailRow: { gap: 2, paddingVertical: 4 },
+    detailLabel: { ...typography.caption, color: colors.textMuted },
+    detailValue: { ...typography.body, color: colors.text },
+    note: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      paddingTop: spacing.sm,
+      gap: 4,
+    },
+    noteMeta: { ...typography.caption, color: colors.textMuted },
+    pendingText: { ...typography.caption, color: colors.warning },
+    noteBody: { ...typography.body, color: colors.textSecondary },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      justifyContent: 'flex-end',
+    },
+    modalCard: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: radii.lg,
+      borderTopRightRadius: radii.lg,
+      padding: spacing.xl,
+      gap: spacing.md,
+    },
+    statusRow: {
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    statusRowText: { ...typography.body, color: colors.text },
+  });
+}

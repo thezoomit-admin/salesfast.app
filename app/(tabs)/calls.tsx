@@ -24,7 +24,14 @@ import {
   type RecentCall,
 } from '@/features/call-tracking/useRecentCalls';
 import type { CallSyncStatus } from '@/features/call-tracking/syncPreferences';
-import { colors, radii, spacing, typography } from '@/theme';
+import {
+  lightColors,
+  radii,
+  spacing,
+  typography,
+  useThemeColors,
+  type ThemeColors,
+} from '@/theme';
 import { formatDate } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer } from '@/utils/phone';
 
@@ -79,16 +86,20 @@ const FILTERS: readonly (readonly [FilterKey, string])[] = [
   ['others', 'Unknown'],
 ];
 
-const DIRECTION_ICON: Record<
+function directionIcons(
+  colors: ThemeColors
+): Record<
   CallSyncDirection,
   { name: React.ComponentProps<typeof FontAwesome>['name']; color: string }
-> = {
-  INCOMING: { name: 'arrow-down', color: colors.success },
-  OUTGOING: { name: 'arrow-up', color: colors.brand },
-  MISSED: { name: 'times', color: colors.danger },
-  REJECTED: { name: 'ban', color: colors.danger },
-  UNKNOWN: { name: 'phone', color: colors.textMuted },
-};
+> {
+  return {
+    INCOMING: { name: 'arrow-down', color: colors.success },
+    OUTGOING: { name: 'arrow-up', color: colors.brand },
+    MISSED: { name: 'times', color: colors.danger },
+    REJECTED: { name: 'ban', color: colors.danger },
+    UNKNOWN: { name: 'phone', color: colors.textMuted },
+  };
+}
 
 function formatDuration(sec: number) {
   if (sec <= 0) return null;
@@ -98,6 +109,8 @@ function formatDuration(sec: number) {
 }
 
 export default function CallsScreen() {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const queryClient = useQueryClient();
   const callSync = useCallSyncStatus();
@@ -382,7 +395,9 @@ function CallRow({
   call: RecentCall;
   onOpenLead?: () => void;
 }) {
-  const icon = DIRECTION_ICON[call.direction];
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const icon = directionIcons(colors)[call.direction];
   const missed = isMissed(call.direction);
   const duration = formatDuration(call.durationSec);
 
@@ -429,119 +444,121 @@ function CallRow({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  toolbar: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  cta: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  pressed: { opacity: 0.8 },
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: colors.background },
+    flex: { flex: 1 },
+    toolbar: {
+      paddingHorizontal: spacing.lg,
+      gap: spacing.md,
+      marginBottom: spacing.md,
+    },
+    cta: {
+      paddingHorizontal: spacing.lg,
+      paddingBottom: spacing.xl,
+    },
+    pressed: { opacity: 0.8 },
 
-  syncCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-  },
-  syncCard_ok: {
-    backgroundColor: colors.successSoft,
-    borderColor: '#A6F4C5',
-  },
-  syncCard_warn: {
-    backgroundColor: colors.warningSoft,
-    borderColor: '#FEDF89',
-  },
-  syncCard_muted: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-  },
-  syncIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  syncIcon_ok: { backgroundColor: 'rgba(18, 183, 106, 0.15)' },
-  syncIcon_warn: { backgroundColor: 'rgba(247, 144, 9, 0.15)' },
-  syncIcon_muted: { backgroundColor: colors.surfaceMuted },
-  syncCopy: { flex: 1, gap: 3, minWidth: 0 },
-  syncTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
-  syncBody: {
-    ...typography.caption,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textSecondary,
-  },
-  syncAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    flexShrink: 0,
-  },
-  syncActionText: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.brand,
-    fontSize: 13,
-  },
-  syncActionTextOk: { color: colors.success },
+    syncCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      padding: spacing.md,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    syncCard_ok: {
+      backgroundColor: colors.successSoft,
+      borderColor: colors === lightColors ? '#A6F4C5' : colors.success,
+    },
+    syncCard_warn: {
+      backgroundColor: colors.warningSoft,
+      borderColor: colors === lightColors ? '#FEDF89' : colors.warning,
+    },
+    syncCard_muted: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    },
+    syncIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: radii.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    syncIcon_ok: { backgroundColor: 'rgba(18, 183, 106, 0.15)' },
+    syncIcon_warn: { backgroundColor: 'rgba(247, 144, 9, 0.15)' },
+    syncIcon_muted: { backgroundColor: colors.surfaceMuted },
+    syncCopy: { flex: 1, gap: 3, minWidth: 0 },
+    syncTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
+    syncBody: {
+      ...typography.caption,
+      fontSize: 13,
+      lineHeight: 18,
+      color: colors.textSecondary,
+    },
+    syncAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
+    },
+    syncActionText: {
+      ...typography.caption,
+      fontWeight: '700',
+      color: colors.brand,
+      fontSize: 13,
+    },
+    syncActionTextOk: { color: colors.success },
 
-  tabs: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tabActive: { backgroundColor: colors.brand, borderColor: colors.brand },
-  tabText: { ...typography.caption, color: colors.textSecondary },
-  tabTextActive: { color: colors.white },
+    tabs: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
+    tab: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+      borderRadius: radii.md,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    tabActive: { backgroundColor: colors.brand, borderColor: colors.brand },
+    tabText: { ...typography.caption, color: colors.textSecondary },
+    tabTextActive: { color: colors.white },
 
-  list: { padding: spacing.lg, gap: spacing.sm, flexGrow: 1 },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  dirIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceMuted,
-  },
-  dirIconMissed: { backgroundColor: colors.dangerSoft },
-  cardCopy: { flex: 1, gap: 2 },
-  name: { ...typography.subtitle, color: colors.text },
-  nameMissed: { color: colors.danger },
-  meta: { ...typography.caption, color: colors.textMuted },
-  callBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.brandSoft,
-  },
-  callBtnMissed: { backgroundColor: colors.danger },
-});
+    list: { padding: spacing.lg, gap: spacing.sm, flexGrow: 1 },
+    card: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: spacing.md,
+    },
+    dirIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceMuted,
+    },
+    dirIconMissed: { backgroundColor: colors.dangerSoft },
+    cardCopy: { flex: 1, gap: 2 },
+    name: { ...typography.subtitle, color: colors.text },
+    nameMissed: { color: colors.danger },
+    meta: { ...typography.caption, color: colors.textMuted },
+    callBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.brandSoft,
+    },
+    callBtnMissed: { backgroundColor: colors.danger },
+  });
+}

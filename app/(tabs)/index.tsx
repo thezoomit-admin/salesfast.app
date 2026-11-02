@@ -17,7 +17,7 @@ import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { markFirstContent } from '@/lib/perfMonitor';
-import { colors, radii, spacing, typography } from '@/theme';
+import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import { formatDate, formatRelative } from '@/utils/dates';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -104,6 +104,9 @@ function isOverdue(dueAt: string) {
 }
 
 export default function HomeScreen() {
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -269,7 +272,7 @@ export default function HomeScreen() {
                     alert.tone === 'danger'
                       ? colors.danger
                       : alert.tone === 'warn'
-                        ? '#B45309'
+                        ? isDark ? colors.warning : '#B45309'
                         : colors.textMuted
                   }
                 />
@@ -299,8 +302,8 @@ export default function HomeScreen() {
                     alert.tone === 'danger'
                       ? colors.danger
                       : alert.tone === 'warn'
-                        ? '#92400E'
-                        : '#4B5563'
+                        ? isDark ? colors.warning : '#92400E'
+                        : isDark ? colors.textSecondary : '#4B5563'
                   }
                 />
               </Pressable>
@@ -552,7 +555,10 @@ export default function HomeScreen() {
               <View
                 style={[
                   styles.shortcutIcon,
-                  { backgroundColor: item.bg, borderColor: item.border },
+                  {
+                    backgroundColor: isDark ? `26` : item.bg,
+                    borderColor: isDark ? `66` : item.border,
+                  },
                 ]}
               >
                 <Ionicons name={item.icon} size={24} color={item.fg} />
@@ -698,393 +704,404 @@ function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   }, [screen, hasData, fetched]);
 }
 
-const styles = StyleSheet.create({
-  screenContent: {
-    gap: 12,
-    paddingBottom: spacing.xxl,
-    paddingTop: spacing.sm,
-  },
-  pressed: { opacity: 0.85 },
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  return StyleSheet.create({
+    screenContent: {
+      gap: 12,
+      paddingBottom: spacing.xxl,
+      paddingTop: spacing.sm,
+    },
+    pressed: { opacity: 0.85 },
 
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: colors.background,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  headerLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 12,
-    minWidth: 0,
-  },
-  headerText: { flexShrink: 1, minWidth: 0, marginLeft: 10 },
-  greeting: {
-    ...typography.subtitle,
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-    flexWrap: 'wrap',
-  },
-  metaChip: {
-    backgroundColor: '#E4E9F0',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-    maxWidth: 160,
-  },
-  metaChipText: {
-    ...typography.caption,
-    fontSize: 11,
-    lineHeight: 16,
-    color: colors.text,
-  },
-  syncChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#EEF2F7',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-    maxWidth: 140,
-  },
-  syncChipText: {
-    ...typography.caption,
-    fontSize: 10,
-    lineHeight: 14,
-    color: colors.textMuted,
-    flexShrink: 1,
-  },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      backgroundColor: colors.background,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    headerLeft: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 12,
+      minWidth: 0,
+    },
+    headerText: { flexShrink: 1, minWidth: 0, marginLeft: 10 },
+    greeting: {
+      ...typography.subtitle,
+      fontSize: 17,
+      lineHeight: 22,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 2,
+      flexWrap: 'wrap',
+    },
+    metaChip: {
+      backgroundColor: colors.accentSoft,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: radii.pill,
+      maxWidth: 160,
+    },
+    metaChipText: {
+      ...typography.caption,
+      fontSize: 11,
+      lineHeight: 16,
+      color: colors.text,
+    },
+    syncChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: colors.surfaceMuted,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: radii.pill,
+      maxWidth: 140,
+    },
+    syncChipText: {
+      ...typography.caption,
+      fontSize: 10,
+      lineHeight: 14,
+      color: colors.textMuted,
+      flexShrink: 1,
+    },
 
-  alertsWrap: { marginBottom: 0 },
-  alertChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radii.pill,
-    borderWidth: 0.5,
-    paddingLeft: 10,
-    paddingRight: 4,
-    paddingVertical: 6,
-    gap: 2,
-  },
-  alertDanger: { backgroundColor: '#FEE4E2', borderColor: '#FECDCA' },
-  alertWarn: { backgroundColor: '#FEF0C7', borderColor: '#FEDF89' },
-  alertMuted: { backgroundColor: '#F3F4F6', borderColor: colors.border },
-  alertBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingRight: 4,
-  },
-  alertLabel: {
-    ...typography.caption,
-    fontSize: 13,
-    color: colors.text,
-  },
-  alertLabelDanger: { color: colors.danger, fontWeight: '600' },
-  alertLabelWarn: { color: '#B45309', fontWeight: '600' },
-  alertDismiss: { padding: 4 },
+    alertsWrap: { marginBottom: 0 },
+    alertChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: radii.pill,
+      borderWidth: 0.5,
+      paddingLeft: 10,
+      paddingRight: 4,
+      paddingVertical: 6,
+      gap: 2,
+    },
+    alertDanger: {
+      backgroundColor: colors.dangerSoft,
+      borderColor: isDark ? colors.danger : '#FECDCA',
+    },
+    alertWarn: {
+      backgroundColor: colors.warningSoft,
+      borderColor: isDark ? colors.warning : '#FEDF89',
+    },
+    alertMuted: { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+    alertBody: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingRight: 4,
+    },
+    alertLabel: {
+      ...typography.caption,
+      fontSize: 13,
+      color: colors.text,
+    },
+    alertLabelDanger: { color: colors.danger, fontWeight: '600' },
+    alertLabelWarn: {
+      color: isDark ? colors.warning : '#B45309',
+      fontWeight: '600',
+    },
+    alertDismiss: { padding: 4 },
 
-  hero: {
-    borderRadius: radii.md,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 14,
-    overflow: 'hidden',
-  },
-  heroSheen: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    top: -70,
-    right: -45,
-  },
-  heroTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  periodPill: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: radii.pill,
-  },
-  periodText: {
-    ...typography.caption,
-    color: colors.white,
-    fontWeight: '600',
-  },
-  heroLinkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  heroLink: {
-    ...typography.caption,
-    color: colors.white,
-    fontWeight: '700',
-  },
-  heroLabel: {
-    ...typography.caption,
-    color: 'rgba(255,255,255,0.78)',
-    marginBottom: 2,
-  },
-  heroValue: {
-    fontSize: 40,
-    lineHeight: 46,
-    fontWeight: '700',
-    letterSpacing: -1,
-    color: colors.white,
-  },
-  heroHint: {
-    ...typography.caption,
-    color: 'rgba(255,255,255,0.82)',
-    marginTop: 2,
-    marginBottom: 12,
-  },
-  heroStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.22)',
-    paddingTop: 12,
-  },
-  heroStat: { flex: 1, gap: 2 },
-  heroStatLabel: {
-    ...typography.caption,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.72)',
-  },
-  heroStatValue: {
-    ...typography.subtitle,
-    fontSize: 16,
-    color: colors.white,
-  },
-  heroDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 28,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    marginHorizontal: 8,
-  },
+    hero: {
+      borderRadius: radii.md,
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 14,
+      overflow: 'hidden',
+    },
+    heroSheen: {
+      position: 'absolute',
+      width: 200,
+      height: 200,
+      borderRadius: 100,
+      backgroundColor: 'rgba(255,255,255,0.12)',
+      top: -70,
+      right: -45,
+    },
+    heroTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    periodPill: {
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: radii.pill,
+    },
+    periodText: {
+      ...typography.caption,
+      color: colors.white,
+      fontWeight: '600',
+    },
+    heroLinkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    heroLink: {
+      ...typography.caption,
+      color: colors.white,
+      fontWeight: '700',
+    },
+    heroLabel: {
+      ...typography.caption,
+      color: 'rgba(255,255,255,0.78)',
+      marginBottom: 2,
+    },
+    heroValue: {
+      fontSize: 40,
+      lineHeight: 46,
+      fontWeight: '700',
+      letterSpacing: -1,
+      color: colors.white,
+    },
+    heroHint: {
+      ...typography.caption,
+      color: 'rgba(255,255,255,0.82)',
+      marginTop: 2,
+      marginBottom: 12,
+    },
+    heroStats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: 'rgba(255,255,255,0.22)',
+      paddingTop: 12,
+    },
+    heroStat: { flex: 1, gap: 2 },
+    heroStatLabel: {
+      ...typography.caption,
+      fontSize: 11,
+      color: 'rgba(255,255,255,0.72)',
+    },
+    heroStatValue: {
+      ...typography.subtitle,
+      fontSize: 16,
+      color: colors.white,
+    },
+    heroDivider: {
+      width: StyleSheet.hairlineWidth,
+      height: 28,
+      backgroundColor: 'rgba(255,255,255,0.22)',
+      marginHorizontal: 8,
+    },
 
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.md,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  cardTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
-  pulseHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  pulsePct: { ...typography.subtitle, color: colors.text, fontSize: 15 },
-  pulseTrack: {
-    height: 8,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surfaceMuted,
-    overflow: 'hidden',
-  },
-  pulseFill: { height: '100%', borderRadius: radii.pill },
-  pulseMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 8,
-  },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    cardTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
+    pulseHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    pulsePct: { ...typography.subtitle, color: colors.text, fontSize: 15 },
+    pulseTrack: {
+      height: 8,
+      borderRadius: radii.pill,
+      backgroundColor: colors.surfaceMuted,
+      overflow: 'hidden',
+    },
+    pulseFill: { height: '100%', borderRadius: radii.pill },
+    pulseMeta: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
 
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    gap: 8,
-  },
-  sectionTitle: {
-    ...typography.subtitle,
-    fontSize: 16,
-    color: colors.text,
-    flex: 1,
-  },
-  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  seeAllText: {
-    ...typography.caption,
-    color: colors.brand,
-    fontWeight: '600',
-  },
-  organize: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radii.pill,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-  },
-  organizeText: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+      gap: 8,
+    },
+    sectionTitle: {
+      ...typography.subtitle,
+      fontSize: 16,
+      color: colors.text,
+      flex: 1,
+    },
+    seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+    seeAllText: {
+      ...typography.caption,
+      color: colors.brand,
+      fontWeight: '600',
+    },
+    organize: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: radii.pill,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+    },
+    organizeText: {
+      ...typography.caption,
+      color: colors.textMuted,
+    },
 
-  quickChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 0.5,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  quickChipText: {
-    ...typography.caption,
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
+    quickChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.surface,
+      borderWidth: 0.5,
+      borderColor: colors.border,
+      borderRadius: radii.sm,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    quickChipText: {
+      ...typography.caption,
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text,
+    },
 
-  snapshotTotals: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  snapshotCol: { flex: 1, gap: 2 },
-  snapshotLabel: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  snapshotValue: {
-    ...typography.title,
-    fontSize: 24,
-    color: colors.text,
-  },
-  snapshotDanger: { color: colors.danger },
-  snapshotDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 36,
-    backgroundColor: colors.border,
-    marginHorizontal: 12,
-  },
-  inlineEmpty: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingTop: 8,
-  },
-  personRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingTop: 12,
-  },
-  personRowBorder: {
-    marginTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  dueTag: {
-    ...typography.caption,
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: radii.pill,
-    overflow: 'hidden',
-  },
-  dueTagWarn: { backgroundColor: colors.warningSoft, color: colors.warning },
-  dueTagOk: { backgroundColor: colors.brandSoft, color: colors.brand },
+    snapshotTotals: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    snapshotCol: { flex: 1, gap: 2 },
+    snapshotLabel: {
+      ...typography.caption,
+      color: colors.textMuted,
+    },
+    snapshotValue: {
+      ...typography.title,
+      fontSize: 24,
+      color: colors.text,
+    },
+    snapshotDanger: { color: colors.danger },
+    snapshotDivider: {
+      width: StyleSheet.hairlineWidth,
+      height: 36,
+      backgroundColor: colors.border,
+      marginHorizontal: 12,
+    },
+    inlineEmpty: {
+      ...typography.caption,
+      color: colors.textMuted,
+      paddingTop: 8,
+    },
+    personRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingTop: 12,
+    },
+    personRowBorder: {
+      marginTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    dueTag: {
+      ...typography.caption,
+      fontSize: 11,
+      fontWeight: '700',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: radii.pill,
+      overflow: 'hidden',
+    },
+    dueTagWarn: { backgroundColor: colors.warningSoft, color: colors.warning },
+    dueTagOk: { backgroundColor: colors.brandSoft, color: colors.brand },
 
-  shortcutGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  shortcutItem: {
-    width: '19%',
-    alignItems: 'center',
-    paddingHorizontal: 2,
-  },
-  shortcutIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  shortcutLabel: {
-    ...typography.caption,
-    fontSize: 11,
-    lineHeight: 14,
-    color: colors.text,
-    textAlign: 'center',
-  },
+    shortcutGrid: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    shortcutItem: {
+      width: '19%',
+      alignItems: 'center',
+      paddingHorizontal: 2,
+    },
+    shortcutIcon: {
+      width: 52,
+      height: 52,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
+    shortcutLabel: {
+      ...typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
+      color: colors.text,
+      textAlign: 'center',
+    },
 
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  listRowFirst: { borderTopWidth: 0, paddingTop: spacing.xs },
-  listCopy: { flex: 1, gap: 2, minWidth: 0 },
-  rowTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
-  rowMeta: { ...typography.caption, color: colors.textMuted },
-  timeChip: {
-    width: 72,
-    minHeight: 44,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timeChipDefault: { backgroundColor: colors.surfaceMuted },
-  timeChipWarn: { backgroundColor: colors.warningSoft },
-  timeChipText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontSize: 11,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  timeChipTextWarn: { color: colors.warning },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.pill,
-    backgroundColor: colors.brandSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    ...typography.subtitle,
-    color: colors.brand,
-    fontSize: 15,
-  },
-});
+    listRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      paddingVertical: spacing.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    listRowFirst: { borderTopWidth: 0, paddingTop: spacing.xs },
+    listCopy: { flex: 1, gap: 2, minWidth: 0 },
+    rowTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
+    rowMeta: { ...typography.caption, color: colors.textMuted },
+    timeChip: {
+      width: 72,
+      minHeight: 44,
+      borderRadius: radii.sm,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    timeChipDefault: { backgroundColor: colors.surfaceMuted },
+    timeChipWarn: { backgroundColor: colors.warningSoft },
+    timeChipText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      fontSize: 11,
+      textAlign: 'center',
+      lineHeight: 14,
+    },
+    timeChipTextWarn: { color: colors.warning },
+    avatar: {
+      width: 40,
+      height: 40,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brandSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      ...typography.subtitle,
+      color: colors.brand,
+      fontSize: 15,
+    },
+  });
+}
