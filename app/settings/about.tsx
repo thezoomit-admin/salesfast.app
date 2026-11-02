@@ -12,7 +12,6 @@ import {
   API_BASE_URL,
   APP_NAME,
   APP_VERSION,
-  STAGING_API_URL,
 } from '@/constants/config';
 import { colors, radii, spacing, typography } from '@/theme';
 
@@ -122,7 +121,7 @@ export default function AboutScreen() {
         <View style={styles.hero}>
           <View style={styles.logoWrap}>
             <Image
-              source={require('../../assets/images/icon.png')}
+              source={require('../../assets/images/salesfast-favicon.png')}
               style={styles.logo}
             />
           </View>
@@ -182,9 +181,7 @@ export default function AboutScreen() {
         </View>
 
         <Text style={styles.footer}>
-          © {new Date().getFullYear()} Zoomit · Salesfast CRM
-          {'\n'}
-          Production API: {STAGING_API_URL.replace(/\/api$/, '')}
+          © {new Date().getFullYear()} ZOOMIT · Salesfast CRM
         </Text>
       </ScrollView>
     </View>

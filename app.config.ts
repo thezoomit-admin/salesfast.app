@@ -38,6 +38,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: '#000000',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
+      // Status-bar / themed icon — Salesfast mark on black plate.
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
