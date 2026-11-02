@@ -8,7 +8,7 @@ import {
   Calendar03Icon,
   CallIcon,
   EyeIcon,
-  Home03Icon,
+  UserIcon,
 } from '@/components/icons/hugeicons';
 import { spacing, useThemeColors, type ThemeColors } from '@/theme';
 
@@ -35,7 +35,7 @@ const TAB_META: Record<
   string,
   { label: string; icon: HugeIconData }
 > = {
-  index: { label: 'Overview', icon: Home03Icon },
+  index: { label: 'Overview', icon: UserIcon },
   history: { label: 'History', icon: Calendar03Icon },
   calls: { label: 'Call History', icon: CallIcon },
   views: { label: 'View History', icon: EyeIcon },
@@ -67,7 +67,7 @@ export function LeadDetailTabBar({
       {state.routes.map((route, index) => {
         const meta = TAB_META[route.name] ?? {
           label: descriptors[route.key]?.options.title ?? route.name,
-          icon: Home03Icon,
+          icon: UserIcon,
         };
         const isActive = state.index === index;
         const tint = isActive ? colors.brand : colors.textMuted;

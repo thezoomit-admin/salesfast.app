@@ -19,10 +19,7 @@ import {
 import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
-import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
-import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
 import { Button } from '@/components/ui/Button';
-import { FilterChip } from '@/components/ui/FilterChip';
 import { Screen } from '@/components/ui/Screen';
 import { LeadDetailSkeleton } from '@/components/ui/skeletons';
 import {
@@ -54,12 +51,6 @@ import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 type NoteForm = { note: string; followupAt?: string };
-type OverviewView = 'profile' | 'requirements';
-
-const OVERVIEW_PILLS: { key: OverviewView; label: string }[] = [
-  { key: 'profile', label: 'Buyer Profile' },
-  { key: 'requirements', label: 'Requirements' },
-];
 
 const noteResolver = formResolver<NoteForm>((v) => ({
   note: minLength(v.note, 1, 'Note is required'),
@@ -74,7 +65,6 @@ export default function LeadOverviewScreen() {
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
-  const [overviewView, setOverviewView] = useState<OverviewView>('profile');
 
   const { leadQuery, metaQuery } = useLeadDetail(leadId);
   const statusesQuery = useQuery(leadStatusesQuery);
@@ -174,11 +164,10 @@ export default function LeadOverviewScreen() {
   }
 
   const lead = leadQuery.data;
-  const meta = metaQuery.data;
   const name = lead.buyerPersona?.fullName || 'Unnamed lead';
   const phone = lead.buyerPersona?.phone;
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
-  const sm = summarizeLead(lead, meta);
+  const sm = summarizeLead(lead, metaQuery.data);
 
   const budgetLabel =
     sm.budgetMin != null || sm.budgetMax != null
@@ -203,6 +192,7 @@ export default function LeadOverviewScreen() {
       refreshing={leadQuery.isRefetching}
       onRefresh={() => leadQuery.refetch()}
     >
+      {/* Lead info card — Overview only */}
       <View style={styles.summaryCard}>
         <View style={styles.summaryHero}>
           <Text style={styles.name}>{name}</Text>
@@ -214,6 +204,12 @@ export default function LeadOverviewScreen() {
             {lead.leadStatus?.name || 'No status'}
             {lead.assignedToName ? ` · ${lead.assignedToName}` : ''}
           </Text>
+          {lead.buyerPersona?.email ? (
+            <Text style={styles.metaLine}>{lead.buyerPersona.email}</Text>
+          ) : null}
+          {lead.leadSource?.name ? (
+            <Text style={styles.metaLine}>Source · {lead.leadSource.name}</Text>
+          ) : null}
           {pendingStatusName ? (
             <Text style={styles.pendingText}>
               Changing to {pendingStatusName} · waiting to sync
@@ -283,30 +279,6 @@ export default function LeadOverviewScreen() {
           style={{ flex: 1 }}
           onPress={() => setStatusOpen(true)}
         />
-      </View>
-
-      <View style={styles.tabBody}>
-        <View style={styles.overviewWrap}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.subTabRow}
-          >
-            {OVERVIEW_PILLS.map((p) => (
-              <FilterChip
-                key={p.key}
-                label={p.label}
-                active={overviewView === p.key}
-                onPress={() => setOverviewView(p.key)}
-              />
-            ))}
-          </ScrollView>
-          {overviewView === 'profile' ? (
-            <LeadBuyerProfilePanel lead={lead} meta={meta} />
-          ) : (
-            <LeadRequirementsPanel lead={lead} meta={meta} />
-          )}
-        </View>
       </View>
 
       <Modal visible={noteOpen} animationType="slide" transparent>
@@ -402,6 +374,7 @@ function createStyles(colors: ThemeColors) {
     occupation: { ...typography.body, color: colors.textSecondary },
     phone: { ...typography.subtitle, color: colors.brand },
     status: { ...typography.body, color: colors.textSecondary },
+    metaLine: { ...typography.caption, color: colors.textMuted },
     budgetStrip: {
       marginHorizontal: spacing.lg,
       marginVertical: spacing.md,
@@ -453,20 +426,6 @@ function createStyles(colors: ThemeColors) {
     },
     prefChipValue: { ...typography.body, color: colors.text, fontWeight: '500' },
     actions: { flexDirection: 'row', gap: spacing.sm },
-    subTabRow: {
-      gap: spacing.sm,
-      alignItems: 'center',
-      paddingBottom: spacing.sm,
-    },
-    tabBody: {
-      backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: spacing.lg,
-      minHeight: 160,
-    },
-    overviewWrap: { gap: spacing.md },
     pendingText: { ...typography.caption, color: colors.warning },
     modalBackdrop: {
       flex: 1,
