@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 import { CallSyncBootstrap } from '@/features/call-tracking/CallSyncBootstrap';
+import { NotificationsBootstrap } from '@/features/notifications/NotificationsBootstrap';
 import { colors } from '@/theme';
 
 export { ErrorBoundary } from 'expo-router';
@@ -70,6 +71,7 @@ export default function RootLayout() {
       <AuthProvider>
         <AuthGate>
           <CallSyncBootstrap />
+          <NotificationsBootstrap />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
             <Stack.Screen name="(auth)" />
             <Stack.Screen name="(tabs)" />
