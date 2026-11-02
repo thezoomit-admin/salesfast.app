@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Search02Icon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -14,13 +15,39 @@ import {
 
 import { getErrorMessage } from '@/api/client';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { APP_NAME, APP_VERSION, API_BASE_URL } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
-import { colors, radii, spacing, typography } from '@/theme';
+import {
+  SettingsSearchSheet,
+  type SettingsSearchItem,
+} from '@/features/settings/SettingsSearchSheet';
+import { colors } from '@/theme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+/**
+ * Hisab More / settings chrome tokens — only brand slots remapped to Salesfast.
+ * Page wash / borders / muted text stay Hisab-identical.
+ */
+const more = {
+  primary: colors.brand,
+  primary50: colors.primary50,
+  primary100: '#FDDFCF',
+  surface: '#F7F7F7',
+  card: '#FFFFFF',
+  muted: '#6B7280',
+  icon: '#6B7280',
+  border: '#E5E7EB',
+  text: '#111827',
+  expense: '#C0392B',
+  expenseSoft: '#FDECEC',
+  radius2xl: 16,
+  radiusFull: 999,
+  screenPad: 20,
+} as const;
 
 type MenuItem = {
   key: string;
@@ -31,7 +58,7 @@ type MenuItem = {
   onPress?: () => void;
   danger?: boolean;
   showChevron?: boolean;
-  loading?: boolean;
+  soon?: boolean;
 };
 
 type MenuSectionData = {
@@ -39,13 +66,6 @@ type MenuSectionData = {
   title: string;
   items: MenuItem[];
 };
-
-function initials(name?: string | null) {
-  const parts = (name || '?').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
-}
 
 function MenuSection({
   title,
@@ -56,7 +76,6 @@ function MenuSection({
   items: MenuItem[];
   onItemPress: (item: MenuItem) => void;
 }) {
-  if (items.length === 0) return null;
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
@@ -83,9 +102,9 @@ function MenuRow({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const iconColor = item.danger ? colors.danger : colors.brand;
-  const labelColor = item.danger ? colors.danger : colors.text;
-  const iconBg = item.danger ? colors.dangerSoft : colors.primary50;
+  const iconColor = item.danger ? more.expense : more.primary;
+  const labelColor = item.danger ? more.expense : more.text;
+  const iconBg = item.danger ? more.expenseSoft : more.primary50;
   const showChevron = item.showChevron !== false && !item.danger;
   const a11y = item.value ? `${item.label}, ${item.value}` : item.label;
 
@@ -94,16 +113,11 @@ function MenuRow({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={a11y}
-        disabled={item.loading}
         onPress={onPress}
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       >
         <View style={[styles.iconSlot, { backgroundColor: iconBg }]}>
-          {item.loading ? (
-            <ActivityIndicator size="small" color={iconColor} />
-          ) : (
-            <Ionicons name={item.icon} size={18} color={iconColor} />
-          )}
+          <Ionicons name={item.icon} size={18} color={iconColor} />
         </View>
         <View style={styles.rowBody}>
           <Text style={[styles.rowLabel, { color: labelColor }]} numberOfLines={1}>
@@ -130,6 +144,15 @@ function MenuRow({
   );
 }
 
+function maskEmail(email: string) {
+  const at = email.indexOf('@');
+  if (at <= 1) return email;
+  const user = email.slice(0, at);
+  const domain = email.slice(at);
+  if (user.length <= 2) return `${user[0]}*${domain}`;
+  return `${user[0]}${'*'.repeat(Math.min(user.length - 2, 4))}${user[user.length - 1]}${domain}`;
+}
+
 export default function ProfileScreen() {
   const {
     user,
@@ -143,7 +166,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const callSync = useCallSyncStatus();
   const [accounts, setAccounts] = useState<SavedMobileAccount[]>([]);
-  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const refreshAccounts = useCallback(async () => {
     setAccounts(await getSavedAccounts());
@@ -156,9 +179,11 @@ export default function ProfileScreen() {
     }, [callSync.refresh, refreshAccounts])
   );
 
-  const displayName = user?.name?.trim() || 'Agent';
+  const displayName = user?.name?.trim() || APP_NAME;
   const roleLabel = user?.designation?.name || user?.role || 'Agent';
-  const contact = user?.email?.trim() || user?.phone?.trim() || '';
+  const contact = user?.email?.trim()
+    ? maskEmail(user.email.trim())
+    : user?.phone?.trim() || '';
 
   const confirmSignOut = useCallback(() => {
     Alert.alert('Sign out', 'End this session on this device?', [
@@ -202,7 +227,6 @@ export default function ProfileScreen() {
   const onSwitch = useCallback(
     async (account: SavedMobileAccount) => {
       if (account.id === user?.id) return;
-      setSwitchError(null);
       if (!canContinue(account)) {
         Alert.alert(
           'Session expired',
@@ -222,7 +246,7 @@ export default function ProfileScreen() {
         await switchToAccount(account.id);
         await refreshAccounts();
       } catch (error) {
-        setSwitchError(getErrorMessage(error, 'Unable to switch account'));
+        Alert.alert('Unable to switch', getErrorMessage(error));
       }
     },
     [user?.id, canContinue, switchToAccount, refreshAccounts, onRemove]
@@ -233,61 +257,24 @@ export default function ProfileScreen() {
     [accounts, user?.id]
   );
 
-  const sections: MenuSectionData[] = useMemo(() => {
-    const accountItems: MenuItem[] = [
+  const sections: MenuSectionData[] = useMemo(
+    () => [
       {
-        key: 'notifications',
-        label: 'Notifications',
-        icon: 'notifications-outline',
-        href: '/notifications',
-      },
-      {
-        key: 'activities',
-        label: 'Activities',
-        icon: 'list-outline',
-        href: '/activities',
-      },
-      {
-        key: 'addAccount',
-        label: 'Add another account',
-        icon: 'person-add-outline',
-        onPress: () => {
-          void prepareAddAccount().then(() => router.replace('/(auth)/login'));
-        },
-      },
-    ];
-
-    const switchItems: MenuItem[] = otherAccounts.map((account) => ({
-      key: `account-${account.id}`,
-      label: account.name,
-      icon: 'swap-horizontal-outline' as IoniconName,
-      value: account.signedOut ? 'Signed out' : account.email,
-      loading: switchingAccount,
-      onPress: () => {
-        Alert.alert(account.name, account.email, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Remove',
-            style: 'destructive',
-            onPress: () => onRemove(account),
-          },
-          {
-            text: 'Switch',
-            onPress: () => void onSwitch(account),
-          },
-        ]);
-      },
-    }));
-
-    return [
-      { key: 'account', title: 'Account', items: accountItems },
-      ...(switchItems.length
-        ? [{ key: 'accounts', title: 'Accounts on this device', items: switchItems }]
-        : []),
-      {
-        key: 'device',
-        title: 'Device & sync',
+        key: 'account',
+        title: 'Account',
         items: [
+          {
+            key: 'notifications',
+            label: 'Notifications',
+            icon: 'notifications-outline',
+            href: '/notifications',
+          },
+          {
+            key: 'activities',
+            label: 'Activities',
+            icon: 'list-outline',
+            href: '/activities',
+          },
           {
             key: 'callSync',
             label: 'Call sync',
@@ -298,15 +285,82 @@ export default function ProfileScreen() {
         ],
       },
       {
-        key: 'about',
-        title: 'About',
+        key: 'preferences',
+        title: 'Preferences',
         items: [
           {
-            key: 'version',
-            label: APP_NAME,
+            key: 'leads',
+            label: 'Leads',
+            icon: 'people-outline',
+            href: '/(tabs)/leads',
+          },
+          {
+            key: 'followUps',
+            label: 'Follow-ups',
+            icon: 'calendar-outline',
+            href: '/(tabs)/follow-ups',
+          },
+          {
+            key: 'calls',
+            label: 'Calls',
+            icon: 'call-outline',
+            href: '/(tabs)/calls',
+          },
+          {
+            key: 'addAccount',
+            label: 'Add another account',
+            icon: 'person-add-outline',
+            onPress: () => {
+              void prepareAddAccount().then(() =>
+                router.replace('/(auth)/login')
+              );
+            },
+          },
+          ...otherAccounts.map(
+            (account): MenuItem => ({
+              key: `account-${account.id}`,
+              label: account.name,
+              icon: 'swap-horizontal-outline',
+              value: account.signedOut ? 'Signed out' : 'Switch',
+              onPress: () => {
+                Alert.alert(account.name, account.email, [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Remove',
+                    style: 'destructive',
+                    onPress: () => onRemove(account),
+                  },
+                  {
+                    text: switchingAccount ? 'Switching…' : 'Switch',
+                    onPress: () => void onSwitch(account),
+                  },
+                ]);
+              },
+            })
+          ),
+        ],
+      },
+      {
+        key: 'security',
+        title: 'Security',
+        items: [
+          {
+            key: 'appSecurity',
+            label: 'App security',
+            icon: 'shield-outline',
+            soon: true,
+          },
+          {
+            key: 'devices',
+            label: 'Manage devices',
+            icon: 'phone-portrait-outline',
+            soon: true,
+          },
+          {
+            key: 'about',
+            label: 'App info',
             icon: 'information-circle-outline',
             value: `v${APP_VERSION}`,
-            showChevron: false,
             onPress: () => {
               Alert.alert(
                 APP_NAME,
@@ -317,9 +371,15 @@ export default function ProfileScreen() {
         ],
       },
       {
-        key: 'session',
-        title: 'Session',
+        key: 'support',
+        title: 'Support',
         items: [
+          {
+            key: 'faqs',
+            label: 'Help & FAQs',
+            icon: 'help-circle-outline',
+            soon: true,
+          },
           {
             key: 'logout',
             label: 'Sign out',
@@ -330,45 +390,99 @@ export default function ProfileScreen() {
           },
         ],
       },
-    ];
-  }, [
-    otherAccounts,
-    callSync.label,
-    switchingAccount,
-    prepareAddAccount,
-    router,
-    onSwitch,
-    onRemove,
-    confirmSignOut,
-  ]);
+    ],
+    [
+      callSync.label,
+      otherAccounts,
+      prepareAddAccount,
+      router,
+      onRemove,
+      onSwitch,
+      switchingAccount,
+      confirmSignOut,
+    ]
+  );
 
-  const runItem = (item: MenuItem) => {
+  const searchItems: SettingsSearchItem[] = useMemo(
+    () =>
+      sections.flatMap((section) =>
+        section.items.map((item) => ({
+          key: item.key,
+          label: item.label,
+          icon: item.icon,
+          value: item.value,
+          sectionTitle: section.title,
+          danger: item.danger,
+        }))
+      ),
+    [sections]
+  );
+
+  function runItem(item: MenuItem) {
+    if (item.soon) {
+      Alert.alert(item.label, 'Coming soon');
+      return;
+    }
     if (item.onPress) {
       item.onPress();
       return;
     }
     if (item.href) router.push(item.href);
-  };
+  }
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="More" showBack={false} />
+      <ScreenHeader
+        title="Settings"
+        showBack={false}
+        right={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Search settings"
+            onPress={() => setSearchOpen(true)}
+            style={({ pressed }) => [styles.searchBtn, pressed && styles.pressed]}
+          >
+            <HugeiconsIcon
+              icon={Search02Icon}
+              size={22}
+              color={more.icon}
+              strokeWidth={1.8}
+            />
+          </Pressable>
+        }
+      />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.screen}
         showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.profileCard}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Profile"
+          onPress={() => {
+            Alert.alert(
+              displayName,
+              [roleLabel, user?.email, user?.phone].filter(Boolean).join('\n')
+            );
+          }}
+          style={({ pressed }) => [styles.profileCard, pressed && styles.pressed]}
+        >
           <View style={styles.avatarRing}>
-            <Text style={styles.avatarText}>{initials(displayName)}</Text>
+            <UserAvatar
+              uri={user?.profilePhoto}
+              name={displayName}
+              size={56}
+              style={styles.avatar}
+            />
           </View>
           <View style={styles.profileText}>
             <Text style={styles.profileName} numberOfLines={1}>
               {displayName}
             </Text>
-            <Text style={styles.profileRole} numberOfLines={1}>
+            <Text style={styles.profileComplete} numberOfLines={1}>
               {roleLabel}
             </Text>
             {contact ? (
@@ -377,9 +491,8 @@ export default function ProfileScreen() {
               </Text>
             ) : null}
           </View>
-        </View>
-
-        {switchError ? <Text style={styles.error}>{switchError}</Text> : null}
+          <Ionicons name="chevron-forward" size={16} color={more.primary} />
+        </Pressable>
 
         {sections.map((section) => (
           <MenuSection
@@ -390,6 +503,20 @@ export default function ProfileScreen() {
           />
         ))}
       </ScrollView>
+
+      {searchOpen ? (
+        <SettingsSearchSheet
+          open
+          onClose={() => setSearchOpen(false)}
+          items={searchItems}
+          onSelect={(item) => {
+            const match = sections
+              .flatMap((section) => section.items)
+              .find((menuItem) => menuItem.key === item.key);
+            if (match) runItem(match);
+          }}
+        />
+      ) : null}
     </View>
   );
 }
@@ -397,81 +524,89 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: more.surface,
+  },
+  searchBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scroll: {
     flex: 1,
+    backgroundColor: more.surface,
   },
   screen: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: more.screenPad,
     paddingBottom: 32,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: more.card,
+    borderRadius: more.radius2xl,
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#FDDFCF',
+    borderColor: more.primary100,
   },
   avatarRing: {
     width: 56,
     height: 56,
-    borderRadius: radii.pill,
+    borderRadius: more.radiusFull,
     borderWidth: 2,
-    borderColor: colors.brand,
+    borderColor: more.primary,
     marginRight: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary50,
+    overflow: 'hidden',
+    backgroundColor: more.primary50,
   },
-  avatarText: {
-    ...typography.subtitle,
-    fontSize: 18,
-    color: colors.brand,
+  avatar: {
+    width: '100%',
+    height: '100%',
   },
   profileText: {
     flex: 1,
     minWidth: 0,
   },
   profileName: {
-    ...typography.subtitle,
+    fontWeight: '700',
     fontSize: 17,
     lineHeight: 24,
-    color: colors.text,
+    color: more.text,
   },
-  profileRole: {
-    ...typography.caption,
-    color: colors.brand,
+  profileComplete: {
+    fontWeight: '500',
+    fontSize: 13,
+    lineHeight: 18,
+    color: more.primary,
     marginTop: 2,
   },
   profileEmail: {
-    ...typography.caption,
+    fontWeight: '400',
     fontSize: 12,
-    color: colors.textMuted,
+    lineHeight: 16,
+    color: more.muted,
     marginTop: 2,
   },
   section: {
     marginBottom: 22,
   },
   sectionTitle: {
-    ...typography.caption,
+    fontWeight: '500',
     fontSize: 13,
     lineHeight: 18,
-    color: colors.textMuted,
+    color: more.muted,
     marginBottom: 8,
     marginLeft: 16,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
+    backgroundColor: more.card,
+    borderRadius: more.radius2xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: more.border,
   },
   row: {
     flexDirection: 'row',
@@ -479,13 +614,13 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingLeft: 16,
     paddingRight: 14,
-    backgroundColor: colors.surface,
+    backgroundColor: more.card,
   },
   iconSlot: {
     width: 32,
     height: 32,
     marginRight: 12,
-    borderRadius: radii.pill,
+    borderRadius: more.radiusFull,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -500,10 +635,10 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     minWidth: 0,
-    ...typography.subtitle,
+    fontWeight: '500',
     fontSize: 16,
     lineHeight: 22,
-    fontWeight: '500',
+    color: more.text,
   },
   rowTrailing: {
     flexDirection: 'row',
@@ -513,27 +648,21 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rowValue: {
-    ...typography.body,
-    fontSize: 14,
+    fontWeight: '400',
+    fontSize: 15,
     lineHeight: 20,
-    color: colors.textMuted,
-    maxWidth: 120,
+    color: more.muted,
+    maxWidth: 110,
   },
   dividerTrack: {
-    backgroundColor: colors.surface,
+    backgroundColor: more.card,
     paddingLeft: 60,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
+    backgroundColor: more.border,
   },
   pressed: {
-    backgroundColor: colors.primary50,
-  },
-  error: {
-    color: colors.danger,
-    fontSize: 13,
-    marginBottom: spacing.md,
-    marginHorizontal: spacing.sm,
+    backgroundColor: more.primary50,
   },
 });

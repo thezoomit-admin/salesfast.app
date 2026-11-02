@@ -82,7 +82,7 @@ export default function TabLayout() {
         options={{
           title: 'More',
           tabBarIcon: ({ color }) => (
-            <TabIcon name="ellipsis-h" color={String(color)} />
+            <TabIcon name="bars" color={String(color)} />
           ),
         }}
       />
