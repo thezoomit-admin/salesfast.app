@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
@@ -21,7 +21,6 @@ import { formResolver, minLength } from '@/lib/formResolver';
 import { getErrorMessage } from '@/api/client';
 import { AuthInput } from '@/features/auth/components/AuthInput';
 import { CountryPhoneInput } from '@/features/auth/components/CountryPhoneInput';
-import { authColors } from '@/features/auth/authTheme';
 import { promptContactAdmin } from '@/features/auth/contactAdmin';
 import {
   DEFAULT_COUNTRY_CODE,
@@ -31,6 +30,7 @@ import {
 import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { secureStorage } from '@/services/secureStorage';
+import { useTheme, type ThemeColors } from '@/theme';
 
 type FormValues = { identifier: string; password: string };
 
@@ -44,6 +44,9 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const phoneMode = mode === 'phone';
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { signIn, signingIn, switchToAccount, switchingAccount, getSavedAccounts } =
     useAuth();
   const [formError, setFormError] = useState<string | null>(null);
@@ -148,7 +151,7 @@ export default function LoginScreen() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -163,8 +166,8 @@ export default function LoginScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={authColors.primary}
-            colors={[authColors.primary]}
+            tintColor={colors.brand}
+            colors={[colors.brand]}
           />
         }
       >
@@ -176,7 +179,7 @@ export default function LoginScreen() {
             style={styles.backBtn}
             hitSlop={8}
           >
-            <Ionicons name="chevron-back" size={22} color={authColors.text} />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </Pressable>
           <Text style={styles.headerTitle}>Login</Text>
           <View style={styles.headerSpacer} />
@@ -216,12 +219,12 @@ export default function LoginScreen() {
                   </Text>
                 </View>
                 {switchingAccount ? (
-                  <ActivityIndicator color={authColors.primary} />
+                  <ActivityIndicator color={colors.brand} />
                 ) : (
                   <Ionicons
                     name="chevron-forward"
                     size={18}
-                    color={authColors.muted}
+                    color={colors.textMuted}
                   />
                 )}
               </Pressable>
@@ -300,7 +303,7 @@ export default function LoginScreen() {
           >
             <View style={[styles.checkbox, remember ? styles.checkboxOn : null]}>
               {remember ? (
-                <Ionicons name="checkmark" size={12} color={authColors.white} />
+                <Ionicons name="checkmark" size={12} color={colors.white} />
               ) : null}
             </View>
             <Text style={styles.rememberLabel}>Remember Me</Text>
@@ -325,7 +328,7 @@ export default function LoginScreen() {
           ]}
         >
           {signingIn ? (
-            <ActivityIndicator color={authColors.white} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.loginBtnText}>Login</Text>
           )}
@@ -342,190 +345,192 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: authColors.white,
-  },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 44,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: authColors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: authColors.white,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: authColors.text,
-  },
-  headerSpacer: {
-    width: 40,
-  },
-  greeting: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: authColors.text,
-    letterSpacing: -0.3,
-    marginBottom: 8,
-  },
-  subGreeting: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: authColors.muted,
-    marginBottom: 28,
-  },
-  savedBlock: {
-    marginBottom: 8,
-  },
-  savedLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: authColors.muted,
-    marginBottom: 10,
-  },
-  savedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: authColors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 10,
-    backgroundColor: '#F7F7F8',
-  },
-  savedRowPressed: {
-    backgroundColor: '#EEEEF0',
-  },
-  savedAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: authColors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  savedAvatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: authColors.primary,
-  },
-  savedMeta: {
-    flex: 1,
-  },
-  savedName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: authColors.text,
-  },
-  savedEmail: {
-    fontSize: 12,
-    color: authColors.muted,
-    marginTop: 2,
-  },
-  switchError: {
-    color: authColors.danger,
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  orRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 8,
-    marginBottom: 18,
-  },
-  orLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: authColors.border,
-  },
-  orText: {
-    fontSize: 13,
-    color: authColors.muted,
-  },
-  rowBetween: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 22,
-    marginTop: -4,
-  },
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: authColors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: authColors.white,
-  },
-  checkboxOn: {
-    backgroundColor: authColors.primary,
-    borderColor: authColors.primary,
-  },
-  rememberLabel: {
-    fontSize: 13,
-    color: authColors.text,
-    fontWeight: '500',
-  },
-  forgot: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: authColors.primary,
-  },
-  loginBtn: {
-    minHeight: 54,
-    borderRadius: 10,
-    backgroundColor: authColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loginBtnPressed: {
-    backgroundColor: authColors.primaryPressed,
-  },
-  loginBtnDisabled: {
-    opacity: 0.7,
-  },
-  loginBtnText: {
-    color: authColors.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  registerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    marginTop: 18,
-  },
-  registerPrompt: {
-    fontSize: 14,
-    color: authColors.muted,
-  },
-  registerLink: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: authColors.primary,
-  },
-});
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: isDark ? colors.background : colors.white,
+    },
+    scroll: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 44,
+    },
+    backBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.surface : colors.white,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    headerSpacer: {
+      width: 40,
+    },
+    greeting: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: colors.text,
+      letterSpacing: -0.3,
+      marginBottom: 8,
+    },
+    subGreeting: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.textMuted,
+      marginBottom: 28,
+    },
+    savedBlock: {
+      marginBottom: 8,
+    },
+    savedLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textMuted,
+      marginBottom: 10,
+    },
+    savedRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      marginBottom: 10,
+      backgroundColor: isDark ? colors.surface : '#F7F7F8',
+    },
+    savedRowPressed: {
+      backgroundColor: isDark ? colors.surfaceMuted : '#EEEEF0',
+    },
+    savedAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.brandSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    savedAvatarText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.brand,
+    },
+    savedMeta: {
+      flex: 1,
+    },
+    savedName: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    savedEmail: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    switchError: {
+      color: colors.danger,
+      fontSize: 13,
+      marginBottom: 8,
+    },
+    orRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginTop: 8,
+      marginBottom: 18,
+    },
+    orLine: {
+      flex: 1,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+    },
+    orText: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    rowBetween: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 22,
+      marginTop: -4,
+    },
+    rememberRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    checkbox: {
+      width: 18,
+      height: 18,
+      borderRadius: 4,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.surface : colors.white,
+    },
+    checkboxOn: {
+      backgroundColor: colors.brand,
+      borderColor: colors.brand,
+    },
+    rememberLabel: {
+      fontSize: 13,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    forgot: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.brand,
+    },
+    loginBtn: {
+      minHeight: 54,
+      borderRadius: 10,
+      backgroundColor: colors.brand,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loginBtnPressed: {
+      backgroundColor: colors.brandMuted,
+    },
+    loginBtnDisabled: {
+      opacity: 0.7,
+    },
+    loginBtnText: {
+      color: colors.white,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    registerRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+      marginTop: 18,
+    },
+    registerPrompt: {
+      fontSize: 14,
+      color: colors.textMuted,
+    },
+    registerLink: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.brand,
+    },
+  });
+}
