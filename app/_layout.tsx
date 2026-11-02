@@ -77,10 +77,17 @@ function ThemedStack() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
+          // Hisab-style native push/pop — slide + edge swipe back.
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
+          animationDuration: 280,
+          animationTypeForReplace: 'push',
         }}
       >
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
+        {/* Auth ↔ app: fade so the gate doesn't slide over tabs. */}
+        <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         <Stack.Screen name="leads/[id]" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="activities" />

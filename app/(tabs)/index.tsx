@@ -134,7 +134,7 @@ export default function HomeScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open profile"
-          onPress={() => router.push('/(tabs)/profile')}
+          onPress={() => router.navigate('/(tabs)/profile')}
           style={({ pressed }) => pressed && styles.pressed}
         >
           <UserAvatar
@@ -261,7 +261,7 @@ export default function HomeScreen() {
               ]}
             >
               <Pressable
-                onPress={() => router.push(alert.href)}
+                onPress={() => router.navigate(alert.href)}
                 style={styles.alertBody}
                 accessibilityRole="button"
               >
@@ -314,7 +314,7 @@ export default function HomeScreen() {
 
       {/* Hero — deep brand gradient */}
       <Pressable
-        onPress={() => router.push('/(tabs)/follow-ups')}
+        onPress={() => router.navigate('/(tabs)/follow-ups')}
         style={({ pressed }) => pressed && styles.pressed}
       >
         <LinearGradient
@@ -362,7 +362,7 @@ export default function HomeScreen() {
 
       {/* Pulse — BudgetPulse pattern → follow-up health */}
       <Pressable
-        onPress={() => router.push('/(tabs)/follow-ups')}
+        onPress={() => router.navigate('/(tabs)/follow-ups')}
         style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       >
         <View style={styles.pulseHeader}>
@@ -439,7 +439,7 @@ export default function HomeScreen() {
           ).map((chip) => (
             <Pressable
               key={chip.key}
-              onPress={() => router.push(chip.href)}
+              onPress={() => router.navigate(chip.href)}
               style={({ pressed }) => [
                 styles.quickChip,
                 pressed && styles.pressed,
@@ -457,7 +457,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Needs attention</Text>
           <Pressable
-            onPress={() => router.push('/(tabs)/follow-ups')}
+            onPress={() => router.navigate('/(tabs)/follow-ups')}
             hitSlop={6}
             style={styles.seeAll}
           >
@@ -469,7 +469,7 @@ export default function HomeScreen() {
           <View style={styles.snapshotTotals}>
             <Pressable
               style={styles.snapshotCol}
-              onPress={() => router.push('/(tabs)/follow-ups')}
+              onPress={() => router.navigate('/(tabs)/follow-ups')}
             >
               <Text style={styles.snapshotLabel}>Today</Text>
               <Text style={styles.snapshotValue}>{kpis.todayFollowUps}</Text>
@@ -477,7 +477,7 @@ export default function HomeScreen() {
             <View style={styles.snapshotDivider} />
             <Pressable
               style={styles.snapshotCol}
-              onPress={() => router.push('/(tabs)/follow-ups')}
+              onPress={() => router.navigate('/(tabs)/follow-ups')}
             >
               <Text style={styles.snapshotLabel}>Overdue</Text>
               <Text
@@ -533,7 +533,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Shortcuts</Text>
           <Pressable
-            onPress={() => router.push('/(tabs)/profile')}
+            onPress={() => router.navigate('/(tabs)/profile')}
             hitSlop={6}
             style={styles.organize}
           >
@@ -546,7 +546,7 @@ export default function HomeScreen() {
             <Pressable
               key={item.key}
               accessibilityRole="button"
-              onPress={() => router.push(item.href)}
+              onPress={() => router.navigate(item.href)}
               style={({ pressed }) => [
                 styles.shortcutItem,
                 pressed && styles.pressed,
@@ -576,7 +576,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Upcoming follow-ups</Text>
           <Pressable
-            onPress={() => router.push('/(tabs)/follow-ups')}
+            onPress={() => router.navigate('/(tabs)/follow-ups')}
             hitSlop={6}
             style={styles.seeAll}
           >
@@ -591,7 +591,7 @@ export default function HomeScreen() {
               title="No upcoming follow-ups"
               message="Schedule the next touch from a lead."
               actionLabel="Browse leads"
-              onAction={() => router.push('/(tabs)/leads')}
+              onAction={() => router.navigate('/(tabs)/leads')}
             />
           ) : (
             data.upcomingFollowUps.slice(0, 5).map((item, index) => {
@@ -648,7 +648,7 @@ export default function HomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent lead updates</Text>
           <Pressable
-            onPress={() => router.push('/(tabs)/leads')}
+            onPress={() => router.navigate('/(tabs)/leads')}
             hitSlop={6}
             style={styles.seeAll}
           >

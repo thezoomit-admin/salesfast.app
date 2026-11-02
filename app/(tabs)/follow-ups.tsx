@@ -110,7 +110,7 @@ export default function FollowUpsScreen() {
               title={empty.title}
               message={empty.message}
               actionLabel="Browse leads"
-              onAction={() => router.push('/(tabs)/leads')}
+              onAction={() => router.navigate('/(tabs)/leads')}
             />
           }
           renderItem={renderLead}

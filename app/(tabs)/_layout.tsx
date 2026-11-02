@@ -75,6 +75,9 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Prefetch warms data; keep every tab mounted so switches feel instant (Hisab).
+        lazy: false,
+        freezeOnBlur: true,
         tabBarActiveTintColor: colors.brand,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarShowLabel: true,

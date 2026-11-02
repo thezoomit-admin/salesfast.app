@@ -9,6 +9,9 @@ export default function AuthLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: authColors.cream },
         animation: 'slide_from_right',
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
+        animationDuration: 280,
       }}
     >
       <Stack.Screen name="index" />

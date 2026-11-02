@@ -474,7 +474,8 @@ export default function ProfileScreen() {
       item.onPress();
       return;
     }
-    if (item.href) router.push(item.href);
+    // navigate: switch tabs / reuse stack screens (Hisab — no duplicate stacks).
+    if (item.href) router.navigate(item.href);
   }
 
   return (
