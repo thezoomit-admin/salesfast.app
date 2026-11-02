@@ -14,6 +14,11 @@ import { runCallSync } from './runCallSync';
 
 /** How often to push matched call-log rows while the app is in the foreground. */
 const FOREGROUND_SYNC_MS = 30_000;
+/**
+ * Full sync at least this often even with no new calls: a lead created after
+ * a call must still pick that call up (the match directory changed).
+ */
+const FULL_SYNC_MAX_AGE_MS = 5 * 60_000;
 
 /** Identity of the newest call-log row, or null when it can't be read cheaply. */
 async function newestCallKey() {
@@ -26,14 +31,15 @@ async function newestCallKey() {
 export function CallSyncBootstrap() {
   const { user } = useAuth();
   const running = useRef(false);
-  /** Newest call-log row covered by the last successful sync. */
-  const syncedThrough = useRef<string | null>(null);
+  /** Newest call-log row covered by the last successful sync, and when. */
+  const syncedThrough = useRef<{ key: string | null; at: number } | null>(null);
   const appState = useRef<AppStateStatus | null | undefined>(
     AppState.currentState as AppStateStatus | null | undefined,
   );
 
   useEffect(() => {
     if (!user || Platform.OS === 'web') return;
+    syncedThrough.current = null;
 
     const tick = async () => {
       if (running.current) return;
@@ -44,9 +50,16 @@ export function CallSyncBootstrap() {
         // Nothing new in the call log since the last successful sync → skip
         // the 300-row scan and the (large) match-directory download.
         const newest = await newestCallKey();
-        if (newest && newest === syncedThrough.current) return;
+        const last = syncedThrough.current;
+        if (
+          newest &&
+          last?.key === newest &&
+          Date.now() - last.at < FULL_SYNC_MAX_AGE_MS
+        ) {
+          return;
+        }
         const result = await runCallSync();
-        syncedThrough.current = result.ok ? newest : null;
+        syncedThrough.current = result.ok ? { key: newest, at: Date.now() } : null;
       } catch {
         // Silent — UI surfaces errors on manual Sync now.
         syncedThrough.current = null;
