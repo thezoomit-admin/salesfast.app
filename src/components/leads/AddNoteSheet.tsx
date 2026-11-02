@@ -1,6 +1,12 @@
-import DateTimePicker, {
-  type DateTimePickerEvent,
-} from '@react-native-community/datetimepicker';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from 'expo-audio';
+import * as DocumentPicker from 'expo-document-picker';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -8,7 +14,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +30,7 @@ import {
   MinusSignIcon,
   UserIcon,
 } from '@/components/icons/hugeicons';
+import { FollowupDateTimeField } from '@/components/leads/FollowupDateTimeField';
 import {
   BOTH,
   NOTE_CHANNELS,
@@ -54,6 +60,7 @@ import {
   PRIORITIES,
   PRIORITY_META,
 } from '@/features/leads/leadPriority';
+import { uploadMediaFile } from '@/features/leads/mediaUpload';
 import {
   radii,
   spacing,
@@ -69,10 +76,17 @@ type Props = {
   lead: LeadDetail;
   statuses: PipelineStatusOption[];
   accountId?: string;
-  /** Pre-select a pipeline stage (from stepper tap). */
   initialStageId?: number | null;
   onClose: () => void;
   onSaved?: () => void;
+};
+
+type VoiceClip = {
+  id: string;
+  uri: string;
+  name: string;
+  durationSec: number;
+  mimeType: string;
 };
 
 const PRIORITY_ICON = {
@@ -80,6 +94,19 @@ const PRIORITY_ICON = {
   MEDIUM: MinusSignIcon,
   HIGH: FlameIcon,
 } as const;
+
+const CHANNEL_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Call: 'call-outline',
+  WhatsApp: 'logo-whatsapp',
+  'In person': 'person-outline',
+};
+
+function formatDuration(sec: number) {
+  const s = Math.max(0, Math.floor(sec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
 
 export function AddNoteSheet({
   visible,
@@ -99,16 +126,24 @@ export function AddNoteSheet({
     enabled: visible,
   });
 
+  const recorder = useAudioRecorder({
+    ...RecordingPresets.HIGH_QUALITY,
+    isMeteringEnabled: true,
+  });
+  const recorderState = useAudioRecorderState(recorder, 250);
+
   const [note, setNote] = useState('');
   const [picked, setPicked] = useState<number[]>([]);
   const [visitPick, setVisitPick] = useState<string | undefined>();
   const [channelId, setChannelId] = useState<number | null>(null);
   const [rating, setRating] = useState<LeadPriority | null>(null);
   const [followupAt, setFollowupAt] = useState<Date | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerMode, setPickerMode] = useState<'date' | 'time'>('date');
   const [saving, setSaving] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
+  const [clips, setClips] = useState<VoiceClip[]>([]);
+  const [recording, setRecording] = useState(false);
+  const recordStartedAt = useRef(0);
+  const [recordSec, setRecordSec] = useState(0);
   const versionRef = useRef<number | undefined>(undefined);
 
   const channels = useMemo(() => {
@@ -153,8 +188,10 @@ export function AddNoteSheet({
     setVisitPick(undefined);
     setChannelId(null);
     setFollowupAt(null);
-    setShowPicker(false);
     setPriorityOpen(false);
+    setClips([]);
+    setRecording(false);
+    setRecordSec(0);
     setRating((lead.priority as LeadPriority | null) ?? null);
     versionRef.current = lead.version ?? undefined;
     const preset =
@@ -164,9 +201,18 @@ export function AddNoteSheet({
         ? [initialStageId]
         : [];
     setPicked([...(coldCalling ? [coldCalling.id] : []), ...preset]);
-    // Reset only when the sheet opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
+
+  useEffect(() => {
+    if (!recording) return;
+    const t = setInterval(() => {
+      setRecordSec(
+        Math.floor((Date.now() - recordStartedAt.current) / 1000)
+      );
+    }, 250);
+    return () => clearInterval(t);
+  }, [recording]);
 
   const priorityMutation = useMutation({
     mutationFn: (next: LeadPriority) =>
@@ -214,16 +260,86 @@ export function AddNoteSheet({
     });
   }
 
-  const hasNote = !!note.trim();
+  async function startRecording() {
+    try {
+      const perm = await requestRecordingPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Microphone permission denied');
+        return;
+      }
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+      await recorder.prepareToRecordAsync();
+      recordStartedAt.current = Date.now();
+      setRecordSec(0);
+      recorder.record();
+      setRecording(true);
+    } catch {
+      Alert.alert('Could not start recording');
+    }
+  }
+
+  async function stopRecording() {
+    try {
+      await recorder.stop();
+      const uri = recorder.uri;
+      const elapsed = Math.max(
+        1,
+        Math.round((Date.now() - recordStartedAt.current) / 1000)
+      );
+      setRecording(false);
+      setRecordSec(0);
+      if (!uri) return;
+      setClips((prev) => [
+        ...prev,
+        {
+          id: `rec-${Date.now()}`,
+          uri,
+          name: `Voice note ${formatDuration(elapsed)}`,
+          durationSec: elapsed,
+          mimeType: 'audio/m4a',
+        },
+      ]);
+    } catch {
+      setRecording(false);
+      Alert.alert('Could not save recording');
+    }
+  }
+
+  async function pickAudioFile() {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['audio/*'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setClips((prev) => [
+        ...prev,
+        {
+          id: `file-${Date.now()}`,
+          uri: asset.uri,
+          name: asset.name || 'Audio file',
+          durationSec: 0,
+          mimeType: asset.mimeType || 'audio/mpeg',
+        },
+      ]);
+    } catch {
+      Alert.alert('Could not pick audio file');
+    }
+  }
+
+  const hasNote = !!note.trim() || clips.length > 0;
   const canSave =
-    hasNote &&
-    (!followupRequired || !!followupAt) &&
-    !saving;
+    hasNote && (!followupRequired || !!followupAt) && !saving && !recording;
 
   async function handleSave() {
     if (!canSave) return;
-    const noteText = note.trim();
-    if (!noteText) {
+    let noteText = note.trim();
+    if (!noteText && clips.length === 0) {
       Alert.alert('Write a note');
       return;
     }
@@ -235,6 +351,21 @@ export function AddNoteSheet({
     setSaving(true);
     let moved = false;
     try {
+      // Upload voice clips first — append markdown links like web NoteComposer.
+      for (const clip of clips) {
+        const uploaded = await uploadMediaFile(
+          clip.uri,
+          clip.name,
+          clip.mimeType,
+          { accountId }
+        );
+        noteText = `${noteText}\n[${uploaded.name}](${uploaded.url})`.trim();
+      }
+      if (!noteText) {
+        Alert.alert('Write a note');
+        return;
+      }
+
       const stageOption =
         visitPick === BOTH
           ? visitOptions.join(' + ') || undefined
@@ -314,43 +445,10 @@ export function AddNoteSheet({
     }
   }
 
-  function openFollowupPicker() {
-    setPickerMode('date');
-    setShowPicker(true);
-  }
-
-  function onPickerChange(event: DateTimePickerEvent, date?: Date) {
-    if (Platform.OS === 'android') setShowPicker(false);
-    if (event.type === 'dismissed') {
-      setShowPicker(false);
-      return;
-    }
-    if (!date) return;
-    if (pickerMode === 'date') {
-      const next = followupAt ? new Date(followupAt) : new Date();
-      next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-      if (!followupAt) {
-        next.setHours(10, 0, 0, 0);
-      }
-      setFollowupAt(next);
-      if (Platform.OS === 'android') {
-        setPickerMode('time');
-        setTimeout(() => setShowPicker(true), 50);
-      } else {
-        setPickerMode('time');
-      }
-      return;
-    }
-    const next = followupAt ? new Date(followupAt) : new Date();
-    next.setHours(date.getHours(), date.getMinutes(), 0, 0);
-    setFollowupAt(next);
-    setShowPicker(false);
-    setPickerMode('date');
-  }
-
   const name = lead.buyerPersona?.fullName?.trim() || `Lead #${lead.id}`;
   const phone = lead.buyerPersona?.phone;
   const priorityMeta = rating ? PRIORITY_META[rating] : null;
+  const meter = recorderState.metering;
 
   return (
     <Modal
@@ -366,13 +464,12 @@ export function AddNoteSheet({
             { paddingBottom: Math.max(insets.bottom, 16) },
           ]}
         >
-          {/* Header — same as web */}
           <View style={styles.header}>
             <View style={styles.avatar}>
               <HugeiconsIcon
                 icon={UserIcon}
                 size={20}
-                color="#667085"
+                color={colors.textSecondary}
                 strokeWidth={1.5}
               />
             </View>
@@ -396,7 +493,7 @@ export function AddNoteSheet({
                       borderColor: priorityMeta.border,
                     }
                   : {
-                      backgroundColor: colors.surface,
+                      backgroundColor: colors.surfaceMuted,
                       borderColor: colors.border,
                     },
               ]}
@@ -424,7 +521,7 @@ export function AddNoteSheet({
               style={styles.closeBtn}
               accessibilityLabel="Close"
             >
-              <Text style={styles.closeText}>✕</Text>
+              <Ionicons name="close" size={20} color={colors.textMuted} />
             </Pressable>
           </View>
 
@@ -444,10 +541,7 @@ export function AddNoteSheet({
                     <Pressable
                       key={s.id}
                       onPress={() => toggleStage(s)}
-                      style={[
-                        styles.pill,
-                        active && styles.pillActive,
-                      ]}
+                      style={[styles.pill, active && styles.pillActive]}
                     >
                       <HugeiconsIcon
                         icon={iconForStageName(String(s.name ?? ''))}
@@ -516,10 +610,90 @@ export function AddNoteSheet({
                 maxLength={5000}
                 textAlignVertical="top"
               />
-              {channels.length > 0 ? (
-                <View style={styles.channelRow}>
+
+              {clips.length > 0 ? (
+                <View style={styles.clipList}>
+                  {clips.map((c) => (
+                    <View key={c.id} style={styles.clipRow}>
+                      <Ionicons
+                        name="mic"
+                        size={16}
+                        color={colors.brand}
+                      />
+                      <Text style={styles.clipName} numberOfLines={1}>
+                        {c.name}
+                      </Text>
+                      <Pressable
+                        hitSlop={8}
+                        onPress={() =>
+                          setClips((prev) => prev.filter((x) => x.id !== c.id))
+                        }
+                      >
+                        <Ionicons
+                          name="close-circle"
+                          size={18}
+                          color={colors.textMuted}
+                        />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {recording ? (
+                <View style={styles.recordingBar}>
+                  <View style={styles.recDot} />
+                  <Text style={styles.recTimer}>
+                    {formatDuration(recordSec)}
+                  </Text>
+                  <View style={styles.meterRow}>
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const level =
+                        typeof meter === 'number'
+                          ? Math.max(0.15, Math.min(1, (meter + 50) / 50))
+                          : 0.3 + (i % 3) * 0.15;
+                      return (
+                        <View
+                          key={i}
+                          style={[
+                            styles.meterBar,
+                            { height: 6 + level * 14 },
+                          ]}
+                        />
+                      );
+                    })}
+                  </View>
+                  <Pressable style={styles.stopRecBtn} onPress={() => void stopRecording()}>
+                    <Text style={styles.stopRecText}>Stop</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.toolbar}>
+                  <Pressable
+                    style={styles.toolBtn}
+                    onPress={() => void pickAudioFile()}
+                    accessibilityLabel="Upload audio"
+                  >
+                    <Ionicons
+                      name="attach-outline"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </Pressable>
+                  <Pressable
+                    style={styles.toolBtn}
+                    onPress={() => void startRecording()}
+                    accessibilityLabel="Record voice"
+                  >
+                    <Ionicons
+                      name="mic-outline"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </Pressable>
                   {channels.map((c) => {
                     const active = channelId === c.id;
+                    const icon = CHANNEL_ICON[c.label] ?? 'chatbubble-outline';
                     return (
                       <Pressable
                         key={c.id}
@@ -531,6 +705,17 @@ export function AddNoteSheet({
                           active && styles.channelChipActive,
                         ]}
                       >
+                        <Ionicons
+                          name={icon}
+                          size={14}
+                          color={
+                            active
+                              ? colors.brand
+                              : c.label === 'WhatsApp'
+                                ? '#25D366'
+                                : colors.textSecondary
+                          }
+                        />
                         <Text
                           style={[
                             styles.channelLabel,
@@ -543,63 +728,29 @@ export function AddNoteSheet({
                     );
                   })}
                 </View>
-              ) : null}
+              )}
             </View>
 
             {!terminal ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>
-                  {followupRequired
+              <FollowupDateTimeField
+                label={
+                  followupRequired
                     ? 'Followup Date'
-                    : 'Followup Date (optional)'}
-                </Text>
-                <Pressable
-                  onPress={openFollowupPicker}
-                  style={styles.followupBtn}
-                >
-                  <Text
-                    style={[
-                      styles.followupText,
-                      !followupAt && { color: colors.textMuted },
-                    ]}
-                  >
-                    {followupAt
-                      ? formatFollowupDisplay(followupAt)
-                      : 'Pick date & time'}
-                  </Text>
-                  {followupAt ? (
-                    <Pressable
-                      hitSlop={8}
-                      onPress={() => setFollowupAt(null)}
-                    >
-                      <Text style={styles.clearFollowup}>Clear</Text>
-                    </Pressable>
-                  ) : null}
-                </Pressable>
-              </View>
+                    : 'Followup Date (optional)'
+                }
+                value={followupAt}
+                onChange={setFollowupAt}
+              />
             ) : null}
           </ScrollView>
-
-          {showPicker ? (
-            <DateTimePicker
-              value={followupAt ?? new Date()}
-              mode={pickerMode}
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              minimumDate={new Date()}
-              onChange={onPickerChange}
-            />
-          ) : null}
 
           <Pressable
             disabled={!canSave}
             onPress={() => void handleSave()}
-            style={[
-              styles.saveBtn,
-              !canSave && styles.saveBtnDisabled,
-            ]}
+            style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
           >
             {saving ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={colors.white} />
             ) : (
               <Text style={styles.saveText}>Save</Text>
             )}
@@ -638,7 +789,9 @@ export function AddNoteSheet({
                     color={meta.color}
                     strokeWidth={1.5}
                   />
-                  <Text style={{ color: meta.color, fontWeight: '700', flex: 1 }}>
+                  <Text
+                    style={{ color: meta.color, fontWeight: '700', flex: 1 }}
+                  >
                     {meta.label}
                   </Text>
                 </Pressable>
@@ -655,7 +808,7 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     backdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.4)',
+      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'flex-end',
     },
     sheet: {
@@ -678,7 +831,7 @@ function createStyles(colors: ThemeColors) {
       width: 40,
       height: 40,
       borderRadius: 999,
-      backgroundColor: '#F2F4F7',
+      backgroundColor: colors.surfaceMuted,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -686,11 +839,11 @@ function createStyles(colors: ThemeColors) {
     headerName: {
       fontSize: 15,
       fontWeight: '600',
-      color: '#15202C',
+      color: colors.text,
     },
     headerPhone: {
       fontSize: 12,
-      color: '#5B6B7A',
+      color: colors.textSecondary,
       marginTop: 1,
     },
     priorityChip: {
@@ -709,7 +862,6 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    closeText: { fontSize: 16, color: colors.textMuted },
     body: {
       padding: spacing.lg,
       gap: spacing.md,
@@ -725,15 +877,15 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       gap: 6,
       borderWidth: 1,
-      borderColor: '#DDDDDD',
-      backgroundColor: '#fff',
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
       borderRadius: radii.md,
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
     pillActive: {
       borderColor: colors.brand,
-      backgroundColor: '#FFF4F0',
+      backgroundColor: colors.primary50,
     },
     pillLabel: {
       fontSize: 13,
@@ -754,15 +906,36 @@ function createStyles(colors: ThemeColors) {
       overflow: 'hidden',
     },
     noteInput: {
-      minHeight: 120,
+      minHeight: 110,
       padding: spacing.md,
       fontSize: 15,
       color: colors.text,
       lineHeight: 22,
     },
-    channelRow: {
+    clipList: {
+      gap: 6,
+      paddingHorizontal: spacing.sm,
+      paddingBottom: spacing.sm,
+    },
+    clipRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.primary50,
+      borderRadius: radii.md,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    clipName: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    toolbar: {
       flexDirection: 'row',
       flexWrap: 'wrap',
+      alignItems: 'center',
       gap: 6,
       paddingHorizontal: spacing.sm,
       paddingBottom: spacing.sm,
@@ -770,45 +943,80 @@ function createStyles(colors: ThemeColors) {
       borderTopColor: colors.border,
       paddingTop: spacing.sm,
     },
+    toolBtn: {
+      width: 34,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: radii.sm,
+      backgroundColor: colors.surfaceMuted,
+    },
     channelChip: {
       height: 28,
       paddingHorizontal: 10,
       borderRadius: radii.sm,
       borderWidth: 1,
-      borderColor: '#E4E7EC',
-      backgroundColor: '#fff',
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 5,
     },
     channelChipActive: {
       borderColor: colors.brand,
-      backgroundColor: '#FFF4F0',
+      backgroundColor: colors.primary50,
     },
     channelLabel: {
       fontSize: 12,
       fontWeight: '600',
-      color: '#475467',
+      color: colors.textSecondary,
     },
-    followupBtn: {
+    recordingBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radii.md,
+      gap: 10,
       paddingHorizontal: spacing.md,
-      paddingVertical: 12,
-      backgroundColor: colors.surface,
+      paddingVertical: spacing.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      backgroundColor: colors.primary50,
     },
-    followupText: {
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.text,
+    recDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: colors.danger,
     },
-    clearFollowup: {
+    recTimer: {
       fontSize: 13,
-      fontWeight: '600',
-      color: colors.brand,
+      fontWeight: '700',
+      color: colors.text,
+      fontVariant: ['tabular-nums'],
+    },
+    meterRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      height: 22,
+    },
+    meterBar: {
+      width: 3,
+      borderRadius: 2,
+      backgroundColor: colors.brand,
+      opacity: 0.85,
+    },
+    stopRecBtn: {
+      backgroundColor: colors.brand,
+      borderRadius: radii.sm,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    stopRecText: {
+      color: colors.white,
+      fontWeight: '700',
+      fontSize: 12,
     },
     saveBtn: {
       marginHorizontal: spacing.lg,
@@ -821,19 +1029,21 @@ function createStyles(colors: ThemeColors) {
     },
     saveBtnDisabled: { opacity: 0.45 },
     saveText: {
-      color: '#fff',
+      color: colors.white,
       fontSize: 16,
       fontWeight: '700',
     },
     priorityBackdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.35)',
+      backgroundColor: 'rgba(0,0,0,0.45)',
       justifyContent: 'center',
       paddingHorizontal: spacing.lg,
     },
     priorityCard: {
       backgroundColor: colors.surface,
       borderRadius: radii.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
       padding: spacing.md,
       gap: 4,
     },
