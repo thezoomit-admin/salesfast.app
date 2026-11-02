@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 import { API_BASE_URL } from '@/constants/config';
+import { upsertSavedAccount } from '@/features/auth/savedAccounts';
 import { secureStorage } from '@/services/secureStorage';
 import type { ApiResponse, MobileRefreshResult } from '@/types/api';
 
@@ -54,13 +55,19 @@ async function refreshAccessToken(): Promise<string | null> {
   );
 
   const payload = data.data;
+  const nextRefresh = payload.refreshToken ?? refreshToken;
   await secureStorage.updateTokens(payload.accessToken, payload.refreshToken);
   if (payload.user) {
     await secureStorage.saveSession({
       accessToken: payload.accessToken,
-      refreshToken: payload.refreshToken ?? refreshToken,
+      refreshToken: nextRefresh,
       accountId: payload.user.id,
       userJson: JSON.stringify(payload.user),
+    });
+    await upsertSavedAccount({
+      user: payload.user,
+      accessToken: payload.accessToken,
+      refreshToken: nextRefresh,
     });
   }
   return payload.accessToken;

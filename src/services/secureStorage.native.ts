@@ -6,6 +6,8 @@ const KEYS = {
   accountId: 'sf_mobile_account_id',
   userJson: 'sf_mobile_user_json',
   deviceId: 'sf_mobile_device_id',
+  accountsJson: 'sf_mobile_accounts_v1',
+  rememberEmail: 'sf_mobile_remember_email',
 } as const;
 
 async function setItem(key: string, value: string) {
@@ -67,5 +69,17 @@ export const secureStorage = {
       deleteItem(KEYS.accountId),
       deleteItem(KEYS.userJson),
     ]);
+  },
+
+  getAccountsJson: () => getItem(KEYS.accountsJson),
+  setAccountsJson: (value: string) => setItem(KEYS.accountsJson, value),
+
+  getRememberEmail: () => getItem(KEYS.rememberEmail),
+  async setRememberEmail(email: string | null) {
+    if (!email) {
+      await deleteItem(KEYS.rememberEmail);
+      return;
+    }
+    await setItem(KEYS.rememberEmail, email);
   },
 };

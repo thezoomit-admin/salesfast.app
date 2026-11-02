@@ -1,10 +1,9 @@
 import { CallIcon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,6 +11,7 @@ import { AuthProviderButton } from '@/features/auth/components/AuthProviderButto
 import { BrandMark } from '@/features/auth/components/BrandMark';
 import { BrandSplash } from '@/features/auth/components/BrandSplash';
 import { authColors } from '@/features/auth/authTheme';
+import { promptContactAdmin } from '@/features/auth/contactAdmin';
 import { useAuth } from '@/features/auth/AuthContext';
 
 /** Resets on hard reload / cold start so splash plays once per session. */
@@ -45,7 +45,6 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      {/* Soft brand wash — LeadIQ-style top-left gradient */}
       <LinearGradient
         colors={[
           'rgba(242, 70, 28, 0.14)',
@@ -68,7 +67,6 @@ export default function WelcomeScreen() {
           },
         ]}
       >
-        {/* Top: full logo */}
         <View style={styles.topLogo}>
           <BrandMark variant="wordmark" />
         </View>
@@ -112,28 +110,18 @@ export default function WelcomeScreen() {
                 })
               }
             />
-
-            <AuthProviderButton
-              label="Continue with Google"
-              icon={<FontAwesome name="google" size={18} color="#EA4335" />}
-              onPress={() =>
-                Alert.alert('Upcoming', 'Google sign-in will be available soon.', [
-                  { text: 'OK' },
-                ])
-              }
-            />
           </View>
         </View>
 
         <View style={styles.footer}>
           <View style={styles.signInRow}>
-            <Text style={styles.signInPrompt}>Have an account? </Text>
+            <Text style={styles.signInPrompt}>Need an account? </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/(auth)/login')}
+              onPress={() => promptContactAdmin()}
               hitSlop={6}
             >
-              <Text style={styles.signInLink}>Sign in</Text>
+              <Text style={styles.signInLink}>Contact Us</Text>
             </Pressable>
           </View>
         </View>

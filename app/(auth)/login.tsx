@@ -1,12 +1,10 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,12 +23,15 @@ import { getErrorMessage } from '@/api/client';
 import { AuthInput } from '@/features/auth/components/AuthInput';
 import { CountryPhoneInput } from '@/features/auth/components/CountryPhoneInput';
 import { authColors } from '@/features/auth/authTheme';
+import { promptContactAdmin } from '@/features/auth/contactAdmin';
 import {
   DEFAULT_COUNTRY_CODE,
   findCountry,
   toE164,
 } from '@/features/auth/data/countries';
 import { useAuth } from '@/features/auth/AuthContext';
+import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
+import { secureStorage } from '@/services/secureStorage';
 
 const schema = z.object({
   identifier: z.string().min(3, 'Required'),
@@ -39,25 +40,21 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-function socialSoon(name: string) {
-  Alert.alert('Upcoming', `${name} sign-in will be available soon.`, [
-    { text: 'OK' },
-  ]);
-}
-
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const phoneMode = mode === 'phone';
-  const { signIn, signingIn } = useAuth();
+  const { signIn, signingIn, switchToAccount, switchingAccount, getSavedAccounts } =
+    useAuth();
   const [formError, setFormError] = useState<string | null>(null);
   const [remember, setRemember] = useState(true);
   const [countryCode, setCountryCode] = useState<CountryCode>(
     DEFAULT_COUNTRY_CODE
   );
-
   const [refreshing, setRefreshing] = useState(false);
+  const [savedAccounts, setSavedAccounts] = useState<SavedMobileAccount[]>([]);
+  const [switchError, setSwitchError] = useState<string | null>(null);
 
   const {
     control,
@@ -74,16 +71,40 @@ export default function LoginScreen() {
 
   const phoneNational = watch('identifier');
 
+  const loadAccounts = useCallback(async () => {
+    const list = await getSavedAccounts();
+    setSavedAccounts(list.filter((a) => !a.signedOut && a.accessToken));
+  }, [getSavedAccounts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadAccounts();
+    }, [loadAccounts])
+  );
+
+  useEffect(() => {
+    if (phoneMode) return;
+    void (async () => {
+      const remembered = await secureStorage.getRememberEmail();
+      if (remembered) {
+        setRemember(true);
+        setValue('identifier', remembered);
+      }
+    })();
+  }, [phoneMode, setValue]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setFormError(null);
+    setSwitchError(null);
     setRemember(true);
     setCountryCode(DEFAULT_COUNTRY_CODE);
     reset({ identifier: '', password: '' });
     clearErrors();
-    // Brief spinner so pull-to-refresh feels responsive
-    setTimeout(() => setRefreshing(false), 450);
-  }, [clearErrors, reset]);
+    void loadAccounts().finally(() => {
+      setTimeout(() => setRefreshing(false), 350);
+    });
+  }, [clearErrors, loadAccounts, reset]);
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -103,11 +124,25 @@ export default function LoginScreen() {
           password: values.password,
           ...(isEmail ? { email: identifier } : { phone: identifier }),
         });
+        await secureStorage.setRememberEmail(
+          remember && isEmail ? identifier : null
+        );
       }
     } catch (error) {
       setFormError(getErrorMessage(error, 'Unable to sign in'));
     }
   });
+
+  const onContinueAs = async (accountId: string) => {
+    setSwitchError(null);
+    try {
+      await switchToAccount(accountId);
+    } catch (error) {
+      setSwitchError(getErrorMessage(error, 'Unable to switch account'));
+    }
+  };
+
+  const busy = signingIn || switchingAccount;
 
   return (
     <KeyboardAvoidingView
@@ -134,7 +169,6 @@ export default function LoginScreen() {
           />
         }
       >
-        {/* Header: back + Login */}
         <View style={styles.header}>
           <Pressable
             accessibilityRole="button"
@@ -151,8 +185,58 @@ export default function LoginScreen() {
 
         <Text style={styles.greeting}>Hi, Welcome Back! 👋</Text>
         <Text style={styles.subGreeting}>
-          Happy to see you again, please login here.
+          Use the credentials your admin shared with you.
         </Text>
+
+        {savedAccounts.length > 0 ? (
+          <View style={styles.savedBlock}>
+            <Text style={styles.savedLabel}>Continue as</Text>
+            {savedAccounts.map((account) => (
+              <Pressable
+                key={account.id}
+                disabled={busy}
+                onPress={() => void onContinueAs(account.id)}
+                style={({ pressed }) => [
+                  styles.savedRow,
+                  pressed ? styles.savedRowPressed : null,
+                ]}
+              >
+                <View style={styles.savedAvatar}>
+                  <Text style={styles.savedAvatarText}>
+                    {(account.name || account.email || '?')
+                      .charAt(0)
+                      .toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.savedMeta}>
+                  <Text style={styles.savedName} numberOfLines={1}>
+                    {account.name}
+                  </Text>
+                  <Text style={styles.savedEmail} numberOfLines={1}>
+                    {account.email}
+                  </Text>
+                </View>
+                {switchingAccount ? (
+                  <ActivityIndicator color={authColors.primary} />
+                ) : (
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color={authColors.muted}
+                  />
+                )}
+              </Pressable>
+            ))}
+            {switchError ? (
+              <Text style={styles.switchError}>{switchError}</Text>
+            ) : null}
+            <View style={styles.orRow}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>or sign in</Text>
+              <View style={styles.orLine} />
+            </View>
+          </View>
+        ) : null}
 
         {phoneMode ? (
           <CountryPhoneInput
@@ -224,11 +308,7 @@ export default function LoginScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() =>
-              Alert.alert('Upcoming', 'Forgot password will be available soon.', [
-                { text: 'OK' },
-              ])
-            }
+            onPress={() => router.push('/(auth)/forgot-password')}
             hitSlop={6}
           >
             <Text style={styles.forgot}>Forget Password</Text>
@@ -237,12 +317,12 @@ export default function LoginScreen() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={signingIn}
+          disabled={busy}
           onPress={() => void onSubmit()}
           style={({ pressed }) => [
             styles.loginBtn,
             pressed ? styles.loginBtnPressed : null,
-            signingIn ? styles.loginBtnDisabled : null,
+            busy ? styles.loginBtnDisabled : null,
           ]}
         >
           {signingIn ? (
@@ -253,51 +333,9 @@ export default function LoginScreen() {
         </Pressable>
 
         <View style={styles.registerRow}>
-          <Text style={styles.registerPrompt}>Don&apos;t have an account? </Text>
-          <Pressable
-            onPress={() =>
-              Alert.alert(
-                'Contact administration',
-                'To create a Salesfast account, please contact your administrator. Accounts are provisioned by your organization.',
-                [{ text: 'OK' }]
-              )
-            }
-            hitSlop={6}
-          >
-            <Text style={styles.registerLink}>Register</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.orRow}>
-          <View style={styles.orLine} />
-          <Text style={styles.orText}>Or Login with</Text>
-          <View style={styles.orLine} />
-        </View>
-
-        <View style={styles.socialRow}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Login with Twitter"
-            style={styles.socialCircle}
-            onPress={() => socialSoon('Twitter')}
-          >
-            <FontAwesome name="twitter" size={20} color="#1DA1F2" />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Login with Google"
-            style={styles.socialCircle}
-            onPress={() => socialSoon('Google')}
-          >
-            <FontAwesome name="google" size={20} color="#EA4335" />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Login with Facebook"
-            style={styles.socialCircle}
-            onPress={() => socialSoon('Facebook')}
-          >
-            <FontAwesome name="facebook" size={20} color="#1877F2" />
+          <Text style={styles.registerPrompt}>Need an account? </Text>
+          <Pressable onPress={() => promptContactAdmin()} hitSlop={6}>
+            <Text style={styles.registerLink}>Contact Us</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -350,6 +388,77 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: authColors.muted,
     marginBottom: 28,
+  },
+  savedBlock: {
+    marginBottom: 8,
+  },
+  savedLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: authColors.muted,
+    marginBottom: 10,
+  },
+  savedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: authColors.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+    backgroundColor: '#F7F7F8',
+  },
+  savedRowPressed: {
+    backgroundColor: '#EEEEF0',
+  },
+  savedAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: authColors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  savedAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: authColors.primary,
+  },
+  savedMeta: {
+    flex: 1,
+  },
+  savedName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: authColors.text,
+  },
+  savedEmail: {
+    fontSize: 12,
+    color: authColors.muted,
+    marginTop: 2,
+  },
+  switchError: {
+    color: authColors.danger,
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  orRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 18,
+  },
+  orLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: authColors.border,
+  },
+  orText: {
+    fontSize: 13,
+    color: authColors.muted,
   },
   rowBetween: {
     flexDirection: 'row',
@@ -419,36 +528,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: authColors.primary,
-  },
-  orRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 28,
-    marginBottom: 18,
-  },
-  orLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: authColors.border,
-  },
-  orText: {
-    fontSize: 13,
-    color: authColors.muted,
-  },
-  socialRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  socialCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: authColors.border,
-    backgroundColor: authColors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
