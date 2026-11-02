@@ -54,8 +54,8 @@
     "build:dev": "eas build --platform android --profile development",
     "build:preview": "eas build --platform android --profile preview",
     "build:prod": "eas build --platform android --profile production",
-    "deploy:preview": "node ../scripts/deploy-mobile.mjs preview android",
-    "deploy:prod": "node ../scripts/deploy-mobile.mjs production android",
+    "deploy:preview": "node scripts/deploy-mobile.mjs preview android",
+    "deploy:prod": "node scripts/deploy-mobile.mjs production android",
     "start:dev-client": "expo start --dev-client",
     "lint": "expo lint"
   },

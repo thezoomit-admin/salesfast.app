@@ -57,15 +57,14 @@ npx expo start --dev-client
 
 ## Deploy (EAS)
 
-From repo root (`SalesFast/`):
+From this folder:
 
 ```bash
-npm run deploy:mobile        # preview APK → dev API
-npm run deploy:mobile:prod   # production AAB → prod API
-npm run deploy:mobile:dev    # development client APK
-npm run update:mobile        # OTA update (production channel)
+pnpm deploy:preview   # preview APK → dev API
+pnpm deploy:prod      # production AAB → prod API
 ```
 
-Or from this folder: `npm run deploy:preview` / `npm run deploy:prod`.
-
-API URLs are baked from `eas.json` and checked before each cloud build.
+`scripts/deploy-mobile.mjs` checks that the profile's `EXPO_PUBLIC_API_URL` in `eas.json` points at the right
+environment (prod profiles → `salesfastapi.thezoomit.com`, others → `salesfastapi-dev.thezoomit.com`), runs
+`tsc --noEmit`, then starts `eas build`. Extra flags are passed through to `eas build`, e.g.
+`pnpm deploy:preview --no-wait`; add `--skip-typecheck` to skip the typecheck.
