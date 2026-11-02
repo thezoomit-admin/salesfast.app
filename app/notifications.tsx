@@ -18,6 +18,7 @@ import {
 
 import { getErrorMessage } from '@/api/client';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { NotificationsSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import {
   type AppNotification,
@@ -116,6 +117,7 @@ export default function NotificationsScreen() {
         <QueryPlaceholder
           query={query}
           errorMessage={getErrorMessage(query.error)}
+          skeleton={<NotificationsSkeleton />}
         />
       </View>
     );

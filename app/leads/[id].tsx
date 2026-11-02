@@ -22,6 +22,7 @@ import { getErrorMessage } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { LeadDetailSkeleton } from '@/components/ui/skeletons';
 import {
   EmptyState,
   ErrorState,
@@ -166,8 +167,8 @@ export default function LeadDetailScreen() {
         {Number.isFinite(leadId) ? (
           <QueryPlaceholder
             query={leadQuery}
-            rows={3}
             errorMessage={getErrorMessage(leadQuery.error, 'Lead not found')}
+            skeleton={<LeadDetailSkeleton />}
           />
         ) : (
           <ErrorState message="Lead not found" />

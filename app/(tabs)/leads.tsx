@@ -24,6 +24,7 @@ import {
   HeaderIconButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
+import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { leadStatusesQuery, myLeadsQuery } from '@/features/leads/leadsApi';
 import type { LeadListItem } from '@/types/api';
@@ -151,6 +152,7 @@ export default function LeadsScreen() {
         <QueryPlaceholder
           query={leads}
           errorMessage={getErrorMessage(leads.error)}
+          skeleton={<LeadListSkeleton />}
         />
       ) : (
         <FlatList

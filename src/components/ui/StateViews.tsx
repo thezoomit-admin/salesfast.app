@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -144,12 +144,13 @@ export function OfflineState({ onRetry }: { onRetry?: () => void }) {
 
 /**
  * Picks the placeholder for a query that has no data yet: error, offline
- * (query paused waiting for network) or skeleton.
+ * (query paused waiting for network) or a page-specific skeleton.
  */
 export function QueryPlaceholder({
   query,
   rows,
   errorMessage,
+  skeleton,
 }: {
   query: {
     isError: boolean;
@@ -158,6 +159,8 @@ export function QueryPlaceholder({
   };
   rows?: number;
   errorMessage: string;
+  /** Prefer a layout-matched skeleton for each screen. */
+  skeleton?: ReactNode;
 }) {
   if (query.isError) {
     return <ErrorState message={errorMessage} onRetry={() => query.refetch()} />;
@@ -165,7 +168,7 @@ export function QueryPlaceholder({
   if (query.fetchStatus === 'paused') {
     return <OfflineState onRetry={() => query.refetch()} />;
   }
-  return <SkeletonList rows={rows} />;
+  return skeleton ?? <SkeletonList rows={rows} />;
 }
 
 function createStyles(colors: ThemeColors) {

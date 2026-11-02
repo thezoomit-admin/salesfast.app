@@ -12,7 +12,8 @@ import {
   HeaderIconButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/StateViews';
+import { CallsSkeleton } from '@/components/ui/skeletons';
+import { EmptyState, ErrorState } from '@/components/ui/StateViews';
 import type { CallSyncDirection } from '@/features/call-tracking/callSyncApi';
 import { runCallSync } from '@/features/call-tracking/runCallSync';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
@@ -278,7 +279,7 @@ export default function CallsScreen() {
     return (
       <View style={styles.safe}>
         {pageHeader}
-        <LoadingState />
+        <CallsSkeleton />
       </View>
     );
   }
@@ -308,7 +309,7 @@ export default function CallsScreen() {
       {toolbar}
 
       {calls.isLoading ? (
-        <LoadingState label="Reading call history…" />
+        <CallsSkeleton />
       ) : calls.isError ? (
         <ErrorState
           message={getErrorMessage(calls.error)}

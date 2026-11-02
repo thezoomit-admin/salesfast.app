@@ -6,6 +6,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import {
@@ -96,6 +97,7 @@ export default function FollowUpsScreen() {
         <QueryPlaceholder
           query={query}
           errorMessage={getErrorMessage(query.error)}
+          skeleton={<LeadListSkeleton />}
         />
       ) : (
         <FlatList

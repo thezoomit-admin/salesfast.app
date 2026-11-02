@@ -5,6 +5,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { ActivitiesSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
@@ -28,6 +29,7 @@ export default function ActivitiesScreen() {
         <QueryPlaceholder
           query={query}
           errorMessage={getErrorMessage(query.error)}
+          skeleton={<ActivitiesSkeleton />}
         />
       ) : (
         <FlatList

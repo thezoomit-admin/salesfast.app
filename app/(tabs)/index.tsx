@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { Screen } from '@/components/ui/Screen';
+import { HomeSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -112,11 +113,11 @@ export default function HomeScreen() {
 
   if (!data) {
     return (
-      <Screen header={homeHeader}>
+      <Screen header={homeHeader} contentStyle={styles.screenContent}>
         <QueryPlaceholder
           query={query}
-          rows={4}
           errorMessage={getErrorMessage(query.error)}
+          skeleton={<HomeSkeleton />}
         />
       </Screen>
     );
