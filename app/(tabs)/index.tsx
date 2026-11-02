@@ -33,18 +33,19 @@ function isOverdue(dueAt: string) {
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-type KpiTile = {
+type ScoreMetric = {
   key: string;
   label: string;
   value: number;
   href: Href;
   icon: IoniconName;
-  tone: 'brand' | 'danger' | 'neutral' | 'accent';
+  emphasize?: boolean;
 };
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -122,39 +123,30 @@ export default function HomeScreen() {
   }
 
   const { kpis } = data;
+  const focusTotal = kpis.todayFollowUps + kpis.overdueFollowUps;
+  const queueClear = focusTotal === 0;
 
-  const kpiTiles: KpiTile[] = [
-    {
-      key: 'today',
-      label: 'Due today',
-      value: kpis.todayFollowUps,
-      href: '/(tabs)/follow-ups',
-      icon: 'today-outline',
-      tone: 'brand',
-    },
-    {
-      key: 'overdue',
-      label: 'Overdue',
-      value: kpis.overdueFollowUps,
-      href: '/(tabs)/follow-ups',
-      icon: 'alert-circle-outline',
-      tone: kpis.overdueFollowUps > 0 ? 'danger' : 'neutral',
-    },
+  const scoreMetrics: ScoreMetric[] = [
     {
       key: 'assigned',
-      label: 'Assigned',
+      label: 'Leads',
       value: kpis.totalAssigned,
       href: '/(tabs)/leads',
       icon: 'people-outline',
-      tone: 'neutral',
     },
     {
       key: 'new',
-      label: 'New (7d)',
+      label: 'New 7d',
       value: kpis.newLeads,
       href: '/(tabs)/leads',
-      icon: 'sparkles-outline',
-      tone: 'accent',
+      icon: 'flash-outline',
+    },
+    {
+      key: 'done',
+      label: 'Done',
+      value: kpis.completedActivities,
+      href: '/activities',
+      icon: 'checkmark-done-outline',
     },
   ];
 
@@ -175,51 +167,74 @@ export default function HomeScreen() {
       onRefresh={() => query.refetch()}
       contentStyle={styles.screenContent}
     >
-      {/* 2×2 day-board KPIs */}
-      <View style={styles.kpiGrid}>
-        {kpiTiles.map((tile) => {
-          const toneStyles = kpiToneStyles(colors, tile.tone);
-          return (
-            <Pressable
-              key={tile.key}
-              onPress={() => router.navigate(tile.href)}
-              style={({ pressed }) => [
-                styles.kpiTile,
-                { borderColor: toneStyles.border },
-                pressed && styles.pressed,
+      {/* Day focus — full-width primary board */}
+      <Pressable
+        onPress={() => router.navigate('/(tabs)/follow-ups')}
+        style={({ pressed }) => [styles.focusCard, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={`Today's focus: ${focusTotal} items`}
+      >
+        <View style={styles.focusTop}>
+          <Text style={styles.focusEyebrow}>{"TODAY'S FOCUS"}</Text>
+          <View style={styles.focusCta}>
+            <Text style={styles.focusCtaText}>Queue</Text>
+            <Ionicons
+              name="arrow-forward"
+              size={14}
+              color={isDark ? colors.brand : colors.white}
+            />
+          </View>
+        </View>
+        <Text style={styles.focusValue}>{focusTotal}</Text>
+        <Text style={styles.focusHint}>
+          {queueClear
+            ? 'Nothing urgent — you are clear for now'
+            : `${kpis.todayFollowUps} due today · ${kpis.overdueFollowUps} overdue`}
+        </Text>
+        <View style={styles.focusSplit}>
+          <View style={styles.focusSplitItem}>
+            <Text style={styles.focusSplitValue}>{kpis.todayFollowUps}</Text>
+            <Text style={styles.focusSplitLabel}>Due today</Text>
+          </View>
+          <View style={styles.focusSplitRule} />
+          <View style={styles.focusSplitItem}>
+            <Text
+              style={[
+                styles.focusSplitValue,
+                kpis.overdueFollowUps > 0 && styles.focusSplitDanger,
               ]}
-              accessibilityRole="button"
-              accessibilityLabel={`${tile.label}: ${tile.value}`}
             >
-              <View
-                style={[styles.kpiAccent, { backgroundColor: toneStyles.accent }]}
-              />
-              <View style={styles.kpiTop}>
-                <View
-                  style={[
-                    styles.kpiIconWrap,
-                    { backgroundColor: toneStyles.iconBg },
-                  ]}
-                >
-                  <Ionicons
-                    name={tile.icon}
-                    size={16}
-                    color={toneStyles.icon}
-                  />
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={14}
-                  color={colors.textMuted}
-                />
-              </View>
-              <Text style={[styles.kpiValue, { color: toneStyles.value }]}>
-                {tile.value}
-              </Text>
-              <Text style={styles.kpiLabel}>{tile.label}</Text>
-            </Pressable>
-          );
-        })}
+              {kpis.overdueFollowUps}
+            </Text>
+            <Text style={styles.focusSplitLabel}>Overdue</Text>
+          </View>
+        </View>
+      </Pressable>
+
+      {/* Pipeline scoreboard — one panel, three columns */}
+      <View style={styles.scoreBoard}>
+        {scoreMetrics.map((metric, index) => (
+          <Pressable
+            key={metric.key}
+            onPress={() => router.navigate(metric.href)}
+            style={({ pressed }) => [
+              styles.scoreCol,
+              index > 0 && styles.scoreColBorder,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`${metric.label}: ${metric.value}`}
+          >
+            <Ionicons
+              name={metric.icon}
+              size={15}
+              color={isDark ? colors.textSecondary : colors.brand}
+              style={styles.scoreIcon}
+            />
+            <Text style={styles.scoreValue}>{metric.value}</Text>
+            <Text style={styles.scoreLabel}>{metric.label}</Text>
+          </Pressable>
+        ))}
       </View>
 
       {/* Today's queue — single agenda */}
@@ -359,60 +374,42 @@ function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   }, [screen, hasData, fetched]);
 }
 
-function kpiToneStyles(
-  colors: ThemeColors,
-  tone: KpiTile['tone']
-): {
-  accent: string;
-  icon: string;
-  iconBg: string;
-  value: string;
-  border: string;
-} {
-  switch (tone) {
-    case 'brand':
-      return {
-        accent: colors.brand,
-        icon: colors.brand,
-        iconBg: colors.brandSoft,
-        value: colors.text,
-        border: colors.border,
-      };
-    case 'danger':
-      return {
-        accent: colors.danger,
-        icon: colors.danger,
-        iconBg: colors.dangerSoft,
-        value: colors.danger,
-        border: colors.dangerSoft,
-      };
-    case 'accent':
-      return {
-        accent: colors.brandMuted,
-        icon: colors.brandMuted,
-        iconBg: colors.primary50,
-        value: colors.text,
-        border: colors.border,
-      };
-    default:
-      return {
-        accent: colors.textMuted,
-        icon: colors.textSecondary,
-        iconBg: colors.surfaceMuted,
-        value: colors.text,
-        border: colors.border,
-      };
-  }
-}
+function createStyles(colors: ThemeColors, isDark: boolean) {
+  const focusOnDark = {
+    cardBg: colors.surface,
+    cardBorder: colors.border,
+    eyebrow: colors.textMuted,
+    ctaBg: colors.brandSoft,
+    ctaText: colors.brandMuted,
+    value: colors.text,
+    hint: colors.textSecondary,
+    splitRule: colors.border,
+    splitValue: colors.text,
+    splitLabel: colors.textMuted,
+    splitDanger: colors.warning,
+  };
+  const focusOnLight = {
+    cardBg: colors.brand,
+    cardBorder: colors.brand,
+    eyebrow: 'rgba(255,255,255,0.78)',
+    ctaBg: 'rgba(255,255,255,0.16)',
+    ctaText: colors.white,
+    value: colors.white,
+    hint: 'rgba(255,255,255,0.88)',
+    splitRule: 'rgba(255,255,255,0.28)',
+    splitValue: colors.white,
+    splitLabel: 'rgba(255,255,255,0.75)',
+    splitDanger: '#FFE1A8',
+  };
+  const focus = isDark ? focusOnDark : focusOnLight;
 
-function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screenContent: {
       gap: 16,
       paddingBottom: spacing.xxl,
       paddingTop: spacing.sm,
     },
-    pressed: { opacity: 0.85 },
+    pressed: { opacity: 0.88 },
 
     header: {
       flexDirection: 'row',
@@ -459,58 +456,119 @@ function createStyles(colors: ThemeColors) {
       color: colors.warning,
     },
 
-    kpiGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      rowGap: 10,
-    },
-    kpiTile: {
-      width: '48.5%',
-      backgroundColor: colors.surface,
-      borderWidth: StyleSheet.hairlineWidth,
+    focusCard: {
+      backgroundColor: focus.cardBg,
       borderRadius: radii.md,
-      paddingLeft: 16,
-      paddingRight: 12,
-      paddingTop: 12,
-      paddingBottom: 14,
-      gap: 8,
-      overflow: 'hidden',
-      minHeight: 112,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: focus.cardBorder,
+      paddingHorizontal: 18,
+      paddingTop: 16,
+      paddingBottom: 16,
     },
-    kpiAccent: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 3,
-    },
-    kpiTop: {
+    focusTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      marginBottom: 8,
     },
-    kpiIconWrap: {
-      width: 28,
-      height: 28,
-      borderRadius: 8,
+    focusEyebrow: {
+      ...typography.label,
+      fontSize: 11,
+      letterSpacing: 1,
+      color: focus.eyebrow,
+    },
+    focusCta: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      gap: 4,
+      backgroundColor: focus.ctaBg,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: radii.sm,
     },
-    kpiValue: {
-      ...typography.display,
-      fontSize: 30,
-      lineHeight: 34,
-      letterSpacing: -0.8,
-      fontWeight: '700',
-    },
-    kpiLabel: {
+    focusCtaText: {
       ...typography.caption,
       fontSize: 12,
-      lineHeight: 16,
+      fontWeight: '700',
+      color: focus.ctaText,
+    },
+    focusValue: {
+      fontSize: 44,
+      lineHeight: 48,
+      fontWeight: '700',
+      letterSpacing: -1.2,
+      color: focus.value,
+    },
+    focusHint: {
+      ...typography.caption,
+      fontSize: 13,
+      lineHeight: 18,
+      color: focus.hint,
+      marginTop: 4,
+      marginBottom: 14,
+    },
+    focusSplit: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: focus.splitRule,
+      paddingTop: 12,
+    },
+    focusSplitItem: { flex: 1, gap: 2 },
+    focusSplitValue: {
+      ...typography.subtitle,
+      fontSize: 20,
+      lineHeight: 24,
+      fontWeight: '700',
+      color: focus.splitValue,
+    },
+    focusSplitDanger: { color: focus.splitDanger },
+    focusSplitLabel: {
+      ...typography.caption,
+      fontSize: 12,
+      color: focus.splitLabel,
+    },
+    focusSplitRule: {
+      width: StyleSheet.hairlineWidth,
+      height: 32,
+      backgroundColor: focus.splitRule,
+      marginHorizontal: 14,
+    },
+
+    scoreBoard: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    scoreCol: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 8,
+      gap: 4,
+    },
+    scoreColBorder: {
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderLeftColor: colors.border,
+    },
+    scoreIcon: { marginBottom: 2 },
+    scoreValue: {
+      ...typography.title,
+      fontSize: 22,
+      lineHeight: 26,
+      letterSpacing: -0.4,
+      color: colors.text,
+    },
+    scoreLabel: {
+      ...typography.caption,
+      fontSize: 11,
       fontWeight: '600',
-      color: colors.textSecondary,
-      letterSpacing: 0.2,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
     },
 
     sectionHeader: {
