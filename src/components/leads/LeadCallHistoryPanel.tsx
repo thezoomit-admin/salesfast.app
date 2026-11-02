@@ -122,16 +122,12 @@ export function LeadCallHistoryPanel({ lead }: Props) {
                   '—';
                 return (
                   <View key={n.id} style={styles.row}>
-                    <View
-                      style={[
-                        styles.avatar,
-                        { backgroundColor: kindBg(kind, colors) },
-                      ]}
-                    >
-                      <Ionicons
-                        name={KIND_ICON[kind]}
-                        size={18}
+                    <View style={styles.avatar}>
+                      <HugeiconsIcon
+                        icon={KIND_ICON[kind]}
+                        size={22}
                         color={kindColor(kind, colors)}
+                        strokeWidth={1.5}
                       />
                     </View>
                     <View style={styles.main}>
@@ -140,11 +136,18 @@ export function LeadCallHistoryPanel({ lead }: Props) {
                           <Text style={styles.name} numberOfLines={1}>
                             {displayName}
                           </Text>
-                          <Text style={styles.meta} numberOfLines={1}>
-                            {duration}
-                            {' · '}
-                            {n.addedByName?.trim() || 'Agent'}
-                          </Text>
+                          <View style={styles.metaRow}>
+                            <Text style={styles.meta}>{duration}</Text>
+                            <HugeiconsIcon
+                              icon={KIND_ICON[kind]}
+                              size={14}
+                              color={kindColor(kind, colors)}
+                              strokeWidth={1.5}
+                            />
+                            <Text style={styles.meta} numberOfLines={1}>
+                              · {n.addedByName?.trim() || 'Agent'}
+                            </Text>
+                          </View>
                         </View>
                         <View style={styles.right}>
                           <Text style={styles.time}>{timeOf(n.createdAt)}</Text>
@@ -183,13 +186,6 @@ function kindColor(kind: CallKind, colors: ThemeColors) {
   return colors.warning;
 }
 
-function kindBg(kind: CallKind, colors: ThemeColors) {
-  if (kind === 'incoming') return colors.primary50;
-  if (kind === 'outgoing') return colors.successSoft;
-  if (kind === 'missed') return colors.dangerSoft;
-  return colors.warningSoft;
-}
-
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     row: {
@@ -202,9 +198,9 @@ function createStyles(colors: ThemeColors) {
     avatar: {
       width: 40,
       height: 40,
-      borderRadius: 999,
       alignItems: 'center',
       justifyContent: 'center',
+      marginTop: 2,
     },
     main: { flex: 1, minWidth: 0 },
     header: {
@@ -215,6 +211,12 @@ function createStyles(colors: ThemeColors) {
     left: { flex: 1, minWidth: 0, gap: 2 },
     right: { alignItems: 'flex-end', gap: 2 },
     name: { ...typography.body, fontWeight: '600', color: colors.text },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexWrap: 'wrap',
+    },
     meta: { ...typography.caption, color: colors.textSecondary },
     time: { ...typography.caption, color: colors.textMuted },
     missed: {
