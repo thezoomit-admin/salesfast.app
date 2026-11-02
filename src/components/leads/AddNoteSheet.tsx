@@ -162,7 +162,6 @@ const PLAYBACK_BARS = [
 ];
 
 const WAVE_UNFILLED = '#D0D5DD';
-const STOP_RED = '#E11D48';
 const CHIP_X_BG = '#15202C';
 
 function ProgressWaveform({
@@ -222,32 +221,6 @@ function ProgressWaveform({
   );
 }
 
-function LiveWaveform({ levels }: { levels: number[] }) {
-  const bars = levels.length
-    ? levels
-    : Array.from({ length: 28 }, (_, i) => 0.25 + (Math.sin(i) + 1) * 0.2);
-  return (
-    <View style={waveStyles.liveTrack} accessibilityElementsHidden>
-      {bars.map((lvl, i) => {
-        const t = i / Math.max(bars.length - 1, 1);
-        const r = Math.round(168 + (10 - 168) * t);
-        const g = Math.round(85 + (102 - 85) * t);
-        const b = Math.round(247 + (194 - 247) * t);
-        const h = Math.max(3, Math.round(3 + lvl * 22));
-        return (
-          <View
-            key={i}
-            style={[
-              waveStyles.liveBar,
-              { height: h, backgroundColor: `rgb(${r},${g},${b})` },
-            ]}
-          />
-        );
-      })}
-    </View>
-  );
-}
-
 const waveStyles = StyleSheet.create({
   progressTrack: {
     position: 'relative',
@@ -275,17 +248,6 @@ const waveStyles = StyleSheet.create({
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
-  },
-  liveTrack: {
-    width: 140,
-    height: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  liveBar: {
-    width: 2.5,
-    borderRadius: 999,
   },
 });
 
@@ -801,18 +763,6 @@ export function AddNoteSheet({
     ? priorityBadgeColors(rating, isDark)
     : null;
   const meter = recorderState.metering;
-  const liveLevels = useMemo(() => {
-    if (!recording) return [];
-    const base =
-      typeof meter === 'number'
-        ? Math.max(0.12, Math.min(1, (meter + 55) / 55))
-        : 0.28;
-    return Array.from({ length: 28 }, (_, i) => {
-      const wobble =
-        0.35 + 0.65 * Math.abs(Math.sin(recordSec * 2.4 + i * 0.55));
-      return Math.min(1, base * wobble + 0.1);
-    });
-  }, [recording, meter, recordSec]);
 
   return (
     <Modal
@@ -1082,8 +1032,39 @@ export function AddNoteSheet({
                 </View>
               ) : null}
 
-              <View style={styles.toolbar}>
-                {!recording ? (
+              {recording ? (
+                <View style={styles.recordingBar}>
+                  <View style={styles.recDot} />
+                  <Text style={styles.recTimer}>
+                    {formatDuration(recordSec)}
+                  </Text>
+                  <View style={styles.meterRow}>
+                    {Array.from({ length: 12 }).map((_, i) => {
+                      const level =
+                        typeof meter === 'number'
+                          ? Math.max(0.15, Math.min(1, (meter + 50) / 50))
+                          : 0.3 + (i % 3) * 0.15;
+                      return (
+                        <View
+                          key={i}
+                          style={[
+                            styles.meterBar,
+                            { height: 6 + level * 14 },
+                          ]}
+                        />
+                      );
+                    })}
+                  </View>
+                  <Pressable
+                    style={styles.stopRecBtn}
+                    onPress={() => void stopRecording()}
+                    accessibilityLabel="Stop recording"
+                  >
+                    <Text style={styles.stopRecText}>Stop</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.toolbar}>
                   <Pressable
                     style={styles.toolBtn}
                     onPress={() => void pickAudioFile()}
@@ -1095,25 +1076,6 @@ export function AddNoteSheet({
                       color={colors.textSecondary}
                     />
                   </Pressable>
-                ) : null}
-                {recording ? (
-                  <View style={styles.recordingRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Stop recording"
-                      onPress={() => void stopRecording()}
-                      style={styles.stopRecBtn}
-                    >
-                      <View style={styles.stopRecInner}>
-                        <View style={styles.stopRecSquare} />
-                      </View>
-                    </Pressable>
-                    <LiveWaveform levels={liveLevels} />
-                    <Text style={styles.recTimer}>
-                      {formatDuration(recordSec)}
-                    </Text>
-                  </View>
-                ) : (
                   <Pressable
                     style={styles.toolBtn}
                     onPress={() => void startRecording()}
@@ -1125,52 +1087,52 @@ export function AddNoteSheet({
                       color={colors.textSecondary}
                     />
                   </Pressable>
-                )}
-                {!recording && channels.length > 0 ? (
-                  <>
-                    <View style={styles.toolbarDivider} />
-                    {channels.map((c) => {
-                      const active = channelId === c.id;
-                      const icon =
-                        CHANNEL_ICON[c.label] ?? 'chatbubble-outline';
-                      return (
-                        <Pressable
-                          key={c.id}
-                          onPress={() =>
-                            setChannelId((cur) =>
-                              cur === c.id ? null : c.id
-                            )
-                          }
-                          style={[
-                            styles.channelChip,
-                            active && styles.channelChipActive,
-                          ]}
-                        >
-                          <Ionicons
-                            name={icon}
-                            size={14}
-                            color={
-                              active
-                                ? colors.brand
-                                : c.label === 'WhatsApp'
-                                  ? '#25D366'
-                                  : colors.textSecondary
+                  {channels.length > 0 ? (
+                    <>
+                      <View style={styles.toolbarDivider} />
+                      {channels.map((c) => {
+                        const active = channelId === c.id;
+                        const icon =
+                          CHANNEL_ICON[c.label] ?? 'chatbubble-outline';
+                        return (
+                          <Pressable
+                            key={c.id}
+                            onPress={() =>
+                              setChannelId((cur) =>
+                                cur === c.id ? null : c.id
+                              )
                             }
-                          />
-                          <Text
                             style={[
-                              styles.channelLabel,
-                              active && { color: colors.brand },
+                              styles.channelChip,
+                              active && styles.channelChipActive,
                             ]}
                           >
-                            {c.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </>
-                ) : null}
-              </View>
+                            <Ionicons
+                              name={icon}
+                              size={14}
+                              color={
+                                active
+                                  ? colors.brand
+                                  : c.label === 'WhatsApp'
+                                    ? '#25D366'
+                                    : colors.textSecondary
+                              }
+                            />
+                            <Text
+                              style={[
+                                styles.channelLabel,
+                                active && { color: colors.brand },
+                              ]}
+                            >
+                              {c.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </>
+                  ) : null}
+                </View>
+              )}
             </View>
 
             {!terminal ? (
@@ -1456,48 +1418,51 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       fontWeight: '600',
       color: colors.textSecondary,
     },
-    recordingRow: {
+    recordingBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginLeft: 2,
-      flex: 1,
-      minWidth: 0,
+      gap: 10,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      backgroundColor: colors.primary50,
     },
-    stopRecBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: radii.sm,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOpacity: 0.06,
-      shadowRadius: 2,
-      shadowOffset: { width: 0, height: 1 },
-      elevation: 1,
-    },
-    stopRecInner: {
-      width: 20,
-      height: 20,
-      borderRadius: 999,
-      backgroundColor: STOP_RED,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stopRecSquare: {
+    recDot: {
       width: 8,
       height: 8,
-      borderRadius: 1.5,
-      backgroundColor: '#FFFFFF',
+      borderRadius: 999,
+      backgroundColor: colors.danger,
     },
     recTimer: {
       fontSize: 13,
-      fontWeight: '500',
+      fontWeight: '700',
       color: colors.text,
       fontVariant: ['tabular-nums'],
+    },
+    meterRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      height: 22,
+    },
+    meterBar: {
+      width: 3,
+      borderRadius: 2,
+      backgroundColor: colors.brand,
+      opacity: 0.85,
+    },
+    stopRecBtn: {
+      backgroundColor: colors.brand,
+      borderRadius: radii.sm,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    stopRecText: {
+      color: colors.white,
+      fontWeight: '700',
+      fontSize: 12,
     },
     saveBtn: {
       marginHorizontal: spacing.lg,
