@@ -339,32 +339,14 @@ export default function HomeScreen() {
         </Text>
       </Pressable>
 
-      {/* Quick actions — chip row */}
+      {/* Utilities — only destinations not already in the tab bar */}
       <View>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick actions</Text>
+          <Text style={styles.sectionTitle}>Utilities</Text>
         </View>
         <ChipScroll padded={false}>
           {(
             [
-              {
-                key: 'leads',
-                label: 'Leads',
-                icon: 'people-outline' as const,
-                href: '/(tabs)/leads' as Href,
-              },
-              {
-                key: 'follow',
-                label: 'Follow-ups',
-                icon: 'calendar-outline' as const,
-                href: '/(tabs)/follow-ups' as Href,
-              },
-              {
-                key: 'calls',
-                label: 'Calls',
-                icon: 'call-outline' as const,
-                href: '/(tabs)/calls' as Href,
-              },
               {
                 key: 'activity',
                 label: 'Activity',
@@ -372,10 +354,22 @@ export default function HomeScreen() {
                 href: '/activities' as Href,
               },
               {
+                key: 'notifications',
+                label: 'Notifications',
+                icon: 'notifications-outline' as const,
+                href: '/notifications' as Href,
+              },
+              {
                 key: 'sync',
                 label: syncOk ? 'Call sync' : 'Set up sync',
                 icon: 'sync-outline' as const,
                 href: '/call-sync/setup' as Href,
+              },
+              {
+                key: 'profile',
+                label: 'Personal info',
+                icon: 'person-outline' as const,
+                href: '/settings/edit' as Href,
               },
             ] as const
           ).map((chip) => (

@@ -341,24 +341,6 @@ export default function ProfileScreen() {
             onPress: () => setThemeOpen(true),
           },
           {
-            key: 'leads',
-            label: 'Leads',
-            icon: 'people-outline',
-            href: '/(tabs)/leads',
-          },
-          {
-            key: 'followUps',
-            label: 'Follow-ups',
-            icon: 'calendar-outline',
-            href: '/(tabs)/follow-ups',
-          },
-          {
-            key: 'calls',
-            label: 'Calls',
-            icon: 'call-outline',
-            href: '/(tabs)/calls',
-          },
-          {
             key: 'addAccount',
             label: 'Add another account',
             icon: 'person-add-outline',
