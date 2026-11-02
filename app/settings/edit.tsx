@@ -17,11 +17,12 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/features/auth/AuthContext';
 import { updateProfileRequest } from '@/features/auth/authApi';
 import { AuthInput } from '@/features/auth/components/AuthInput';
+import { PhotoChangeSheet } from '@/features/settings/PhotoChangeSheet';
 import { colors, radii, spacing, typography } from '@/theme';
 
 /**
  * Personal info — Hisab settings/edit pattern.
- * Editable: name, phone. Read-only: email, designation/role.
+ * Photo UI matches Hisab; upload not wired yet.
  */
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -31,6 +32,7 @@ export default function EditProfileScreen() {
   const [phone, setPhone] = useState(user?.phone?.trim() ?? '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [photoSheetOpen, setPhotoSheetOpen] = useState(false);
 
   useEffect(() => {
     if (saving) return;
@@ -43,6 +45,7 @@ export default function EditProfileScreen() {
     (phone.trim() || '') !== (user?.phone?.trim() ?? '');
 
   const canSave = dirty && Boolean(name.trim()) && !saving;
+  const hasPhoto = Boolean(user?.profilePhoto?.trim());
 
   const designation =
     user?.designation?.name?.trim() || user?.role?.trim() || 'Agent';
@@ -52,11 +55,18 @@ export default function EditProfileScreen() {
       Boolean(user?.name?.trim() || name.trim()),
       Boolean(user?.email?.trim()),
       Boolean(phone.trim() || user?.phone?.trim()),
-      Boolean(user?.profilePhoto?.trim()),
+      hasPhoto,
     ];
     const filled = checks.filter(Boolean).length;
     return Math.round((filled / checks.length) * 100);
-  }, [user, name, phone]);
+  }, [user, name, phone, hasPhoto]);
+
+  function photoSoon() {
+    Alert.alert(
+      'Coming soon',
+      'Profile photo upload will be available in a later update.'
+    );
+  }
 
   async function onSave() {
     setError('');
@@ -72,7 +82,6 @@ export default function EditProfileScreen() {
         name: nextName,
         phone: nextPhone,
       });
-      // Keep designation / photo if API omits them.
       await updateUser({
         ...user!,
         ...updated,
@@ -101,7 +110,7 @@ export default function EditProfileScreen() {
             style={({ pressed }) => [
               styles.savePill,
               !canSave && styles.savePillDisabled,
-              pressed && canSave && styles.pressed,
+              pressed && canSave && styles.pressedOpacity,
             ]}
           >
             {saving ? (
@@ -122,14 +131,27 @@ export default function EditProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <View style={styles.avatarRing}>
-            <UserAvatar
-              uri={user?.profilePhoto}
-              name={name.trim() || user?.name}
-              size={96}
-              muted
-            />
-          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.avatarWrap,
+              pressed && styles.pressedOpacity,
+            ]}
+            onPress={() => setPhotoSheetOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Change photo"
+          >
+            <View style={styles.avatarRing}>
+              <UserAvatar
+                uri={user?.profilePhoto}
+                name={name.trim() || user?.name}
+                size={96}
+                muted
+              />
+            </View>
+            <View style={styles.avatarEdit}>
+              <Ionicons name="camera" size={14} color={colors.white} />
+            </View>
+          </Pressable>
           <Text style={styles.heroName} numberOfLines={1}>
             {name.trim() || user?.name?.trim() || 'Your name'}
           </Text>
@@ -203,6 +225,15 @@ export default function EditProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <PhotoChangeSheet
+        open={photoSheetOpen}
+        hasPhoto={hasPhoto}
+        onClose={() => setPhotoSheetOpen(false)}
+        onLibrary={photoSoon}
+        onCamera={photoSoon}
+        onRemove={photoSoon}
+      />
     </View>
   );
 }
@@ -217,7 +248,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     gap: spacing.md,
   },
-  pressed: { opacity: 0.9 },
+  pressedOpacity: { opacity: 0.88 },
   savePill: {
     minWidth: 64,
     height: 34,
@@ -237,29 +268,47 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
-    gap: 6,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  avatarWrap: {
+    width: 96,
+    height: 96,
+    marginBottom: 14,
   },
   avatarRing: {
-    width: 100,
-    height: 100,
+    width: 96,
+    height: 96,
     borderRadius: radii.pill,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
     backgroundColor: '#EEF2F7',
-    marginBottom: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEdit: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 30,
+    height: 30,
+    borderRadius: radii.pill,
+    backgroundColor: colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
   },
   heroName: {
     ...typography.title,
-    fontSize: 22,
+    fontSize: 20,
     color: colors.text,
   },
   heroMeta: {
     ...typography.caption,
     color: colors.textSecondary,
+    marginTop: 4,
   },
   heroRole: {
     ...typography.caption,

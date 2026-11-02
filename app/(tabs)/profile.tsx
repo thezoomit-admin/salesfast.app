@@ -665,6 +665,6 @@ const styles = StyleSheet.create({
     backgroundColor: more.border,
   },
   pressed: {
-    backgroundColor: more.primary50,
+    backgroundColor: '#EEF2F7',
   },
 });
