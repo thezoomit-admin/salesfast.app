@@ -62,6 +62,8 @@ export type LeadStatus = {
   color?: string | null;
 };
 
+export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+
 export type LeadListItem = {
   id: number;
   buyerPersona?: {
@@ -74,6 +76,8 @@ export type LeadListItem = {
   leadSource?: { id: number; name: string } | null;
   assignedTo?: string | null;
   assignedToName?: string | null;
+  /** Lead priority (Low / Medium / High). */
+  priority?: LeadPriority | null;
   nextFollowupDate?: string | null;
   lastContactDate?: string | null;
   updatedAt?: string;

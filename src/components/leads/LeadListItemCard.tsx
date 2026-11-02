@@ -1,5 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   radii,
@@ -8,9 +9,13 @@ import {
   useTheme,
   type ThemeColors,
 } from '@/theme';
-import type { LeadListItem } from '@/types/api';
+import type { LeadListItem, LeadPriority } from '@/types/api';
 import { formatDate, formatRelative } from '@/utils/dates';
-import { formatPhoneDisplay } from '@/utils/phone';
+import {
+  formatPhoneDisplay,
+  openPhoneDialer,
+  openWhatsApp,
+} from '@/utils/phone';
 
 type Props = {
   lead: LeadListItem;
@@ -41,8 +46,11 @@ function toHex(r: number, g: number, b: number): string {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-/** Mix `hex` toward `target` by `amount` (0–1). */
-function mix(hex: string, target: { r: number; g: number; b: number }, amount: number): string {
+function mix(
+  hex: string,
+  target: { r: number; g: number; b: number },
+  amount: number
+): string {
   const rgb = parseRgb(hex);
   if (!rgb) return hex;
   return toHex(
@@ -55,11 +63,6 @@ function mix(hex: string, target: { r: number; g: number; b: number }, amount: n
 const WHITE = { r: 255, g: 255, b: 255 };
 const BLACK = { r: 0, g: 0, b: 0 };
 
-/**
- * Stage badge from status color variants:
- *   bg  = soft tint of the stage color
- *   text = stronger / readable variant of the same hue
- */
 function stageBadgeStyle(statusColor: string, isDark: boolean) {
   if (!isDark) {
     return {
@@ -68,12 +71,25 @@ function stageBadgeStyle(statusColor: string, isDark: boolean) {
       color: mix(statusColor, BLACK, 0.12),
     };
   }
-
   return {
     backgroundColor: mix(statusColor, BLACK, 0.72),
     borderColor: mix(statusColor, BLACK, 0.5),
     color: mix(statusColor, WHITE, 0.38),
   };
+}
+
+const PRIORITY_META: Record<
+  LeadPriority,
+  { label: string; color: string }
+> = {
+  LOW: { label: 'Low', color: '#0ba5ec' },
+  MEDIUM: { label: 'Medium', color: '#d97706' },
+  HIGH: { label: 'High', color: '#f04438' },
+};
+
+function priorityBadgeStyle(priority: LeadPriority, isDark: boolean) {
+  const base = PRIORITY_META[priority].color;
+  return stageBadgeStyle(base, isDark);
 }
 
 export const LeadListItemCard = memo(function LeadListItemCard({
@@ -85,11 +101,41 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const name = lead.buyerPersona?.fullName || 'Unnamed lead';
   const phone = lead.buyerPersona?.phone;
+  const whatsapp = lead.buyerPersona?.whatsapp || phone;
   const statusColor = lead.leadStatus?.color || colors.brand;
-  const badge = useMemo(
+  const stageBadge = useMemo(
     () => stageBadgeStyle(statusColor, isDark),
     [statusColor, isDark]
   );
+  const priority = lead.priority ?? null;
+  const priorityMeta = priority ? PRIORITY_META[priority] : null;
+  const priorityBadge = useMemo(
+    () => (priority ? priorityBadgeStyle(priority, isDark) : null),
+    [priority, isDark]
+  );
+
+  const metaBits = [
+    lead.leadSource?.name,
+    lead.nextFollowupDate
+      ? `Follow-up ${formatDate(lead.nextFollowupDate)}`
+      : lead.updatedAt
+        ? formatRelative(lead.updatedAt)
+        : null,
+  ].filter(Boolean);
+
+  async function onCall() {
+    const ok = await openPhoneDialer(phone);
+    if (!ok) Alert.alert('Unable to dial', 'No phone number available.');
+  }
+
+  async function onWhatsApp() {
+    try {
+      const ok = await openWhatsApp(whatsapp);
+      if (!ok) Alert.alert('Unable to open WhatsApp', 'No number available.');
+    } catch {
+      Alert.alert('Unable to open WhatsApp');
+    }
+  }
 
   return (
     <Pressable
@@ -107,31 +153,85 @@ export const LeadListItemCard = memo(function LeadListItemCard({
           style={[
             styles.badge,
             {
-              backgroundColor: badge.backgroundColor,
-              borderColor: badge.borderColor,
+              backgroundColor: stageBadge.backgroundColor,
+              borderColor: stageBadge.borderColor,
             },
           ]}
         >
           <Text
-            style={[styles.badgeText, { color: badge.color }]}
+            style={[styles.badgeText, { color: stageBadge.color }]}
             numberOfLines={1}
           >
             {lead.leadStatus?.name || 'No status'}
           </Text>
         </View>
       </View>
-      <View style={styles.meta}>
-        <Text style={styles.metaText} numberOfLines={1}>
-          {lead.assignedToName || 'Unassigned'}
-          {lead.leadSource?.name ? ` · ${lead.leadSource.name}` : ''}
-        </Text>
-        <Text style={styles.metaText}>
-          {lead.nextFollowupDate
-            ? `Follow-up ${formatDate(lead.nextFollowupDate)}`
-            : lead.updatedAt
-              ? formatRelative(lead.updatedAt)
-              : ''}
-        </Text>
+
+      <View style={styles.footer}>
+        <View style={styles.footerMeta}>
+          {priorityMeta && priorityBadge ? (
+            <View
+              style={[
+                styles.priorityBadge,
+                {
+                  backgroundColor: priorityBadge.backgroundColor,
+                  borderColor: priorityBadge.borderColor,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.badgeText, { color: priorityBadge.color }]}
+                numberOfLines={1}
+              >
+                {priorityMeta.label}
+              </Text>
+            </View>
+          ) : null}
+          {metaBits.length > 0 ? (
+            <Text style={styles.metaText} numberOfLines={1}>
+              {metaBits.join(' · ')}
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Call"
+            hitSlop={6}
+            disabled={!phone}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              void onCall();
+            }}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              styles.callBtn,
+              (!phone || pressed) && styles.actionPressed,
+              !phone && styles.actionDisabled,
+            ]}
+          >
+            <Ionicons name="call" size={16} color={colors.white} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="WhatsApp"
+            hitSlop={6}
+            disabled={!whatsapp}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              void onWhatsApp();
+            }}
+            style={({ pressed }) => [
+              styles.actionBtn,
+              styles.waBtn,
+              (!whatsapp || pressed) && styles.actionPressed,
+              !whatsapp && styles.actionDisabled,
+            ]}
+          >
+            <Ionicons name="logo-whatsapp" size={17} color={colors.white} />
+          </Pressable>
+        </View>
       </View>
     </Pressable>
   );
@@ -149,7 +249,7 @@ function createStyles(colors: ThemeColors) {
     },
     pressed: { opacity: 0.92 },
     row: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
-    main: { flex: 1, gap: 2 },
+    main: { flex: 1, gap: 2, minWidth: 0 },
     name: { ...typography.subtitle, color: colors.text },
     phone: { ...typography.body, color: colors.textSecondary },
     badge: {
@@ -159,8 +259,52 @@ function createStyles(colors: ThemeColors) {
       maxWidth: 120,
       borderWidth: StyleSheet.hairlineWidth,
     },
+    priorityBadge: {
+      borderRadius: radii.pill,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 3,
+      borderWidth: StyleSheet.hairlineWidth,
+      flexShrink: 0,
+    },
     badgeText: { ...typography.caption, fontWeight: '700' },
-    meta: { gap: 2 },
-    metaText: { ...typography.caption, color: colors.textMuted },
+    footer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: 2,
+    },
+    footerMeta: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      minWidth: 0,
+    },
+    metaText: {
+      ...typography.caption,
+      color: colors.textMuted,
+      flexShrink: 1,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      flexShrink: 0,
+    },
+    actionBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    callBtn: {
+      backgroundColor: colors.brand,
+    },
+    waBtn: {
+      backgroundColor: '#25D366',
+    },
+    actionPressed: { opacity: 0.85 },
+    actionDisabled: { opacity: 0.4 },
   });
 }

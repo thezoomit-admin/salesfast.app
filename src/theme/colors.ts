@@ -61,7 +61,8 @@ export const lightColors: ThemeColors = {
 };
 
 /**
- * Dark surface stack — #000 page + #121212 cards.
+ * Dark surface stack:
+ *   #000000 page · #121212 cards · #1B1B1B muted / elevated
  * Main text white; TEXT-MAIN scale for secondary / muted.
  */
 export const darkColors: ThemeColors = {
@@ -70,10 +71,10 @@ export const darkColors: ThemeColors = {
   brandSoft: '#2A1610',
   primary50: '#1F120E',
   accent: '#FFFFFF',
-  accentSoft: '#1A1A1A',
+  accentSoft: '#1B1B1B',
   background: '#000000',
   surface: '#121212',
-  surfaceMuted: '#1A1A1A',
+  surfaceMuted: '#1B1B1B',
   border: '#2A2A2A',
   text: '#FFFFFF',
   textSecondary: '#9c9c9c',
