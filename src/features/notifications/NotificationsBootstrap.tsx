@@ -73,10 +73,13 @@ export function NotificationsBootstrap() {
     };
   }, [userId, queryClient]);
 
-  // Signed out → clear the tray so nobody taps the previous user's alerts.
+  // Signed out → clear the tray and cached inbox so the next account on this
+  // phone never sees (or taps) the previous user's notifications.
   useEffect(() => {
-    if (!userId) void clearDeliveredNotifications();
-  }, [userId]);
+    if (userId) return;
+    void clearDeliveredNotifications();
+    queryClient.removeQueries({ queryKey: NOTIFICATIONS_KEY });
+  }, [userId, queryClient]);
 
   // Push arrived while the app is open → refresh inbox + bell count.
   useEffect(() => {
