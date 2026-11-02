@@ -19,10 +19,12 @@ import {
 import { formResolver, minLength } from '@/lib/formResolver';
 
 import { getErrorMessage } from '@/api/client';
+import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
+import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
 import { Button } from '@/components/ui/Button';
+import { FilterChip } from '@/components/ui/FilterChip';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
 import { LeadDetailSkeleton } from '@/components/ui/skeletons';
 import {
   EmptyState,
@@ -37,7 +39,10 @@ import {
   leadStatusesQuery,
   noteChannelsQuery,
 } from '@/features/leads/leadsApi';
-import { labelsOf } from '@/features/leads/leadMeta';
+import {
+  formatMoney,
+  summarizeLead,
+} from '@/features/leads/leadSummary';
 import {
   ADD_NOTE_MUTATION,
   leadWriteScope,
@@ -52,6 +57,13 @@ import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 type NoteForm = { note: string; followupAt?: string };
+type DetailTab = 'profile' | 'requirements' | 'notes';
+
+const TABS: { key: DetailTab; label: string }[] = [
+  { key: 'profile', label: 'Buyer Profile' },
+  { key: 'requirements', label: 'Requirements' },
+  { key: 'notes', label: 'Notes' },
+];
 
 const noteResolver = formResolver<NoteForm>((v) => ({
   note: minLength(v.note, 1, 'Note is required'),
@@ -66,6 +78,7 @@ export default function LeadDetailScreen() {
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<DetailTab>('profile');
 
   const leadQuery = useQuery({
     queryKey: ['lead', leadId],
@@ -94,10 +107,6 @@ export default function LeadDetailScreen() {
     defaultValues: { note: '', followupAt: '' },
   });
 
-  // How these writes run, retry, refresh the lists and report errors lives in
-  // leadWrites (they can also finish after this screen is gone, or after a
-  // restart). Online, the dialogs wait for the server as before; if a write
-  // has to wait for the network it is queued and the dialog closes.
   const scope = leadWriteScope(accountId);
   const noteMutation = useMutation<unknown, Error, AddNoteVars>({
     mutationKey: ADD_NOTE_MUTATION,
@@ -127,7 +136,7 @@ export default function LeadDetailScreen() {
     });
     noteMutation.mutate(write, {
       onSuccess: () => {
-        if (queued) return; // the dialog already closed as "saved offline"
+        if (queued) return;
         setNoteOpen(false);
         reset();
         Alert.alert('Saved', 'Note added successfully.');
@@ -141,13 +150,10 @@ export default function LeadDetailScreen() {
       leadStatusId,
       expectedVersion: leadQuery.data?.version,
     };
-    // Queued: the header shows the pending status until it syncs.
     onWriteQueued(queryClient, write.clientId, () => setStatusOpen(false));
     statusMutation.mutate(write, { onSuccess: () => setStatusOpen(false) });
   };
 
-  // Writes for this lead that have not reached the server yet (also ones
-  // restored after a restart). Shown as such — never as confirmed data.
   const pendingNotes = useMutationState({
     filters: { mutationKey: ADD_NOTE_MUTATION, status: 'pending' },
     select: (m) => m.state.variables as AddNoteVars,
@@ -164,7 +170,6 @@ export default function LeadDetailScreen() {
         'New status')
       : null;
 
-  // A cached copy renders immediately (also offline); fresh data follows.
   if (!leadQuery.data) {
     return (
       <Screen header={<ScreenHeader title="Lead" />}>
@@ -182,9 +187,27 @@ export default function LeadDetailScreen() {
   }
 
   const lead = leadQuery.data;
+  const meta = metaQuery.data;
   const name = lead.buyerPersona?.fullName || 'Unnamed lead';
   const phone = lead.buyerPersona?.phone;
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
+  const sm = summarizeLead(lead, meta);
+
+  const budgetLabel =
+    sm.budgetMin != null || sm.budgetMax != null
+      ? `${formatMoney(sm.budgetMin) ?? '—'} – ${formatMoney(sm.budgetMax) ?? '—'}`
+      : null;
+
+  const prefChips = [
+    { key: 'type', label: 'Type', value: sm.propertyType },
+    { key: 'loc', label: 'Location', value: sm.location },
+    { key: 'size', label: 'Size', value: sm.size },
+    { key: 'fin', label: 'Financing', value: sm.financing },
+    { key: 'time', label: 'Timeline', value: sm.timeline },
+  ].filter((c) => c.value);
+
+  const followUp =
+    lead.pendingFollowUp?.dueAt ?? lead.nextFollowupDate ?? null;
 
   return (
     <Screen
@@ -193,17 +216,49 @@ export default function LeadDetailScreen() {
       refreshing={leadQuery.isRefetching}
       onRefresh={() => leadQuery.refetch()}
     >
-      <View style={styles.hero}>
-        <Text style={styles.name}>{name}</Text>
-        <Text style={styles.phone}>{formatPhoneDisplay(phone)}</Text>
-        <Text style={styles.status}>
-          {lead.leadStatus?.name || 'No status'}
-          {lead.assignedToName ? ` · ${lead.assignedToName}` : ''}
-        </Text>
-        {pendingStatusName ? (
-          <Text style={styles.pendingText}>
-            Changing to {pendingStatusName} · waiting to sync
+      {/* Summary card — mirrors web lead header + buyer highlight */}
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryHero}>
+          <Text style={styles.name}>{name}</Text>
+          {sm.occupation ? (
+            <Text style={styles.occupation}>{sm.occupation}</Text>
+          ) : null}
+          <Text style={styles.phone}>{formatPhoneDisplay(phone)}</Text>
+          <Text style={styles.status}>
+            {lead.leadStatus?.name || 'No status'}
+            {lead.assignedToName ? ` · ${lead.assignedToName}` : ''}
           </Text>
+          {pendingStatusName ? (
+            <Text style={styles.pendingText}>
+              Changing to {pendingStatusName} · waiting to sync
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={styles.budgetStrip}>
+          <Text style={styles.budgetLabel}>Budget range</Text>
+          <Text style={styles.budgetValue}>
+            {budgetLabel ?? 'Not set yet'}
+          </Text>
+          {followUp ? (
+            <Text style={styles.followUpHint}>
+              Next follow-up · {formatDateTime(followUp)}
+            </Text>
+          ) : null}
+        </View>
+
+        {prefChips.length > 0 ? (
+          <View style={styles.prefSection}>
+            <Text style={styles.prefHeading}>Preferences</Text>
+            <View style={styles.prefRow}>
+              {prefChips.map((c) => (
+                <View key={c.key} style={styles.prefChip}>
+                  <Text style={styles.prefChipLabel}>{c.label}</Text>
+                  <Text style={styles.prefChipValue}>{c.value}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
         ) : null}
       </View>
 
@@ -230,78 +285,80 @@ export default function LeadDetailScreen() {
         />
       </View>
       <View style={styles.actions}>
-        <Button title="Add note" variant="secondary" style={{ flex: 1 }} onPress={() => setNoteOpen(true)} />
-        <Button title="Status" variant="ghost" style={{ flex: 1 }} onPress={() => setStatusOpen(true)} />
-      </View>
-
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Details</Text>
-        <DetailRow label="Email" value={lead.buyerPersona?.email || '—'} />
-        <DetailRow label="Source" value={lead.leadSource?.name || '—'} />
-        <DetailRow
-          label="Locations"
-          value={
-            labelsOf(metaQuery.data, 'preferred_location', lead.preferredLocations) ||
-            '—'
-          }
+        <Button
+          title="Add note"
+          variant="secondary"
+          style={{ flex: 1 }}
+          onPress={() => setNoteOpen(true)}
         />
-        <DetailRow
-          label="Property types"
-          value={
-            labelsOf(metaQuery.data, 'property_type', lead.propertyTypes) || '—'
-          }
-        />
-        <DetailRow
-          label="Budget"
-          value={
-            lead.budgetMin != null || lead.budgetMax != null
-              ? `৳ ${lead.budgetMin != null ? Number(lead.budgetMin).toLocaleString('en-IN') : '—'} – ৳ ${lead.budgetMax != null ? Number(lead.budgetMax).toLocaleString('en-IN') : '—'}`
-              : '—'
-          }
-        />
-        <DetailRow
-          label="Next follow-up"
-          value={
-            lead.pendingFollowUp?.dueAt
-              ? formatDateTime(lead.pendingFollowUp.dueAt)
-              : lead.nextFollowupDate
-                ? formatDateTime(lead.nextFollowupDate)
-                : '—'
-          }
+        <Button
+          title="Status"
+          variant="ghost"
+          style={{ flex: 1 }}
+          onPress={() => setStatusOpen(true)}
         />
       </View>
 
-      <LeadRequirementsPanel lead={lead} meta={metaQuery.data} />
+      {/* Tabs + content — same pattern as web Overview pills */}
+      <View style={styles.tabShell}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabRow}
+        >
+          {TABS.map((tab) => (
+            <FilterChip
+              key={tab.key}
+              label={tab.label}
+              active={activeTab === tab.key}
+              onPress={() => setActiveTab(tab.key)}
+            />
+          ))}
+        </ScrollView>
 
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>Notes & timeline</Text>
-        {pendingNotes.map((note) => (
-          <View key={note.clientId} style={styles.note}>
-            <Text style={styles.pendingText}>
-              Waiting to sync · {formatDateTime(new Date(note.queuedAt))}
-            </Text>
-            <Text style={styles.noteBody}>{note.note}</Text>
-          </View>
-        ))}
-        {!lead.notes?.length && !pendingNotes.length ? (
-          <EmptyState title="No notes yet" message="Add the first note for this lead." />
-        ) : (
-          (lead.notes ?? []).map((note) => (
-            <View key={note.id} style={styles.note}>
-              <Text style={styles.noteMeta}>
-                {note.channel?.name || 'Note'} · {note.addedByName || 'Agent'} ·{' '}
-                {formatDateTime(note.createdAt)}
-              </Text>
-              <Text style={styles.noteBody}>{note.note}</Text>
+        <View style={styles.tabBody}>
+          {activeTab === 'profile' ? (
+            <LeadBuyerProfilePanel lead={lead} meta={meta} />
+          ) : null}
+          {activeTab === 'requirements' ? (
+            <LeadRequirementsPanel lead={lead} meta={meta} />
+          ) : null}
+          {activeTab === 'notes' ? (
+            <View style={styles.notesWrap}>
+              {pendingNotes.map((note) => (
+                <View key={note.clientId} style={styles.note}>
+                  <Text style={styles.pendingText}>
+                    Waiting to sync · {formatDateTime(new Date(note.queuedAt))}
+                  </Text>
+                  <Text style={styles.noteBody}>{note.note}</Text>
+                </View>
+              ))}
+              {!lead.notes?.length && !pendingNotes.length ? (
+                <EmptyState
+                  title="No notes yet"
+                  message="Add the first note for this lead."
+                />
+              ) : (
+                (lead.notes ?? []).map((note) => (
+                  <View key={note.id} style={styles.note}>
+                    <Text style={styles.noteMeta}>
+                      {note.channel?.name || 'Note'} ·{' '}
+                      {note.addedByName || 'Agent'} ·{' '}
+                      {formatDateTime(note.createdAt)}
+                    </Text>
+                    <Text style={styles.noteBody}>{note.note}</Text>
+                  </View>
+                ))
+              )}
             </View>
-          ))
-        )}
+          ) : null}
+        </View>
       </View>
 
       <Modal visible={noteOpen} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.panelTitle}>Add note</Text>
+            <Text style={styles.modalTitle}>Add note</Text>
             <Controller
               control={control}
               name="note"
@@ -336,7 +393,11 @@ export default function LeadDetailScreen() {
               loading={noteMutation.isPending}
               onPress={handleSubmit(submitNote)}
             />
-            <Button title="Cancel" variant="ghost" onPress={() => setNoteOpen(false)} />
+            <Button
+              title="Cancel"
+              variant="ghost"
+              onPress={() => setNoteOpen(false)}
+            />
           </View>
         </View>
       </Modal>
@@ -344,7 +405,7 @@ export default function LeadDetailScreen() {
       <Modal visible={statusOpen} animationType="slide" transparent>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.panelTitle}>Update status</Text>
+            <Text style={styles.modalTitle}>Update status</Text>
             <ScrollView style={{ maxHeight: 320 }}>
               {(statusesQuery.data ?? []).map((status) => (
                 <Pressable
@@ -357,7 +418,11 @@ export default function LeadDetailScreen() {
                 </Pressable>
               ))}
             </ScrollView>
-            <Button title="Cancel" variant="ghost" onPress={() => setStatusOpen(false)} />
+            <Button
+              title="Cancel"
+              variant="ghost"
+              onPress={() => setStatusOpen(false)}
+            />
           </View>
         </View>
       </Modal>
@@ -365,36 +430,95 @@ export default function LeadDetailScreen() {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  return (
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
-    </View>
-  );
-}
-
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    hero: { gap: spacing.xs },
-    name: { ...typography.title, color: colors.text },
-    phone: { ...typography.subtitle, color: colors.brand },
-    status: { ...typography.body, color: colors.textSecondary },
-    actions: { flexDirection: 'row', gap: spacing.sm },
-    panel: {
+    summaryCard: {
       backgroundColor: colors.surface,
       borderRadius: radii.lg,
       borderWidth: 1,
       borderColor: colors.border,
+      overflow: 'hidden',
+    },
+    summaryHero: {
+      gap: spacing.xs,
+      padding: spacing.lg,
+      backgroundColor: colors.primary50,
+    },
+    name: { ...typography.title, color: colors.text },
+    occupation: { ...typography.body, color: colors.textSecondary },
+    phone: { ...typography.subtitle, color: colors.brand },
+    status: { ...typography.body, color: colors.textSecondary },
+    budgetStrip: {
+      marginHorizontal: spacing.lg,
+      marginVertical: spacing.md,
+      padding: spacing.md,
+      borderRadius: radii.md,
+      backgroundColor: colors.primary50,
+      borderWidth: 1,
+      borderColor: colors.brandSoft,
+      gap: 4,
+    },
+    budgetLabel: {
+      ...typography.caption,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      fontWeight: '600',
+    },
+    budgetValue: { ...typography.subtitle, color: colors.text },
+    followUpHint: { ...typography.caption, color: colors.textSecondary },
+    prefSection: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
       padding: spacing.lg,
       gap: spacing.sm,
     },
-    panelTitle: { ...typography.subtitle, color: colors.text },
-    detailRow: { gap: 2, paddingVertical: 4 },
-    detailLabel: { ...typography.caption, color: colors.textMuted },
-    detailValue: { ...typography.body, color: colors.text },
+    prefHeading: {
+      ...typography.caption,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      fontWeight: '600',
+    },
+    prefRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    prefChip: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radii.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      gap: 2,
+      maxWidth: '100%',
+    },
+    prefChipLabel: {
+      ...typography.caption,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      fontSize: 10,
+    },
+    prefChipValue: { ...typography.body, color: colors.text, fontWeight: '500' },
+    actions: { flexDirection: 'row', gap: spacing.sm },
+    tabShell: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radii.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      paddingTop: spacing.md,
+      gap: spacing.md,
+    },
+    tabRow: {
+      paddingHorizontal: spacing.md,
+      gap: spacing.sm,
+      alignItems: 'center',
+    },
+    tabBody: {
+      backgroundColor: colors.surface,
+      padding: spacing.lg,
+      minHeight: 160,
+    },
+    notesWrap: { gap: spacing.sm },
     note: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
@@ -416,6 +540,7 @@ function createStyles(colors: ThemeColors) {
       padding: spacing.xl,
       gap: spacing.md,
     },
+    modalTitle: { ...typography.subtitle, color: colors.text },
     statusRow: {
       paddingVertical: spacing.md,
       borderBottomWidth: StyleSheet.hairlineWidth,

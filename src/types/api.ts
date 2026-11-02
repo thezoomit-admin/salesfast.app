@@ -170,7 +170,7 @@ export type LeadDetail = LeadListItem & {
   notes?: LeadNote[];
   meetings?: unknown[];
   tasks?: unknown[];
-  statusHistory?: unknown[];
+  statusHistory?: LeadStatusHistoryEntry[];
   pendingFollowUp?: {
     id: number;
     dueAt: string;
@@ -179,6 +179,36 @@ export type LeadDetail = LeadListItem & {
     remindAt?: string | null;
   } | null;
   version?: number;
+};
+
+export type LeadStatusHistoryEntry = {
+  id: number;
+  fromStatusName?: string | null;
+  toStatusName?: string | null;
+  stageRating?: string | null;
+  stageOption?: string | null;
+  changedByName?: string | null;
+  changedAt: string;
+  note?: string | null;
+};
+
+export type LeadViewEntry = {
+  id: number;
+  userId: string;
+  userName?: string | null;
+  viewedAt: string;
+  lastSeenAt?: string;
+  durationSeconds: number;
+  endedAt?: string | null;
+  isLive?: boolean;
+};
+
+export type LeadViewHistory = {
+  items: LeadViewEntry[];
+  total: number;
+  liveCount: number;
+  firstViewId: number | null;
+  hasMore: boolean;
 };
 
 export type LeadOptionRow = { id?: number; key: string; label: string };
