@@ -77,14 +77,13 @@ const noteResolver = formResolver<NoteForm>((v) => ({
 
 export default function LeadDetailScreen() {
   const colors = useThemeColors();
-  const { resolved } = useTheme();
-  const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const leadId = Number(id);
   const accountId = useAuth().user?.id ?? '';
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
+  const [priorityOpen, setPriorityOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<LeadDetailTab>('overview');
 
@@ -118,6 +117,36 @@ export default function LeadDetailScreen() {
   const statusMutation = useMutation<unknown, Error, UpdateStatusVars>({
     mutationKey: UPDATE_STATUS_MUTATION,
     scope,
+  });
+  const priorityMutation = useMutation({
+    mutationFn: (priority: LeadPriority) =>
+      updateLeadPriority(
+        leadId,
+        {
+          priority,
+          expectedVersion: leadQuery.data?.version,
+        },
+        { accountId }
+      ),
+    onMutate: async (priority) => {
+      await queryClient.cancelQueries({ queryKey: ['lead', leadId] });
+      const prev = leadQuery.data;
+      if (prev) {
+        queryClient.setQueryData(['lead', leadId], {
+          ...prev,
+          priority,
+        });
+      }
+      setPriorityOpen(false);
+      return { prev };
+    },
+    onError: (_err, _p, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(['lead', leadId], ctx.prev);
+      Alert.alert('Could not update priority');
+    },
+    onSuccess: (updated) => {
+      if (updated) queryClient.setQueryData(['lead', leadId], updated);
+    },
   });
 
   const submitNote = (values: NoteForm) => {

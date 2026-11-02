@@ -79,6 +79,22 @@ export async function updateLeadStatus(
   return data.data;
 }
 
+export async function updateLeadPriority(
+  id: number | string,
+  payload: {
+    priority: 'LOW' | 'MEDIUM' | 'HIGH';
+    expectedVersion?: number;
+  },
+  options: WriteOptions = {}
+) {
+  const { data } = await api.put<ApiResponse<LeadDetail>>(
+    `/crm/leads/${id}`,
+    payload,
+    { accountId: options.accountId }
+  );
+  return data.data;
+}
+
 export async function addLeadNote(
   id: number | string,
   payload: {

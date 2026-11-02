@@ -60,6 +60,11 @@ export type LeadStatus = {
   id: number;
   name: string;
   color?: string | null;
+  sortOrder?: number | null;
+  isWonStage?: boolean;
+  isLostStage?: boolean;
+  hasRating?: boolean;
+  stageOptions?: string[] | null;
 };
 
 export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
