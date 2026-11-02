@@ -84,6 +84,14 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="notifications"
+              options={{
+                headerShown: true,
+                title: 'Notifications',
+                headerTintColor: colors.brand,
+              }}
+            />
+            <Stack.Screen
               name="call-sync/setup"
               options={{
                 headerShown: true,

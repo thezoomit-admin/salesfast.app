@@ -12,6 +12,7 @@ import { APP_NAME } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { fetchMobileDashboard } from '@/features/dashboard/dashboardApi';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { colors, radii, spacing, typography } from '@/theme';
 import { formatDate, formatRelative } from '@/utils/dates';
 
@@ -64,10 +65,13 @@ export default function HomeScreen() {
       refreshing={query.isRefetching}
       onRefresh={() => query.refetch()}
     >
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>{APP_NAME}</Text>
-        <Text style={styles.title}>Hello, {user?.name?.split(' ')[0] || 'Agent'}</Text>
-        <Text style={styles.subtitle}>Your assigned pipeline at a glance.</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.header}>
+          <Text style={styles.eyebrow}>{APP_NAME}</Text>
+          <Text style={styles.title}>Hello, {user?.name?.split(' ')[0] || 'Agent'}</Text>
+          <Text style={styles.subtitle}>Your assigned pipeline at a glance.</Text>
+        </View>
+        <NotificationBell />
       </View>
 
       <View style={styles.kpiGrid}>
@@ -163,7 +167,13 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { gap: spacing.xs, marginBottom: spacing.sm },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  header: { flex: 1, gap: spacing.xs },
   eyebrow: { ...typography.label, color: colors.brandMuted },
   title: { ...typography.display, color: colors.text },
   subtitle: { ...typography.body, color: colors.textSecondary },
