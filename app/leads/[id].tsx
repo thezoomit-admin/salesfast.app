@@ -53,6 +53,7 @@ import {
 import {
   PRIORITIES,
   PRIORITY_META,
+  priorityBadgeColors,
 } from '@/features/leads/leadPriority';
 import { summarizeLead } from '@/features/leads/leadSummary';
 import {
@@ -66,7 +67,7 @@ import {
   radii,
   spacing,
   typography,
-  useThemeColors,
+  useTheme,
   type ThemeColors,
 } from '@/theme';
 import type { LeadPriority } from '@/types/api';
@@ -80,7 +81,8 @@ const PRIORITY_ICON = {
 } as const;
 
 export default function LeadDetailScreen() {
-  const colors = useThemeColors();
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const leadId = Number(id);
@@ -184,6 +186,9 @@ export default function LeadDetailScreen() {
   const currentStatusId = lead.leadStatus?.id ?? null;
   const priority = (lead.priority ?? null) as LeadPriority | null;
   const priorityMeta = priority ? PRIORITY_META[priority] : null;
+  const priorityBadge = priority
+    ? priorityBadgeColors(priority, isDark)
+    : null;
 
   const prefChips = [
     { key: 'type', label: 'Type', value: sm.propertyType },
