@@ -21,6 +21,7 @@ import {
   Alert,
   Animated,
   Easing,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -107,6 +108,8 @@ const STATUS_INTERVAL_MS = 50;
  * another app, or turned off in privacy settings. A quiet room is ~-50 dB.
  */
 const SILENT_DB = -100;
+/** `RecordingInput.type` of the phone's own microphone. */
+const BUILT_IN_MIC = 'MicrophoneBuiltIn';
 /** Readings needed before a recording can be judged silent (~1s). */
 const MIN_METER_READINGS = 12;
 
@@ -444,6 +447,18 @@ export function NoteComposer({
     }
   }
 
+  /** Pin the recorder to the phone's own mic (needs a prepared recorder). */
+  function preferBuiltInMic() {
+    try {
+      const builtIn = recorder
+        .getAvailableInputs()
+        .find((input) => input.type === BUILT_IN_MIC);
+      if (builtIn) recorder.setInput(builtIn.uid);
+    } catch {
+      /* Android 9 and older cannot pick an input — keep the default */
+    }
+  }
+
   async function startRecording() {
     try {
       stopPlayback(true);
@@ -474,6 +489,9 @@ export function NoteComposer({
       }
 
       await recorder.prepareToRecordAsync();
+      // Android otherwise records from a plugged-in / Bluetooth headset,
+      // which is silence when it has no mic or its mic is off.
+      if (Platform.OS === 'android') preferBuiltInMic();
       recordStartedAt.current = nowMs();
       levelHistory.current = [];
       meterStats.current = { readings: 0, maxDb: -Infinity };
@@ -506,7 +524,7 @@ export function NoteComposer({
       if (readings >= MIN_METER_READINGS && maxDb < SILENT_DB) {
         Alert.alert(
           'No sound was recorded',
-          'The microphone only picked up silence. It may be in use by a call or another app (voice assistant, screen recorder), or turned off in your privacy settings. Close that and try again.'
+          'The microphone only picked up silence. It may be in use by a call or another app (voice assistant, screen recorder), or turned off in your privacy settings. Unplug headphones without a mic and try again.'
         );
         return;
       }
