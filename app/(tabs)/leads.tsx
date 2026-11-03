@@ -4,6 +4,7 @@ import {
   useInfiniteQuery,
   useQuery,
 } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -42,11 +43,20 @@ function useDebounced<T>(value: T, delay = 350) {
 export default function LeadsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const router = useRouter();
+  const params = useLocalSearchParams<{ focusSearch?: string }>();
   const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [statusId, setStatusId] = useState<number | undefined>();
   const debouncedSearch = useDebounced(search);
+
+  useEffect(() => {
+    if (params.focusSearch !== '1') return;
+    setSearchOpen(true);
+    requestAnimationFrame(() => searchRef.current?.focus());
+    router.setParams({ focusSearch: undefined });
+  }, [params.focusSearch, router]);
 
   const statuses = useQuery(leadStatusesQuery);
 

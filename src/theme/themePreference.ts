@@ -8,20 +8,23 @@ function isThemeMode(value: unknown): value is ThemeMode {
   return value === 'light' || value === 'dark' || value === 'system';
 }
 
+/** Default when nothing is stored yet — always light, not system. */
+export const DEFAULT_THEME_MODE: ThemeMode = 'light';
+
 export async function loadThemeMode(): Promise<ThemeMode> {
   try {
     if (Platform.OS === 'web') {
       const raw =
         typeof localStorage !== 'undefined' ? localStorage.getItem(KEY) : null;
       if (isThemeMode(raw)) return raw;
-      return 'system';
+      return DEFAULT_THEME_MODE;
     }
     const SecureStore = await import('expo-secure-store');
     const raw = await SecureStore.getItemAsync(KEY);
     if (isThemeMode(raw)) return raw;
-    return 'system';
+    return DEFAULT_THEME_MODE;
   } catch {
-    return 'system';
+    return DEFAULT_THEME_MODE;
   }
 }
 

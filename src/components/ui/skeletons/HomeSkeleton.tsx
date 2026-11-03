@@ -5,171 +5,158 @@ import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 import { SkeletonBone, SkeletonPulse } from './primitives';
 
-/** Mirrors home: focus card → scoreboard → queue rows → pipeline rows. */
+/** Mirrors Testora-style home: greeting → CTA → KPI grid → live → insights → queue. */
 export function HomeSkeleton() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <SkeletonPulse style={styles.root}>
-      <View style={styles.focusCard}>
-        <View style={styles.focusTop}>
-          <SkeletonBone width={96} height={10} />
-          <SkeletonBone width={56} height={22} radius={radii.sm} />
-        </View>
-        <SkeletonBone width={72} height={40} radius={8} style={styles.focusValue} />
-        <SkeletonBone width="70%" height={12} style={styles.focusHint} />
-        <View style={styles.focusSplit}>
-          <View style={styles.focusSplitItem}>
-            <SkeletonBone width={40} height={18} />
-            <SkeletonBone width={64} height={10} />
-          </View>
-          <View style={styles.focusSplitRule} />
-          <View style={styles.focusSplitItem}>
-            <SkeletonBone width={40} height={18} />
-            <SkeletonBone width={56} height={10} />
-          </View>
-        </View>
+      <View style={styles.greeting}>
+        <SkeletonBone width="55%" height={24} />
+        <SkeletonBone width="40%" height={12} />
       </View>
 
-      <View style={styles.scoreBoard}>
-        {[0, 1, 2].map((i) => (
-          <View
-            key={i}
-            style={[styles.scoreCol, i > 0 && styles.scoreColBorder]}
-          >
-            <SkeletonBone width={16} height={16} radius={8} />
-            <SkeletonBone width={36} height={20} />
-            <SkeletonBone width={48} height={10} />
-          </View>
-        ))}
-      </View>
+      <SkeletonBone width="100%" height={48} radius={radii.pill} />
 
-      <SectionSkeleton styles={styles} rows={3} withAvatar={false} />
-      <SectionSkeleton styles={styles} rows={4} withAvatar />
-    </SkeletonPulse>
-  );
-}
-
-function SectionSkeleton({
-  styles,
-  rows,
-  withAvatar,
-}: {
-  styles: ReturnType<typeof createStyles>;
-  rows: number;
-  withAvatar: boolean;
-}) {
-  return (
-    <View>
-      <View style={styles.sectionHeader}>
-        <SkeletonBone width={110} height={14} />
-        <SkeletonBone width={72} height={12} />
-      </View>
-      <View style={styles.panel}>
-        {Array.from({ length: rows }, (_, i) => (
-          <View
-            key={i}
-            style={[styles.row, i > 0 && styles.rowDivider]}
-          >
-            {withAvatar ? (
-              <SkeletonBone width={36} height={36} radius={6} />
-            ) : (
-              <SkeletonBone width={68} height={40} radius={6} />
-            )}
-            <View style={styles.rowCopy}>
-              <SkeletonBone width="55%" height={13} />
-              <SkeletonBone width="40%" height={10} />
+      <View style={styles.kpiRow}>
+        {[0, 1].map((i) => (
+          <View key={i} style={styles.kpiCard}>
+            <View style={styles.kpiTop}>
+              <SkeletonBone width={72} height={12} />
+              <SkeletonBone width={34} height={34} radius={17} />
+            </View>
+            <View style={styles.kpiBottom}>
+              <SkeletonBone width={36} height={24} />
+              <SkeletonBone width={56} height={12} />
             </View>
           </View>
         ))}
       </View>
-    </View>
+
+      <View style={styles.sectionHead}>
+        <SkeletonBone width={140} height={14} />
+        <SkeletonBone width={56} height={12} />
+      </View>
+
+      <View style={styles.liveCard}>
+        <SkeletonBone width={92} height={92} radius={46} />
+        <View style={styles.liveCopy}>
+          <SkeletonBone width={80} height={10} />
+          <SkeletonBone width="90%" height={16} />
+          <SkeletonBone width="70%" height={12} />
+          <SkeletonBone width={96} height={24} radius={12} />
+        </View>
+      </View>
+
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={styles.insightCard}>
+          <SkeletonBone width="50%" height={14} />
+          <SkeletonBone width="100%" height={40} radius={8} />
+          <SkeletonBone width="100%" height={8} radius={999} />
+        </View>
+      ))}
+
+      <View style={styles.sectionHead}>
+        <SkeletonBone width={150} height={14} />
+        <SkeletonBone width={72} height={12} />
+      </View>
+
+      <View style={styles.upcomingCard}>
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={[styles.upcomingRow, i > 0 && styles.upcomingDivider]}
+          >
+            <View style={styles.upcomingCopy}>
+              <SkeletonBone width="55%" height={13} />
+              <SkeletonBone width="40%" height={10} />
+            </View>
+            <SkeletonBone width={48} height={24} />
+          </View>
+        ))}
+      </View>
+    </SkeletonPulse>
   );
 }
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
-      gap: 16,
+      gap: 14,
       paddingTop: spacing.sm,
       paddingBottom: spacing.xxl,
     },
-    focusCard: {
+    greeting: { gap: 6 },
+    kpiRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    kpiCard: {
+      width: 168,
       backgroundColor: colors.surface,
-      borderRadius: radii.md,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      paddingHorizontal: 18,
-      paddingTop: 16,
-      paddingBottom: 16,
-    },
-    focusTop: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-    },
-    focusValue: { marginBottom: 8 },
-    focusHint: { marginBottom: 14 },
-    focusSplit: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      paddingTop: 12,
-    },
-    focusSplitItem: { flex: 1, gap: 6 },
-    focusSplitRule: {
-      width: StyleSheet.hairlineWidth,
-      height: 32,
-      backgroundColor: colors.border,
-      marginHorizontal: 14,
-    },
-    scoreBoard: {
-      flexDirection: 'row',
-      backgroundColor: colors.surface,
-      borderRadius: radii.md,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
-    scoreCol: {
-      flex: 1,
-      alignItems: 'center',
+      borderRadius: 16,
+      paddingHorizontal: 14,
       paddingVertical: 14,
-      paddingHorizontal: 8,
-      gap: 6,
+      gap: 18,
+      minHeight: 108,
+      justifyContent: 'space-between',
     },
-    scoreColBorder: {
-      borderLeftWidth: StyleSheet.hairlineWidth,
-      borderLeftColor: colors.border,
-    },
-    sectionHeader: {
+    kpiTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
     },
-    panel: {
+    kpiBottom: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    sectionHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 4,
+    },
+    liveCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 16,
       backgroundColor: colors.surface,
-      borderRadius: radii.sm,
+      borderRadius: 20,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      padding: 16,
+    },
+    liveCopy: { flex: 1, gap: 8 },
+    insightCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      gap: 12,
+    },
+    upcomingCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
       paddingHorizontal: 12,
       paddingVertical: 4,
-      overflow: 'hidden',
     },
-    row: {
+    upcomingRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       gap: 10,
       paddingVertical: 12,
     },
-    rowDivider: {
+    upcomingDivider: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
     },
-    rowCopy: { flex: 1, gap: 6, minWidth: 0 },
+    upcomingCopy: { flex: 1, gap: 6 },
   });
 }

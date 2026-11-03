@@ -1,18 +1,22 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Notification01Icon } from '@/components/icons/hugeicons';
 import { radii, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 import { fetchUnreadCount, UNREAD_COUNT_KEY } from './notificationsApi';
 
 export function NotificationBell({
   plain = false,
+  circle = false,
 }: {
   /** Hisab header style — no chip background. */
   plain?: boolean;
+  /** White filled round chip (Testora home header). */
+  circle?: boolean;
 }) {
   const router = useRouter();
   const colors = useThemeColors();
@@ -31,17 +35,24 @@ export function NotificationBell({
         unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
       }
       style={({ pressed }) => [
-        plain ? styles.plain : styles.button,
+        circle ? styles.circle : plain ? styles.plain : styles.button,
         pressed && styles.pressed,
       ]}
     >
-      <FontAwesome
-        name="bell"
-        size={plain ? 20 : 20}
-        color={plain ? colors.text : colors.brand}
+      <HugeiconsIcon
+        icon={Notification01Icon}
+        size={circle || plain ? 20 : 20}
+        color={circle || plain ? colors.text : colors.brand}
+        strokeWidth={1.8}
       />
       {unread > 0 ? (
-        <View style={[styles.badge, plain && styles.badgePlain]}>
+        <View
+          style={[
+            styles.badge,
+            plain && styles.badgePlain,
+            circle && styles.badgeCircle,
+          ]}
+        >
           <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
         </View>
       ) : null}
@@ -67,6 +78,15 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    circle: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surface,
+      borderWidth: 0,
+    },
     pressed: { opacity: 0.7 },
     badge: {
       position: 'absolute',
@@ -85,6 +105,13 @@ function createStyles(colors: ThemeColors) {
     badgePlain: {
       top: 2,
       right: 2,
+      minWidth: 18,
+      height: 18,
+      borderWidth: 0,
+    },
+    badgeCircle: {
+      top: -2,
+      right: -2,
       minWidth: 18,
       height: 18,
       borderWidth: 0,

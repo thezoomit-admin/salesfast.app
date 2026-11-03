@@ -58,6 +58,7 @@ import {
   updateLead,
   updateLeadPriority,
 } from '@/features/leads/leadsApi';
+import { patchLeadInLists } from '@/features/leads/leadDetailCache';
 import { iconForStageName } from '@/features/leads/leadPipeline';
 import {
   PRIORITIES,
@@ -473,17 +474,32 @@ export function AddNoteSheet({
       ),
     onMutate: (next) => {
       const prev = rating;
+      const prevLists = queryClient
+        .getQueriesData({ queryKey: ['my-leads'] })
+        .concat(queryClient.getQueriesData({ queryKey: ['follow-up-leads'] }));
       setRating(next);
       setPriorityOpen(false);
-      return { prev };
+      patchLeadInLists(queryClient, lead.id, { priority: next });
+      return { prev, prevLists };
     },
     onSuccess: (updated) => {
       versionRef.current = updated?.version ?? versionRef.current;
       queryClient.setQueryData(['lead', lead.id], updated);
+      if (updated) {
+        patchLeadInLists(queryClient, lead.id, {
+          priority: updated.priority ?? null,
+          updatedAt: updated.updatedAt,
+        });
+      }
       onSaved?.();
     },
     onError: (_e, _n, ctx) => {
       if (ctx?.prev !== undefined) setRating(ctx.prev);
+      if (ctx?.prevLists) {
+        for (const [key, data] of ctx.prevLists) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       Alert.alert('Could not update priority');
     },
   });

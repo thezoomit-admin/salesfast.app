@@ -29,7 +29,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/images/salesfast-app-logo.png',
   scheme: 'salesfast',
-  userInterfaceStyle: 'automatic',
+  userInterfaceStyle: 'light',
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.salesfastcrm',

@@ -8,6 +8,7 @@ export {
 export { ThemeProvider, useTheme, useThemeColors } from './ThemeContext';
 export { radii, spacing } from './spacing';
 export {
+  DEFAULT_THEME_MODE,
   THEME_MODE_LABELS,
   type ThemeMode,
 } from './themePreference';

@@ -26,6 +26,15 @@ export const AddTeam02Icon: IconSvgElement = [
   ['path', { d: 'M18 14V20M15 17H21', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '3' }],
 ];
 
+/** Tab / sidebar — Leads (admin PermanentJobIcon). */
+export const PermanentJobIcon: IconSvgElement = [
+  ['path', { d: 'M6.5 9H5.5M10.5 9H9.5M6.5 6H5.5M10.5 6H9.5', stroke: 'currentColor', strokeLinecap: 'round', strokeWidth: '1.5', key: '0' }],
+  ['path', { d: 'M18.5 15H17.5M18.5 11H17.5', stroke: 'currentColor', strokeLinecap: 'round', strokeWidth: '1.5', key: '1' }],
+  ['path', { d: 'M14 8V22H18C19.8856 22 20.8284 22 21.4142 21.4142C22 20.8284 22 19.8856 22 18V12C22 10.1144 22 9.17157 21.4142 8.58579C20.8284 8 19.8856 8 18 8H14ZM14 8C14 5.17157 14 3.75736 13.1213 2.87868C12.2426 2 10.8284 2 8 2C5.17157 2 3.75736 2 2.87868 2.87868C2 3.75736 2 5.17157 2 8V10', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '2' }],
+  ['path', { d: 'M8.02485 13.9545C8.02485 15.0583 7.12945 15.953 6.02491 15.953C4.92038 15.953 4.02497 15.0583 4.02497 13.9545C4.02497 12.8508 4.92038 11.9561 6.02491 11.9561C7.12945 11.9561 8.02485 12.8508 8.02485 13.9545Z', stroke: 'currentColor', strokeLinecap: 'round', strokeWidth: '1.5', key: '3' }],
+  ['path', { d: 'M2.06982 20.2101C3.12817 18.582 4.80886 17.9718 6.02491 17.973C7.24097 17.9743 8.8724 18.582 9.93075 20.2101C9.99917 20.3154 10.018 20.445 9.95628 20.5544C9.70877 20.993 8.94028 21.8633 8.38522 21.9223C7.74746 21.9901 6.07914 21.9996 6.0262 21.9999C5.97322 21.9996 4.2534 21.9901 3.61535 21.9223C3.06029 21.8633 2.2918 20.993 2.04429 20.5544C1.98254 20.445 2.00139 20.3154 2.06982 20.2101Z', stroke: 'currentColor', strokeLinecap: 'round', strokeWidth: '1.5', key: '4' }],
+];
+
 /** Tab — Follow-ups. */
 export const Calendar03Icon: IconSvgElement = [
   ['path', { d: 'M16 2V6M8 2V6', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
@@ -170,4 +179,42 @@ export const ArrowLeft01Icon: IconSvgElement = [
 
 export const ArrowRight01Icon: IconSvgElement = [
   ['path', { d: "M9.00005 6C9.00005 6 15 10.4189 15 12C15 13.5812 9 18 9 18", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "1.5", key: '0' }],
+];
+
+export const ArrowDown01Icon: IconSvgElement = [
+  ['path', { d: 'M18 9.00005C18 9.00005 13.5811 15 12 15C10.4188 15 6 9 6 9', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+];
+
+/** Header bell — Hisab / admin Notification01 outline. */
+export const Notification01Icon: IconSvgElement = [
+  ['path', { d: 'M15.5 18C15.5 19.933 13.933 21.5 12 21.5C10.067 21.5 8.5 19.933 8.5 18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+  ['path', { d: 'M19.2311 18H4.76887C3.79195 18 3 17.208 3 16.2311C3 15.762 3.18636 15.3121 3.51809 14.9803L4.12132 14.3771C4.68393 13.8145 5 13.0514 5 12.2558V9.5C5 5.63401 8.13401 2.5 12 2.5C15.866 2.5 19 5.634 19 9.5V12.2558C19 13.0514 19.3161 13.8145 19.8787 14.3771L20.4819 14.9803C20.8136 15.3121 21 15.762 21 16.2311C21 17.208 20.208 18 19.2311 18Z', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
+];
+
+/** Header / activities — chat bubble. */
+export const Message01Icon: IconSvgElement = [
+  ['path', { d: 'M8.5 14.5H15.5M8.5 9.5H12', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+  ['path', { d: 'M14.1706 20.8905C18.3536 20.6125 21.6856 17.2332 21.9598 12.9909C22.0134 12.1607 22.0134 11.3009 21.9598 10.4707C21.6856 6.22838 18.3536 2.84913 14.1706 2.57107C12.7435 2.47621 11.2536 2.47641 9.8294 2.57107C5.64639 2.84913 2.31441 6.22838 2.04024 10.4707C1.98659 11.3009 1.98659 12.1607 2.04024 12.9909C2.1401 14.536 2.82343 15.9666 3.62791 17.1746C4.09501 18.0203 3.78674 19.0758 3.30021 19.9978C2.94941 20.6626 2.77401 20.995 2.91484 21.2351C3.05568 21.4752 3.37026 21.4829 3.99943 21.4982C5.24367 21.5285 6.08268 21.1757 6.74868 20.6846C7.1264 20.4061 7.31527 20.2668 7.44544 20.2508C7.5756 20.2348 7.83177 20.3403 8.34401 20.5513C8.8044 20.7409 9.33896 20.8579 9.8294 20.8905C11.2536 20.9852 12.7435 20.9854 14.1706 20.8905Z', stroke: 'currentColor', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
+];
+
+/** Home live queue — overdue urgency. */
+export const ClockAlertIcon: IconSvgElement = [
+  ['path', { d: 'M21.9 10C20.9734 5.43552 16.9379 2 12.1 2C6.57717 2 2.10002 6.47715 2.10002 12C2.10002 17.5228 6.57717 22 12.1 22C13.1452 22 14.153 21.8396 15.1 21.5422', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+  ['path', { d: 'M12.1 8V12L14.1 14', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
+  ['path', { d: 'M20.1 18V14', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '2' }],
+  ['path', { d: 'M20.225 21.75H20.1M20.35 21.75C20.35 21.8881 20.2381 22 20.1 22C19.962 22 19.85 21.8881 19.85 21.75C19.85 21.6119 19.962 21.5 20.1 21.5C20.2381 21.5 20.35 21.6119 20.35 21.75Z', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '3' }],
+];
+
+/** Timeline add / overflow / bookmark. */
+export const Add01Icon: IconSvgElement = [
+  ['path', { d: 'M12.001 5.00003V19.002', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+  ['path', { d: 'M19.002 12.002L4.99998 12.002', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
+];
+
+export const MoreVerticalIcon: IconSvgElement = [
+  ['path', { d: 'M11.9967 12.5V12M11.9967 6.5V6M11.9967 18.5V18M12.9967 12.5C12.9967 11.9477 12.549 11.5 11.9967 11.5C11.4444 11.5 10.9967 11.9477 10.9967 12.5C10.9967 13.0523 11.4444 13.5 11.9967 13.5C12.549 13.5 12.9967 13.0523 12.9967 12.5ZM12.9967 6.5C12.9967 5.94772 12.549 5.5 11.9967 5.5C11.4444 5.5 10.9967 5.94772 10.9967 6.5C10.9967 7.05228 11.4444 7.5 11.9967 7.5C12.549 7.5 12.9967 7.05228 12.9967 6.5ZM12.9967 18.5C12.9967 17.9477 12.549 17.5 11.9967 17.5C11.4444 17.5 10.9967 17.9477 10.9967 18.5C10.9967 19.0523 11.4444 19.5 11.9967 19.5C12.549 19.5 12.9967 19.0523 12.9967 18.5Z', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+];
+
+export const Bookmark02Icon: IconSvgElement = [
+  ['path', { d: 'M4 17.9808V9.70753C4 6.07416 4 4.25748 5.17157 3.12874C6.34315 2 8.22876 2 12 2C15.7712 2 17.6569 2 18.8284 3.12874C20 4.25748 20 6.07416 20 9.70753V17.9808C20 20.2867 20 21.4396 19.2272 21.8523C17.7305 22.6514 14.9232 19.9852 13.59 19.1824C12.8168 18.7168 12.4302 18.484 12 18.484C11.5698 18.484 11.1832 18.7168 10.41 19.1824C9.0768 19.9852 6.26947 22.6514 4.77285 21.8523C4 21.4396 4 20.2867 4 17.9808Z', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
 ];

@@ -69,6 +69,64 @@ function isNewer(a: string | undefined, b: string | undefined) {
   return Date.parse(a) > Date.parse(b);
 }
 
+function mapListData(
+  data: unknown,
+  mapRow: (row: LeadListItem) => LeadListItem
+): unknown {
+  if (!data || typeof data !== 'object') return data;
+
+  const infinite = data as Partial<InfiniteData<ListPage>>;
+  if (Array.isArray(infinite.pages)) {
+    let changed = false;
+    const pages = infinite.pages.map((page) => {
+      if (!page?.items) return page;
+      let pageChanged = false;
+      const items = page.items.map((row) => {
+        const next = mapRow(row);
+        if (next !== row) pageChanged = true;
+        return next;
+      });
+      if (!pageChanged) return page;
+      changed = true;
+      return { ...page, items };
+    });
+    return changed ? { ...infinite, pages } : data;
+  }
+
+  const list = data as Partial<ListPage>;
+  if (Array.isArray(list.items)) {
+    let changed = false;
+    const items = list.items.map((row) => {
+      const next = mapRow(row);
+      if (next !== row) changed = true;
+      return next;
+    });
+    return changed ? { ...list, items } : data;
+  }
+
+  return data;
+}
+
+/**
+ * Patch a lead row across every loaded list cache (Leads + Follow-ups).
+ * Used so detail edits (e.g. priority) show immediately when navigating back
+ * without waiting for a full list refetch.
+ */
+export function patchLeadInLists(
+  client: QueryClient,
+  leadId: number,
+  patch: Partial<LeadListItem>
+) {
+  for (const root of LIST_ROOTS) {
+    for (const [key, data] of client.getQueriesData({ queryKey: [root] })) {
+      const next = mapListData(data, (row) =>
+        row.id === leadId ? { ...row, ...patch } : row
+      );
+      if (next !== data) client.setQueryData(key, next);
+    }
+  }
+}
+
 /**
  * A list refresh can reveal that a lead changed (e.g. another employee moved
  * it) after its detail was cached, or that a lead cached as "not found" is
