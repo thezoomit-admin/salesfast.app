@@ -428,7 +428,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       flex: 1,
     },
     backdropFill: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: 'rgba(17, 24, 39, 0.45)',
     },
     backdropHit: {
