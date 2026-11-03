@@ -65,6 +65,11 @@ export function iconForStageName(name: string): IconSvgElement {
   return HandshakeIcon;
 }
 
+function isOutlineHiddenStatus(s: PipelineStatus) {
+  // Draft is internal — never shown on the lead-detail pipeline outline.
+  return /^draft$/i.test(String(s.name ?? '').trim());
+}
+
 /** Same pipeline grouping as web LeadDetailPage. */
 export function buildPipelineSteps(
   statuses: PipelineStatus[]
@@ -72,6 +77,7 @@ export function buildPipelineSteps(
   const linear: PipelineStatus[] = [];
   const terminals: PipelineStatus[] = [];
   for (const s of statuses) {
+    if (isOutlineHiddenStatus(s)) continue;
     if (isWonStatus(s) || isLostStatus(s)) terminals.push(s);
     else linear.push(s);
   }
