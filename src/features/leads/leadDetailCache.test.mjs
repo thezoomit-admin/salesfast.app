@@ -245,30 +245,41 @@ describe('detailOrNull (404 → null)', () => {
 
 describe('account switch with a request in flight', () => {
   // useAccountQueryCache: switch → resetQueries(), sign-out → clear().
-  for (const [label, swap] of [
-    ['switch (resetQueries)', (c) => c.resetQueries()],
-    ['sign-out (clear)', (c) => c.clear()],
+  for (const [label, swap, refetches] of [
+    ['switch (resetQueries)', (c) => c.resetQueries(), true],
+    ['sign-out (clear)', (c) => c.clear(), false],
   ]) {
     it(`${label}: the late response of account A is dropped and its request aborted`, async () => {
       const c = newClient();
-      const response = deferred();
-      let signal;
+      const attempts = [];
       const observer = new QueryObserver(c, {
         queryKey: leadDetailKey(21),
-        queryFn: ({ signal: s }) => {
-          signal = s;
+        queryFn: ({ signal }) => {
+          const response = deferred();
+          attempts.push({ response, signal });
           return response.promise;
         },
       });
       const unsubscribe = observer.subscribe(() => {});
       await new Promise((r) => setTimeout(r, 0));
-      await swap(c);
-      assert.equal(signal.aborted, true);
-      response.resolve(detail(21, '2026-11-01T10:00:00Z', { owner: 'A' }));
-      await response.promise;
+      const swapped = swap(c);
+      const [a] = attempts;
+      assert.equal(a.signal.aborted, true);
+
+      a.response.resolve(detail(21, '2026-11-01T10:00:00Z', { owner: 'A' }));
       await new Promise((r) => setTimeout(r, 0));
-      const data = c.getQueryData(leadDetailKey(21));
-      assert.notEqual(data?.owner, 'A');
+      assert.notEqual(c.getQueryData(leadDetailKey(21))?.owner, 'A');
+
+      if (refetches) {
+        // Mounted screens refetch for the new account.
+        assert.equal(attempts.length, 2);
+        attempts[1].response.resolve(detail(21, '2026-11-01T10:00:00Z', { owner: 'B' }));
+        await swapped;
+        assert.equal(c.getQueryData(leadDetailKey(21)).owner, 'B');
+      } else {
+        assert.equal(attempts.length, 1);
+        assert.equal(c.getQueryData(leadDetailKey(21)), undefined);
+      }
       unsubscribe();
     });
   }

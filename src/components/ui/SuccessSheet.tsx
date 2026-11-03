@@ -20,6 +20,8 @@ const OPEN_MS = 420;
 const CLOSE_MS = 320;
 const DISMISS_DISTANCE = 90;
 const DISMISS_VELOCITY = 0.85;
+const CONFETTI_BURST_MS = 1600;
+const CONFETTI_PAUSE_MS = 1100;
 /** Soft ease — slow settle, no overshoot. */
 const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
 const EASE_SOFT = Easing.bezier(0.33, 0, 0.2, 1);
@@ -51,7 +53,6 @@ export function SuccessSheet({
   const backdropOp = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0.72)).current;
   const checkOpacity = useRef(new Animated.Value(0)).current;
-  const confettiOp = useRef(new Animated.Value(0)).current;
   const ringScale = useRef(new Animated.Value(0.94)).current;
   const contentOp = useRef(new Animated.Value(0)).current;
   const contentY = useRef(new Animated.Value(12)).current;
@@ -60,11 +61,11 @@ export function SuccessSheet({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const [mounted, setMounted] = useState(false);
+  const [confettiCycle, setConfettiCycle] = useState(0);
 
   const resetHero = () => {
     checkScale.setValue(0.72);
     checkOpacity.setValue(0);
-    confettiOp.setValue(0);
     ringScale.setValue(0.94);
     contentOp.setValue(0);
     contentY.setValue(12);
@@ -102,12 +103,6 @@ export function SuccessSheet({
         easing: EASE_SOFT,
         useNativeDriver: true,
       }),
-      Animated.timing(confettiOp, {
-        toValue: 0,
-        duration: 200,
-        easing: EASE_SOFT,
-        useNativeDriver: true,
-      }),
       Animated.timing(contentOp, {
         toValue: 0,
         duration: 180,
@@ -115,8 +110,10 @@ export function SuccessSheet({
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
-      if (finished) finishClose(notify);
-      else closingRef.current = false;
+      if (finished) {
+        setConfettiCycle(0);
+        finishClose(notify);
+      } else closingRef.current = false;
     });
   };
 
@@ -130,6 +127,7 @@ export function SuccessSheet({
       translateY.setValue(SHEET_OFFSCREEN);
       backdropOp.setValue(0);
       resetHero();
+      setConfettiCycle(0);
       const frame = requestAnimationFrame(() => {
         Animated.parallel([
           Animated.timing(backdropOp, {
@@ -165,15 +163,6 @@ export function SuccessSheet({
                 easing: EASE_OUT,
                 useNativeDriver: true,
               }),
-              Animated.sequence([
-                Animated.delay(120),
-                Animated.timing(confettiOp, {
-                  toValue: 1,
-                  duration: 780,
-                  easing: EASE_OUT,
-                  useNativeDriver: true,
-                }),
-              ]),
             ]),
           ]),
           Animated.sequence([
@@ -201,6 +190,19 @@ export function SuccessSheet({
     runClose(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // ZoomX-style loop: burst → fade → pause → repeat while sheet is open.
+  useEffect(() => {
+    if (!open || !mounted) return;
+    const start = setTimeout(() => setConfettiCycle(1), 220);
+    const id = setInterval(() => {
+      setConfettiCycle((c) => c + 1);
+    }, CONFETTI_BURST_MS + CONFETTI_PAUSE_MS);
+    return () => {
+      clearTimeout(start);
+      clearInterval(id);
+    };
+  }, [open, mounted]);
 
   const panResponder = useMemo(
     () =>
@@ -273,7 +275,9 @@ export function SuccessSheet({
           </View>
 
           <View style={styles.hero}>
-            <ConfettiBurst progress={confettiOp} />
+            {confettiCycle > 0 ? (
+              <ConfettiBurst key={confettiCycle} />
+            ) : null}
             <Animated.View
               style={[
                 styles.ringOuter,
@@ -327,8 +331,22 @@ export function SuccessSheet({
   );
 }
 
-/** Color bits fly out from the check center. */
-function ConfettiBurst({ progress }: { progress: Animated.Value }) {
+/** Color bits fly out from the check center, then vanish (parent remounts to loop). */
+function ConfettiBurst() {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    progress.setValue(0);
+    const anim = Animated.timing(progress, {
+      toValue: 1,
+      duration: CONFETTI_BURST_MS,
+      easing: EASE_OUT,
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [progress]);
+
   // Final offsets from hero center (80, 70).
   const bits: {
     dx: number;
@@ -339,46 +357,47 @@ function ConfettiBurst({ progress }: { progress: Animated.Value }) {
     r: number;
     rot: string;
   }[] = [
-    { dx: -46, dy: -52, color: '#F97316', w: 7, h: 7, r: 2, rot: '25deg' },
-    { dx: -18, dy: -48, color: '#A78BFA', w: 6, h: 10, r: 3, rot: '-20deg' },
-    { dx: 22, dy: -58, color: '#60A5FA', w: 8, h: 4, r: 2, rot: '40deg' },
-    { dx: 48, dy: -42, color: '#F43F5E', w: 6, h: 6, r: 3, rot: '10deg' },
-    { dx: -58, dy: -8, color: '#34D399', w: 5, h: 9, r: 2, rot: '-35deg' },
-    { dx: 58, dy: 2, color: '#FBBF24', w: 7, h: 5, r: 2, rot: '15deg' },
-    { dx: -28, dy: 28, color: '#818CF8', w: 5, h: 5, r: 2.5, rot: '0deg' },
-    { dx: 30, dy: 26, color: '#FB923C', w: 8, h: 3, r: 2, rot: '-10deg' },
-    { dx: -8, dy: -62, color: '#C084FC', w: 5, h: 5, r: 2.5, rot: '18deg' },
-    { dx: 10, dy: 38, color: '#2DD4BF', w: 6, h: 4, r: 2, rot: '-12deg' },
+    { dx: -58, dy: -64, color: '#F97316', w: 11, h: 11, r: 3, rot: '25deg' },
+    { dx: -24, dy: -60, color: '#A78BFA', w: 9, h: 14, r: 4, rot: '-20deg' },
+    { dx: 28, dy: -72, color: '#60A5FA', w: 12, h: 6, r: 3, rot: '40deg' },
+    { dx: 60, dy: -52, color: '#F43F5E', w: 10, h: 10, r: 4, rot: '10deg' },
+    { dx: -72, dy: -10, color: '#34D399', w: 8, h: 13, r: 3, rot: '-35deg' },
+    { dx: 72, dy: 4, color: '#FBBF24', w: 11, h: 7, r: 3, rot: '15deg' },
+    { dx: -36, dy: 36, color: '#818CF8', w: 9, h: 9, r: 4, rot: '0deg' },
+    { dx: 38, dy: 34, color: '#FB923C', w: 12, h: 5, r: 3, rot: '-10deg' },
+    { dx: -10, dy: -78, color: '#C084FC', w: 8, h: 8, r: 4, rot: '18deg' },
+    { dx: 14, dy: 48, color: '#2DD4BF', w: 10, h: 6, r: 3, rot: '-12deg' },
   ];
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       {bits.map((b, i) => {
-        const delayPad = i * 0.04;
+        // Keep all keys in [0, 1] and strictly non-decreasing.
+        const delayPad = Math.min(i * 0.03, 0.24);
+        const mid = Math.min(0.18 + delayPad, 0.42);
+        const appear = Math.min(0.08 + delayPad, 0.22);
+        const hold = Math.min(0.42 + delayPad * 0.5, 0.58);
+        const fade = Math.min(0.7 + delayPad * 0.3, 0.88);
+        const scalePeak = Math.min(0.2 + delayPad, 0.36);
+
         const tx = progress.interpolate({
-          inputRange: [0, Math.min(0.15 + delayPad, 0.9), 1],
-          outputRange: [0, b.dx * 0.4, b.dx * 1.35],
+          inputRange: [0, mid, 1],
+          outputRange: [0, b.dx * 0.4, b.dx * 1.45],
           extrapolate: 'clamp',
         });
         const ty = progress.interpolate({
-          inputRange: [0, Math.min(0.15 + delayPad, 0.9), 1],
-          outputRange: [0, b.dy * 0.4, b.dy * 1.35],
+          inputRange: [0, mid, 1],
+          outputRange: [0, b.dy * 0.4, b.dy * 1.45],
           extrapolate: 'clamp',
         });
         const op = progress.interpolate({
-          inputRange: [
-            0,
-            0.08 + delayPad,
-            0.45 + delayPad,
-            0.72 + delayPad,
-            1,
-          ],
+          inputRange: [0, appear, hold, fade, 1],
           outputRange: [0, 1, 1, 0.35, 0],
           extrapolate: 'clamp',
         });
         const sc = progress.interpolate({
-          inputRange: [0, 0.2 + delayPad, 0.7, 1],
-          outputRange: [0.2, 1.05, 1, 0.55],
+          inputRange: [0, scalePeak, 0.7, 1],
+          outputRange: [0.25, 1.2, 1.08, 0.6],
           extrapolate: 'clamp',
         });
 
