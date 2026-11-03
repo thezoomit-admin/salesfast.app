@@ -59,6 +59,8 @@ export type MobileRefreshResult = {
 export type LeadStatus = {
   id: number;
   name: string;
+  /** Stable automation key (DRAFT, ASSIGN, …). */
+  code?: string | null;
   color?: string | null;
   sortOrder?: number | null;
   isWonStage?: boolean;

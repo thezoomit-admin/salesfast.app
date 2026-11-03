@@ -3,6 +3,7 @@ import {
   keepPreviousData,
   useInfiniteQuery,
   useQuery,
+  useQueryClient,
 } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,7 +38,7 @@ import {
   type LeadListTab,
 } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
-import type { LeadListItem } from '@/types/api';
+import type { LeadListItem, LeadStatus } from '@/types/api';
 import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -49,6 +50,12 @@ function useDebounced<T>(value: T, delay = 350) {
   return debounced;
 }
 
+// Name fallback until every server sends `code`.
+const isDraftStatus = (s: LeadStatus) =>
+  s.code === 'DRAFT' || /^draft$/i.test(s.name.trim());
+const isAssignStatus = (s: LeadStatus) =>
+  s.code === 'ASSIGN' || /^assign(ed)?$/i.test(s.name.trim());
+
 function LeadsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -59,6 +66,7 @@ function LeadsScreen() {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<LeadListTab>('all');
   const debouncedSearch = useDebounced(search);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (params.focusSearch !== '1') return;
@@ -73,17 +81,52 @@ function LeadsScreen() {
     placeholderData: keepPreviousData,
   });
 
-  // Keep the current list on screen while a new search / filter loads.
+  // A new search keeps the tab's current rows on screen; a tab with nothing
+  // cached shows the skeleton, never another tab's leads.
   const leads = useInfiniteQuery({
     ...myLeadsQuery(debouncedSearch, tab),
-    placeholderData: keepPreviousData,
+    placeholderData: (prev, prevQuery) =>
+      prevQuery?.queryKey[1] === tab ? prev : undefined,
   });
 
   const items = useMemo(
     () => leads.data?.pages.flatMap((p) => p.items) ?? [],
     [leads.data]
   );
-  const statusTabs = Array.isArray(statuses.data) ? statuses.data : [];
+  // Draft never reaches an agent's list; Unread sits right after Assign.
+  const { assignTab, statusTabs } = useMemo(() => {
+    const list = (Array.isArray(statuses.data) ? statuses.data : []).filter(
+      (s) => !isDraftStatus(s)
+    );
+    const assign = list.find(isAssignStatus);
+    return { assignTab: assign, statusTabs: list.filter((s) => s !== assign) };
+  }, [statuses.data]);
+
+  // Warm every tab's first page once this one is in, so switching is instant.
+  // Fresh cache is skipped, so this costs nothing on later visits.
+  const listReady = Boolean(leads.data) && !leads.isPlaceholderData;
+  const tabIds = useMemo(
+    () =>
+      [assignTab, ...statusTabs]
+        .filter((s): s is LeadStatus => Boolean(s))
+        .map((s) => s.id)
+        .join(','),
+    [assignTab, statusTabs]
+  );
+  useEffect(() => {
+    if (!listReady || !tabIds) return;
+    const all: LeadListTab[] = ['all', 'unread', ...tabIds.split(',').map(Number)];
+    for (const t of all) {
+      void queryClient.prefetchInfiniteQuery(myLeadsQuery('', t));
+    }
+  }, [listReady, tabIds, queryClient]);
+
+  // Finger down on a tab starts its request ahead of the tap (covers search).
+  const prefetchTab = useCallback(
+    (t: LeadListTab) =>
+      void queryClient.prefetchInfiniteQuery(myLeadsQuery(debouncedSearch, t)),
+    [queryClient, debouncedSearch]
+  );
   const { openLead, prefetchLead } = useLeadRowHandlers(items);
   const { openPriority, openHistory, sheets } = useLeadCardSheets();
   const renderLead = useCallback(
@@ -125,6 +168,17 @@ function LeadsScreen() {
       lastScrollY.current = y;
     },
     [setFabShown]
+  );
+
+  const renderStatusTab = (status: LeadStatus) => (
+    <CountTab
+      key={status.id}
+      label={status.name}
+      count={counts.data ? (counts.data.byStatus[status.id] ?? 0) : undefined}
+      active={tab === status.id}
+      onPress={() => setTab(status.id)}
+      onPressIn={() => prefetchTab(status.id)}
+    />
   );
 
   const toggleSearch = () => {
@@ -191,23 +245,18 @@ function LeadsScreen() {
           count={counts.data?.all}
           active={tab === 'all'}
           onPress={() => setTab('all')}
+          onPressIn={() => prefetchTab('all')}
         />
+        <CountTabDivider />
+        {assignTab ? renderStatusTab(assignTab) : null}
         <CountTab
           label="Unread"
           count={counts.data?.unread}
           active={tab === 'unread'}
           onPress={() => setTab('unread')}
+          onPressIn={() => prefetchTab('unread')}
         />
-        {statusTabs.length > 0 ? <CountTabDivider /> : null}
-        {statusTabs.map((status) => (
-          <CountTab
-            key={status.id}
-            label={status.name}
-            count={counts.data ? (counts.data.byStatus[status.id] ?? 0) : undefined}
-            active={tab === status.id}
-            onPress={() => setTab(status.id)}
-          />
-        ))}
+        {statusTabs.map(renderStatusTab)}
       </ChipScroll>
 
       {!leads.data ? (
@@ -218,6 +267,8 @@ function LeadsScreen() {
         />
       ) : (
         <FlatList
+          // New tab starts at the top instead of the old tab's scroll offset.
+          key={String(tab)}
           data={items}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}

@@ -9,10 +9,17 @@ type Props = {
   count?: number;
   active?: boolean;
   onPress: () => void;
+  onPressIn?: () => void;
 };
 
 /** Text tab + count badge — "All (35)  Open (14)" filter row. */
-export function CountTab({ label, count, active = false, onPress }: Props) {
+export function CountTab({
+  label,
+  count,
+  active = false,
+  onPress,
+  onPressIn,
+}: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   return (
@@ -21,6 +28,7 @@ export function CountTab({ label, count, active = false, onPress }: Props) {
       accessibilityState={{ selected: active }}
       accessibilityLabel={count != null ? `${label}, ${count}` : label}
       onPress={onPress}
+      onPressIn={onPressIn}
       hitSlop={{ top: 8, bottom: 8 }}
       style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
     >
