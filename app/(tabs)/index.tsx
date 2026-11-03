@@ -1,14 +1,13 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { HomeDashboard } from '@/components/home/HomeDashboard';
 import { Message01Icon } from '@/components/icons/hugeicons';
-import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { Screen } from '@/components/ui/Screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
@@ -143,7 +142,7 @@ function HomeScreen() {
   );
 }
 
-export default withTabSwipe('index', HomeScreen);
+export default memo(HomeScreen);
 
 function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   useEffect(() => {

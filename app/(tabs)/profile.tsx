@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -14,7 +14,6 @@ import {
 
 import { Search02Icon } from '@/components/icons/hugeicons';
 import { getErrorMessage } from '@/api/client';
-import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { LogoutSheet } from '@/components/ui/LogoutSheet';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -611,7 +610,7 @@ function ProfileScreen() {
   );
 }
 
-export default withTabSwipe('profile', ProfileScreen);
+export default memo(ProfileScreen);
 
 function createStyles(more: MoreChrome) {
   return StyleSheet.create({

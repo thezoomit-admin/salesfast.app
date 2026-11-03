@@ -5,7 +5,7 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -19,7 +19,6 @@ import {
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
-import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { ChipScroll } from '@/components/ui/ChipScroll';
 import { FilterChip } from '@/components/ui/FilterChip';
 import {
@@ -212,7 +211,7 @@ function LeadsScreen() {
   );
 }
 
-export default withTabSwipe('leads', LeadsScreen);
+export default memo(LeadsScreen);
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({

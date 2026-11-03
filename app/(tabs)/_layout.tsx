@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Tabs } from 'expo-router';
+import { TopTabs } from 'expo-router/js-top-tabs';
+import { CommonActions } from 'expo-router/react-navigation';
 import { useEffect } from 'react';
 
-import { AppTabBar } from '@/components/navigation/AppTabBar';
+import { AppTabBar, TAB_ORDER } from '@/components/navigation/AppTabBar';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
   FOLLOW_UP_TABS,
@@ -11,10 +12,27 @@ import {
   myLeadsQuery,
   noteChannelsQuery,
 } from '@/features/leads/leadsApi';
-import { useThemeColors } from '@/theme';
+
+// Pages are declared left → right, so Home needs to be the anchor explicitly.
+export const unstable_settings = { anchor: 'index' };
+
+type TabNavigation = {
+  getState: () => { routes: { name: string }[] };
+  dispatch: (action: ReturnType<typeof CommonActions.preload>) => void;
+};
+
+/** Mount the pages either side of `name`, so a swipe never reveals a blank page. */
+function preloadNeighbours(navigation: TabNavigation, name: string) {
+  const index = TAB_ORDER.indexOf(name as (typeof TAB_ORDER)[number]);
+  const loaded = navigation.getState().routes;
+  for (const neighbour of [TAB_ORDER[index - 1], TAB_ORDER[index + 1]]) {
+    if (neighbour && !loaded.some((route) => route.name === neighbour)) {
+      navigation.dispatch(CommonActions.preload(neighbour));
+    }
+  }
+}
 
 export default function TabLayout() {
-  const colors = useThemeColors();
   // Shares the Home dashboard cache, so this adds no extra request.
   const dashboard = useQuery(dashboardQuery);
   const overdue = dashboard.data?.kpis.overdueFollowUps ?? 0;
@@ -33,30 +51,30 @@ export default function TabLayout() {
   }, [homeReady, queryClient]);
 
   return (
-    <Tabs
-      tabBar={(props) => <AppTabBar {...props} />}
+    <TopTabs
+      // Native pager (react-native-pager-view): pages track the finger 1:1.
+      tabBarPosition="bottom"
+      backBehavior="initialRoute"
+      tabBar={(props) => (
+        <AppTabBar {...props} badges={{ 'follow-ups': overdue }} />
+      )}
       screenOptions={{
-        headerShown: false,
-        // Prefetch warms data; keep every tab mounted so switches feel instant (Hisab).
-        lazy: false,
-        freezeOnBlur: true,
-        tabBarActiveTintColor: colors.brand,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarShowLabel: false,
+        swipeEnabled: true,
+        animationEnabled: true,
+        // Pages mount on first visit or when they become a swipe neighbour,
+        // then stay mounted.
+        lazy: true,
       }}
+      screenListeners={({ navigation, route }) => ({
+        focus: () => preloadNeighbours(navigation, route.name),
+      })}
     >
-      {/* Declaration order kept for Expo Router; visual order is AppTabBar TAB_ORDER. */}
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="leads" options={{ title: 'Leads' }} />
-      <Tabs.Screen
-        name="follow-ups"
-        options={{
-          title: 'Follow-ups',
-          tabBarBadge: overdue > 0 ? (overdue > 99 ? '99+' : overdue) : undefined,
-        }}
-      />
-      <Tabs.Screen name="calls" options={{ title: 'Calls' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-    </Tabs>
+      {/* Declaration order is the swipe order — keep it equal to TAB_ORDER. */}
+      <TopTabs.Screen name="leads" options={{ title: 'Leads' }} />
+      <TopTabs.Screen name="follow-ups" options={{ title: 'Follow-ups' }} />
+      <TopTabs.Screen name="index" options={{ title: 'Home' }} />
+      <TopTabs.Screen name="calls" options={{ title: 'Calls' }} />
+      <TopTabs.Screen name="profile" options={{ title: 'Profile' }} />
+    </TopTabs>
   );
 }

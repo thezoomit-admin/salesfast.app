@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
-import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
@@ -139,7 +138,7 @@ function FollowUpsScreen() {
   );
 }
 
-export default withTabSwipe('follow-ups', FollowUpsScreen);
+export default memo(FollowUpsScreen);
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({

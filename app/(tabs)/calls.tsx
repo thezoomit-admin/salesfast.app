@@ -3,11 +3,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
-import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { Button } from '@/components/ui/Button';
 import {
   HeaderIconButton,
@@ -390,7 +389,7 @@ function CallsScreen() {
   );
 }
 
-export default withTabSwipe('calls', CallsScreen);
+export default memo(CallsScreen);
 
 function CallRow({
   call,
