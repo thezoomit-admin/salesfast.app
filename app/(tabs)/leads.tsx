@@ -19,6 +19,7 @@ import {
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
+import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { ChipScroll } from '@/components/ui/ChipScroll';
 import { FilterChip } from '@/components/ui/FilterChip';
 import {
@@ -41,7 +42,7 @@ function useDebounced<T>(value: T, delay = 350) {
   return debounced;
 }
 
-export default function LeadsScreen() {
+function LeadsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
@@ -210,6 +211,8 @@ export default function LeadsScreen() {
     </View>
   );
 }
+
+export default withTabSwipe('leads', LeadsScreen);
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({

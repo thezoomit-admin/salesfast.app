@@ -4,12 +4,13 @@ import { useMemo, type ComponentProps } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
+  AccountSetting02Icon,
   Calendar03Icon,
   CallIcon,
   Home03Icon,
   PermanentJobIcon,
-  UserIcon,
 } from '@/components/icons/hugeicons';
+import { prepareTabEnter, TAB_ORDER } from '@/components/navigation/TabSwipe';
 import { typography, useTheme, type ThemeColors } from '@/theme';
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
@@ -19,7 +20,7 @@ const TAB_ICONS: Record<string, HugeIconData> = {
   'follow-ups': Calendar03Icon,
   index: Home03Icon,
   calls: CallIcon,
-  profile: UserIcon,
+  profile: AccountSetting02Icon,
 };
 
 const TAB_LABELS: Record<string, string> = {
@@ -29,9 +30,6 @@ const TAB_LABELS: Record<string, string> = {
   calls: 'Calls',
   profile: 'Profile',
 };
-
-/** Visual order — Home centered. */
-const TAB_ORDER = ['leads', 'follow-ups', 'index', 'calls', 'profile'] as const;
 
 export function AppTabBar({
   state,
@@ -73,6 +71,7 @@ export function AppTabBar({
               canPreventDefault: true,
             });
             if (!focused && !event.defaultPrevented) {
+              prepareTabEnter(state.routes[state.index].name, name);
               navigateToTab(route.key);
             }
           };

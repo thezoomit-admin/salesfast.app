@@ -14,6 +14,7 @@ import {
 
 import { Search02Icon } from '@/components/icons/hugeicons';
 import { getErrorMessage } from '@/api/client';
+import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { LogoutSheet } from '@/components/ui/LogoutSheet';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -188,7 +189,7 @@ function maskEmail(email: string) {
   return `${user[0]}${'*'.repeat(Math.min(user.length - 2, 4))}${user[user.length - 1]}${domain}`;
 }
 
-export default function ProfileScreen() {
+function ProfileScreen() {
   const {
     user,
     signOut,
@@ -609,6 +610,8 @@ export default function ProfileScreen() {
     </View>
   );
 }
+
+export default withTabSwipe('profile', ProfileScreen);
 
 function createStyles(more: MoreChrome) {
   return StyleSheet.create({

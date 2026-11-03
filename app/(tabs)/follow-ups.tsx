@@ -6,6 +6,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
+import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
@@ -41,7 +42,7 @@ const EMPTY_COPY: Record<
 
 const NO_LEADS: LeadListItem[] = [];
 
-export default function FollowUpsScreen() {
+function FollowUpsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
@@ -137,6 +138,8 @@ export default function FollowUpsScreen() {
     </View>
   );
 }
+
+export default withTabSwipe('follow-ups', FollowUpsScreen);
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({

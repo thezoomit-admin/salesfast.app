@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getErrorMessage } from '@/api/client';
 import { HomeDashboard } from '@/components/home/HomeDashboard';
 import { Message01Icon } from '@/components/icons/hugeicons';
+import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { Screen } from '@/components/ui/Screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
@@ -24,7 +25,7 @@ function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
 }
 
-export default function HomeScreen() {
+function HomeScreen() {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
   const pageWash = isDark ? colors.background : '#EEF1F4';
@@ -141,6 +142,8 @@ export default function HomeScreen() {
     </Screen>
   );
 }
+
+export default withTabSwipe('index', HomeScreen);
 
 function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   useEffect(() => {

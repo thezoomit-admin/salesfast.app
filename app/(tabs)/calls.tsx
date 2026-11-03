@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import { withTabSwipe } from '@/components/navigation/TabSwipe';
 import { Button } from '@/components/ui/Button';
 import {
   HeaderIconButton,
@@ -109,7 +110,7 @@ function formatDuration(sec: number) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-export default function CallsScreen() {
+function CallsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
@@ -388,6 +389,8 @@ export default function CallsScreen() {
     </View>
   );
 }
+
+export default withTabSwipe('calls', CallsScreen);
 
 function CallRow({
   call,
