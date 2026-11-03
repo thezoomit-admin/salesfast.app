@@ -1,7 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter, type Href } from 'expo-router';
-import { format } from 'date-fns/format';
 import type { ComponentProps, ReactNode } from 'react';
 import { useMemo } from 'react';
 import {
@@ -23,7 +22,7 @@ import {
 } from '@/components/icons/hugeicons';
 import { HomeLatestLeads } from '@/components/home/HomeLatestLeads';
 import { UpcomingFollowupsTimeline } from '@/components/home/UpcomingFollowupsTimeline';
-import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -36,8 +35,6 @@ type Props = {
   recentLeads: RecentLead[];
   queue: QueueItem[];
   firstName: string;
-  showCallSyncSetup?: boolean;
-  onSetupCallSync?: () => void;
 };
 
 type KpiSlide = {
@@ -117,8 +114,6 @@ export function HomeDashboard({
   recentLeads,
   queue,
   firstName,
-  showCallSyncSetup = false,
-  onSetupCallSync,
 }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
@@ -142,7 +137,6 @@ export function HomeDashboard({
           (kpis.todayFollowUps / Math.max(focusTotal, 1)) * 100
         );
 
-  const todayLabel = format(new Date(), 'EEEE, d MMM yyyy');
   const greeting = `${greetingForHour(new Date().getHours())}, ${firstName}`;
 
   const kpiSlides: KpiSlide[] = [
@@ -203,49 +197,7 @@ export function HomeDashboard({
 
   return (
     <View style={styles.root}>
-      {/* Welcome card — soft white panel on wash bg */}
-      <View style={styles.welcomeCard}>
-        <View style={styles.greetingBlock}>
-          <Text style={styles.greeting}>{greeting}</Text>
-          <Text style={styles.dateLine}>{todayLabel}</Text>
-        </View>
-
-        {showCallSyncSetup ? (
-          <Pressable
-            onPress={onSetupCallSync}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.syncWarn,
-              pressed && styles.pressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Set up call sync"
-          >
-            <Ionicons
-              name="cloud-offline-outline"
-              size={14}
-              color={colors.warning}
-            />
-            <Text style={styles.syncWarnText}>Set up call sync</Text>
-            <HugeiconsIcon
-              icon={ArrowRight01Icon}
-              size={14}
-              color={colors.warning}
-              strokeWidth={2}
-            />
-          </Pressable>
-        ) : null}
-
-        <Pressable
-          onPress={() => go('/(tabs)/follow-ups')}
-          style={({ pressed }) => [styles.ctaBtn, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Open follow-ups"
-        >
-          <Ionicons name="people-outline" size={16} color={colors.white} />
-          <Text style={styles.ctaText}>Open follow-ups</Text>
-        </Pressable>
-      </View>
+      <Text style={styles.greeting}>{greeting}</Text>
 
       {/* KPI slider — bleeds to screen edges (cancels Screen content padding) */}
       <ScrollView
@@ -645,14 +597,6 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
     root: { gap: 14 },
     pressed: { opacity: 0.88 },
 
-    welcomeCard: {
-      ...card,
-      paddingHorizontal: 16,
-      paddingTop: 16,
-      paddingBottom: 16,
-      gap: 14,
-    },
-    greetingBlock: { gap: 4 },
     greeting: {
       ...typography.title,
       fontSize: 22,
@@ -660,44 +604,7 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
       fontWeight: '700',
       color: colors.text,
       letterSpacing: -0.4,
-    },
-    dateLine: {
-      ...typography.caption,
-      fontSize: 13,
-      color: colors.textMuted,
-    },
-    syncWarn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      gap: 6,
-      backgroundColor: colors.warningSoft,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      borderRadius: radii.pill,
-    },
-    syncWarnText: {
-      ...typography.caption,
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.warning,
-    },
-
-    ctaBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: colors.brand,
-      borderRadius: radii.pill,
-      paddingVertical: 14,
-      paddingHorizontal: 18,
-    },
-    ctaText: {
-      ...typography.subtitle,
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.white,
+      paddingHorizontal: 2,
     },
 
     kpiSlider: {

@@ -46,8 +46,6 @@ export default function HomeScreen() {
 
   const displayName = user?.name?.trim() || 'Agent';
   const firstName = displayName.split(/\s+/)[0] || 'Agent';
-  const syncOk =
-    callSync.status === 'configured' || callSync.status === 'unavailable_web';
 
   const homeHeader = (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -139,8 +137,6 @@ export default function HomeScreen() {
         recentLeads={data.recentLeads ?? []}
         queue={queue}
         firstName={firstName}
-        showCallSyncSetup={!syncOk}
-        onSetupCallSync={() => router.navigate('/call-sync/setup')}
       />
     </Screen>
   );
