@@ -644,7 +644,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radii.lg,
-      backgroundColor: isDark ? colors.background : colors.surfaceMuted,
+      // White writing area over the gray toolbar.
+      backgroundColor: colors.surface,
       overflow: 'hidden',
     },
     noteInput: {
