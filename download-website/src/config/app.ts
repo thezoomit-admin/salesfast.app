@@ -55,8 +55,8 @@ export type AppReleaseConfig = {
 };
 
 /**
- * Static fallback. Currently no GitHub Release exists for this repository,
- * so `available` is false and download fields are empty.
+ * Static fallback when the GitHub Releases API is unreachable.
+ * Keep in sync with the latest published APK release.
  */
 export const appConfig: AppReleaseConfig = {
   appName: 'SalesFast CRM',
@@ -65,15 +65,20 @@ export const appConfig: AppReleaseConfig = {
   tagline: 'Field sales, organized.',
   description:
     'The official Android app for SalesFast CRM — manage leads, follow-ups, activities, and automatic call history from your phone.',
-  version: '',
-  versionCode: null,
-  apkDownloadUrl: '',
-  apkFileSize: '',
-  releaseDate: '',
+  version: '1.0.0-preview',
+  versionCode: 1,
+  apkDownloadUrl:
+    'https://github.com/thezoomit-admin/salesfast.app/releases/download/v1.0.0-preview/SalesFast-CRM-v1.0.0-preview.apk',
+  apkFileSize: '15.5 MB',
+  releaseDate: '2026-11-03',
   // Expo SDK 58 default minSdk (not overridden in app.config.ts).
   minAndroidVersion: 'Android 7.0 (API 24)',
-  releaseNotes: [],
-  available: false,
+  releaseNotes: [
+    'Preview APK rebuilt 2026-11-03 (local Gradle release)',
+    'Points at dev API: https://salesfastapi-dev.thezoomit.com/api',
+    'arm64-v8a only — for internal testing / staging',
+  ],
+  available: true,
   supportEmail: 'admin@thezoomit.com',
   websiteUrl: 'https://thezoomit.com',
   features: [
