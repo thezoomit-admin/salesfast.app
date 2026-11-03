@@ -1,11 +1,10 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -20,6 +19,7 @@ import { getErrorMessage } from '@/api/client';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { NotificationsSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { NotificationCard } from '@/features/notifications/NotificationCard';
 import {
   type AppNotification,
   fetchNotifications,
@@ -27,24 +27,7 @@ import {
   markNotificationRead,
   NOTIFICATIONS_KEY,
 } from '@/features/notifications/notificationsApi';
-import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
-import { formatRelative } from '@/utils/dates';
-
-type IconName = React.ComponentProps<typeof FontAwesome>['name'];
-
-const ICONS: Record<string, IconName> = {
-  LEAD_ASSIGNED: 'user-plus',
-  LEAD_ASSIGNMENT_ACTIVITY: 'exchange',
-  LEAD_REASSIGNED_AWAY: 'share',
-  LEAD_UNASSIGNED: 'exclamation-circle',
-  FOLLOW_UP_REMINDER: 'clock-o',
-  PROPOSAL_RESPONSE_REMINDER: 'file-text-o',
-  CONTRACT_EXPIRY: 'calendar-times-o',
-  WEBSITE_LEAD: 'globe',
-  FACEBOOK_LEAD: 'facebook',
-  FACEBOOK_CSV_IMPORT_LEAD: 'facebook',
-  WHATSAPP_LEAD: 'whatsapp',
-};
+import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 function routeFor(item: AppNotification): Href | null {
   const url = item.mobileUrl;
@@ -84,11 +67,21 @@ export default function NotificationsScreen() {
     onSettled: refreshAll,
   });
 
-  const onPressItem = (item: AppNotification) => {
-    if (!item.isRead) markOne.mutate(item._id);
-    const route = routeFor(item);
-    if (route) router.push(route);
-  };
+  const onPressItem = useCallback(
+    (item: AppNotification) => {
+      if (!item.isRead) markOne.mutate(item._id);
+      const route = routeFor(item);
+      if (route) router.push(route);
+    },
+    [markOne, router]
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: AppNotification }) => (
+      <NotificationCard item={item} onPress={onPressItem} />
+    ),
+    [onPressItem]
+  );
 
   const header = (
     <ScreenHeader
@@ -98,11 +91,16 @@ export default function NotificationsScreen() {
           <Pressable
             onPress={() => markAll.mutate()}
             disabled={markAll.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Mark all as read"
             hitSlop={8}
-            style={styles.headerActionBtn}
+            style={({ pressed }) => [
+              styles.markAllBtn,
+              pressed && styles.pressed,
+            ]}
           >
-            <Text style={styles.headerAction}>
-              {markAll.isPending ? 'Marking…' : 'Mark all'}
+            <Text style={styles.markAllText}>
+              {markAll.isPending ? 'Marking…' : 'Mark all read'}
             </Text>
           </Pressable>
         ) : null
@@ -128,9 +126,13 @@ export default function NotificationsScreen() {
       {header}
       <FlatList
         style={styles.list}
-        contentContainerStyle={items.length ? styles.content : styles.emptyContent}
+        contentContainerStyle={[
+          styles.content,
+          items.length === 0 && styles.emptyContent,
+        ]}
         data={items}
         keyExtractor={(item) => item._id}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={query.isRefetching && !query.isFetchingNextPage}
@@ -157,51 +159,11 @@ export default function NotificationsScreen() {
             <ActivityIndicator color={colors.brand} style={styles.footer} />
           ) : undefined
         }
-        renderItem={({ item }) => {
-          const type = item.metadata?.crmType ?? '';
-          const linked = !!routeFor(item);
-          return (
-            <Pressable
-              onPress={() => onPressItem(item)}
-              style={({ pressed }) => [
-                styles.row,
-                !item.isRead && styles.rowUnread,
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={[styles.icon, !item.isRead && styles.iconUnread]}>
-                <FontAwesome
-                  name={ICONS[type] ?? 'bell'}
-                  size={16}
-                  color={item.isRead ? colors.textSecondary : colors.brand}
-                />
-              </View>
-              <View style={styles.body}>
-                <View style={styles.titleRow}>
-                  <Text
-                    style={[styles.title, !item.isRead && styles.titleUnread]}
-                    numberOfLines={1}
-                  >
-                    {item.title}
-                  </Text>
-                  {!item.isRead ? <View style={styles.dot} /> : null}
-                </View>
-                <Text style={styles.message} numberOfLines={3}>
-                  {item.message}
-                </Text>
-                <Text style={styles.time}>{formatRelative(item.createdAt)}</Text>
-              </View>
-              {linked ? (
-                <FontAwesome
-                  name="angle-right"
-                  size={18}
-                  color={colors.textMuted}
-                  style={styles.chevron}
-                />
-              ) : null}
-            </Pressable>
-          );
-        }}
+        renderItem={renderItem}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews
       />
     </View>
   );
@@ -211,47 +173,23 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background },
     list: { flex: 1 },
-    content: { padding: spacing.lg, gap: spacing.sm },
+    content: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: 12,
+      paddingBottom: spacing.xl,
+    },
     emptyContent: { flexGrow: 1 },
     footer: { paddingVertical: spacing.lg },
-    headerActionBtn: {
+    markAllBtn: {
       minHeight: 40,
       justifyContent: 'center',
       paddingHorizontal: spacing.sm,
     },
-    headerAction: { ...typography.caption, color: colors.brand, fontWeight: '700' },
-    row: {
-      flexDirection: 'row',
-      gap: spacing.md,
-      padding: spacing.md,
-      borderRadius: radii.md,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
+    markAllText: {
+      ...typography.caption,
+      color: colors.brand,
+      fontWeight: '700',
     },
-    rowUnread: { backgroundColor: colors.brandSoft, borderColor: colors.brandSoft },
-    pressed: { opacity: 0.75 },
-    icon: {
-      width: 36,
-      height: 36,
-      borderRadius: radii.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surfaceMuted,
-    },
-    iconUnread: { backgroundColor: colors.surface },
-    body: { flex: 1, gap: 2 },
-    titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    title: { ...typography.subtitle, fontSize: 15, color: colors.text, flexShrink: 1 },
-    titleUnread: { fontWeight: '700' },
-    dot: {
-      width: 8,
-      height: 8,
-      borderRadius: radii.pill,
-      backgroundColor: colors.brand,
-    },
-    message: { ...typography.body, fontSize: 14, lineHeight: 20, color: colors.textSecondary },
-    time: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-    chevron: { alignSelf: 'center' },
+    pressed: { opacity: 0.7 },
   });
 }

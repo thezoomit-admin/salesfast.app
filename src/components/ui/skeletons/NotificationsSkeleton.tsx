@@ -5,7 +5,7 @@ import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 import { SkeletonBone, SkeletonPulse } from './primitives';
 
-/** Mirrors notification list rows. */
+/** Mirrors Hisab-style notification list rows. */
 export function NotificationsSkeleton({ rows = 6 }: { rows?: number }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -13,14 +13,15 @@ export function NotificationsSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <SkeletonPulse style={styles.root}>
       {Array.from({ length: rows }, (_, i) => (
-        <View key={i} style={styles.row}>
-          <SkeletonBone width={36} height={36} radius={radii.pill} />
+        <View key={i} style={styles.card}>
+          <SkeletonBone width={44} height={44} radius={radii.md} />
           <View style={styles.body}>
-            <SkeletonBone width="58%" height={14} />
+            <SkeletonBone width="68%" height={14} />
             <SkeletonBone width="92%" height={12} />
-            <SkeletonBone width="70%" height={12} />
-            <SkeletonBone width={72} height={10} style={styles.time} />
+            <SkeletonBone width="80%" height={12} />
+            <SkeletonBone width={120} height={10} style={styles.time} />
           </View>
+          <View style={styles.dotSpacer} />
         </View>
       ))}
     </SkeletonPulse>
@@ -30,19 +31,23 @@ export function NotificationsSkeleton({ rows = 6 }: { rows?: number }) {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
-      padding: spacing.lg,
-      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      paddingTop: 12,
     },
-    row: {
+    card: {
       flexDirection: 'row',
-      gap: spacing.md,
-      padding: spacing.md,
-      borderRadius: radii.md,
+      alignItems: 'flex-start',
       backgroundColor: colors.surface,
-      borderWidth: 1,
+      borderRadius: radii.md,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      marginBottom: 10,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
+      gap: spacing.md,
     },
-    body: { flex: 1, gap: 6 },
+    body: { flex: 1, gap: 6, paddingRight: spacing.sm },
     time: { marginTop: 2 },
+    dotSpacer: { width: 10 },
   });
 }
