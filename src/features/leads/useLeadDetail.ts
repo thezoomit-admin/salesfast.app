@@ -35,9 +35,12 @@ export function useLeadDetail(leadId: number) {
   useEffect(() => {
     if (!Number.isFinite(leadId)) return;
     void startLeadView(leadId)
-      .then(() =>
-        queryClient.invalidateQueries({ queryKey: ['lead-views', leadId] })
-      )
+      .then(() => {
+        void queryClient.invalidateQueries({ queryKey: ['lead-views', leadId] });
+        // The lead is no longer unread — refresh that tab and the badges.
+        void queryClient.invalidateQueries({ queryKey: ['my-leads', 'unread'] });
+        void queryClient.invalidateQueries({ queryKey: ['my-leads', 'counts'] });
+      })
       .catch(() => {
         // Best effort.
       });

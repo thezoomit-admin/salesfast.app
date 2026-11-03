@@ -23,6 +23,8 @@ export type LeadListParams = {
   followupOverdue?: boolean;
   followupFrom?: string;
   followupTo?: string;
+  /** false → Unread (nobody has opened the lead yet). */
+  viewed?: boolean;
 };
 
 export async function fetchMyLeads(params: LeadListParams = {}) {
@@ -40,6 +42,7 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
       followupOverdue: params.followupOverdue || undefined,
       followupFrom: params.followupFrom || undefined,
       followupTo: params.followupTo || undefined,
+      viewed: params.viewed ?? undefined,
     },
   });
   const payload = data.data;
@@ -242,18 +245,109 @@ export const leadViewsQuery = (leadId: number) =>
     enabled: Number.isFinite(leadId),
   });
 
-export const myLeadsQuery = (search: string, statusId?: number) =>
+/** Lead list tab — All, Unread, or one lead status id. */
+export type LeadListTab = 'all' | 'unread' | number;
+
+export const myLeadsQuery = (search: string, tab: LeadListTab = 'all') =>
   infiniteQueryOptions({
-    queryKey: ['my-leads', search, statusId],
+    // Tab before search so ['my-leads', 'unread'] matches every search.
+    queryKey: ['my-leads', tab, search],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
-      fetchMyLeads({ page: pageParam, search, leadStatusId: statusId }),
+      fetchMyLeads({
+        page: pageParam,
+        search,
+        leadStatusId: typeof tab === 'number' ? tab : undefined,
+        viewed: tab === 'unread' ? false : undefined,
+      }),
     getNextPageParam: (last) => {
       const current = last.meta.current_page ?? last.meta.page ?? 1;
       const lastPage = last.meta.last_page ?? last.meta.totalPages ?? current;
       return current < lastPage ? current + 1 : undefined;
     },
   });
+
+type StatusCounts = {
+  total: number;
+  byStatus: { leadStatusId: number | null; count: number }[];
+};
+
+async function fetchStatusCounts(params: Record<string, unknown>) {
+  const { data } = await api.get<ApiResponse<StatusCounts>>(
+    '/crm/leads/status-counts',
+    { params: { mine: true, ...params } }
+  );
+  return data.data;
+}
+
+export type LeadTabCounts = {
+  all: number;
+  unread: number;
+  byStatus: Record<number, number>;
+};
+
+/** Badge counts for the lead list tabs (same search as the list). */
+export const leadTabCountsQuery = (search: string) =>
+  queryOptions({
+    // Under 'my-leads' so every list invalidation refreshes the badges too.
+    queryKey: ['my-leads', 'counts', search],
+    queryFn: async (): Promise<LeadTabCounts> => {
+      const q = search || undefined;
+      const [all, unread] = await Promise.all([
+        fetchStatusCounts({ search: q }),
+        fetchStatusCounts({ search: q, viewed: false }),
+      ]);
+      const byStatus: Record<number, number> = {};
+      for (const row of all.byStatus) {
+        if (row.leadStatusId != null) byStatus[row.leadStatusId] = row.count;
+      }
+      return { all: all.total, unread: unread.total, byStatus };
+    },
+  });
+
+export async function fetchLeadSources() {
+  const { data } = await api.get<
+    ApiResponse<{ id: number; name: string }[] | { data: { id: number; name: string }[] }>
+  >('/crm/lead-sources', { params: { select: true } });
+  return asArray<{ id: number; name: string }>(data.data);
+}
+
+export const leadSourcesQuery = queryOptions({
+  queryKey: ['lead-sources'],
+  queryFn: fetchLeadSources,
+  staleTime: LOOKUP_STALE_MS,
+});
+
+/** Existing leads with this phone (duplicate warning before create). */
+export async function checkLeadPhone(phone: string) {
+  const { data } = await api.get<
+    ApiResponse<{ phone: string | null; matches: { id: number }[] }>
+  >('/crm/leads/check-phone', { params: { phone } });
+  return data.data?.matches ?? [];
+}
+
+export async function createLead(
+  payload: {
+    fullName: string;
+    phone: string;
+    leadSourceId: number;
+    email?: string | null;
+    inquiryNote?: string | null;
+  },
+  options: { idempotencyKey?: string } = {}
+) {
+  const { data } = await api.post<ApiResponse<LeadDetail>>(
+    '/crm/leads',
+    // Created from My Leads — the server assigns it to the requester.
+    { ...payload, assignToMe: true },
+    {
+      headers: options.idempotencyKey
+        ? { 'Idempotency-Key': options.idempotencyKey }
+        : undefined,
+    }
+  );
+  return data.data;
+}
 
 export type FollowUpTab = 'today' | 'overdue' | 'upcoming';
 export const FOLLOW_UP_TABS: FollowUpTab[] = ['today', 'overdue', 'upcoming'];

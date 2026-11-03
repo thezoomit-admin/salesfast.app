@@ -71,23 +71,22 @@ export function AppTabBar({
     state.routes.map((route) => [route.name, route])
   );
 
-  // Highlight runs on the UI thread off the pager's live `position`, snapping
-  // to a tab the moment its page is more than half on screen. Waiting for
-  // `state.index` lags: it updates after the pager settles and the whole
-  // navigator re-renders on the JS thread.
+  // Highlight runs on the UI thread off the pager's live `position`, so the
+  // colour crossfades with the finger. Waiting for `state.index` lags: it
+  // updates after the pager settles and the navigator re-renders on JS.
   const highlights = useMemo(
     () =>
       state.routes.map((_, i) => {
-        const inputRange = [i - 0.5, i - 0.499, i + 0.499, i + 0.5];
+        const inputRange = [i - 1, i, i + 1];
         return {
           on: position.interpolate({
             inputRange,
-            outputRange: [0, 1, 1, 0],
+            outputRange: [0, 1, 0],
             extrapolate: 'clamp',
           }),
           off: position.interpolate({
             inputRange,
-            outputRange: [1, 0, 0, 1],
+            outputRange: [1, 0, 1],
             extrapolate: 'clamp',
           }),
         };
@@ -95,22 +94,31 @@ export function AppTabBar({
     [position, state.routes]
   );
 
-  // A tapped tab lights up at once and holds while the pager scrolls past the
-  // pages in between, then hands back to the live highlight.
-  const [pressTarget, setPressTarget] = useState<number | null>(null);
+  // A tap crossfades straight from the old tab to the new one, so the pages
+  // the pager scrolls past don't light up; once it settles, the live
+  // highlight takes over.
+  const [press, setPress] = useState<{ from: number; to: number } | null>(null);
+  const [pressProgress] = useState(() => new Animated.Value(1));
+  const pressFade = useMemo(
+    () => ({
+      in: { on: pressProgress, off: Animated.subtract(1, pressProgress) },
+      out: { on: Animated.subtract(1, pressProgress), off: pressProgress },
+    }),
+    [pressProgress]
+  );
   const [seenIndex, setSeenIndex] = useState(state.index);
   if (seenIndex !== state.index) {
     setSeenIndex(state.index);
     // Swiped elsewhere, back button or redirect before the tap finished.
-    if (pressTarget !== null && state.index !== pressTarget) setPressTarget(null);
+    if (press !== null && state.index !== press.to) setPress(null);
   }
   useEffect(() => {
-    if (pressTarget === null) return;
+    if (press === null) return;
     const id = position.addListener(({ value }) => {
-      if (Math.round(value) === pressTarget) setPressTarget(null);
+      if (Math.abs(value - press.to) < 0.01) setPress(null);
     });
     return () => position.removeListener(id);
-  }, [position, pressTarget]);
+  }, [position, press]);
 
   return (
     <View style={styles.wrap} accessibilityRole="tablist">
@@ -126,11 +134,13 @@ export function AppTabBar({
           const icon = TAB_ICONS[name];
           const badge = badges?.[name] || undefined;
           const highlight =
-            pressTarget === null
+            press === null
               ? highlights[routeIndex]
-              : pressTarget === routeIndex
-                ? { on: 1, off: 0 }
-                : { on: 0, off: 1 };
+              : press.to === routeIndex
+                ? pressFade.in
+                : press.from === routeIndex
+                  ? pressFade.out
+                  : { on: 0, off: 1 };
 
           const onPress = () => {
             const event = emitter.emit({
@@ -139,7 +149,13 @@ export function AppTabBar({
               canPreventDefault: true,
             });
             if (!focused && !event.defaultPrevented) {
-              setPressTarget(routeIndex);
+              setPress({ from: state.index, to: routeIndex });
+              pressProgress.setValue(0);
+              Animated.timing(pressProgress, {
+                toValue: 1,
+                duration: 220,
+                useNativeDriver: true,
+              }).start();
               // Next frame, so the highlight paints before the navigator's
               // re-render occupies the JS thread.
               requestAnimationFrame(() => navigateToTab(route.key));

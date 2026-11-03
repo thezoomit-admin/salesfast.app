@@ -9,6 +9,7 @@ import {
   FOLLOW_UP_TABS,
   followUpLeadsQuery,
   leadStatusesQuery,
+  leadTabCountsQuery,
   myLeadsQuery,
   noteChannelsQuery,
 } from '@/features/leads/leadsApi';
@@ -42,7 +43,8 @@ export default function TabLayout() {
   const homeReady = !dashboard.isPending;
   useEffect(() => {
     if (!homeReady) return;
-    void queryClient.prefetchInfiniteQuery(myLeadsQuery('', undefined));
+    void queryClient.prefetchInfiniteQuery(myLeadsQuery(''));
+    void queryClient.prefetchQuery(leadTabCountsQuery(''));
     for (const tab of FOLLOW_UP_TABS) {
       void queryClient.prefetchQuery(followUpLeadsQuery(tab));
     }

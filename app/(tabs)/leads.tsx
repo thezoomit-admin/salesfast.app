@@ -8,7 +8,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   StyleSheet,
   TextInput,
@@ -20,14 +23,19 @@ import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
 import { ChipScroll } from '@/components/ui/ChipScroll';
-import { FilterChip } from '@/components/ui/FilterChip';
+import { CountTab, CountTabDivider } from '@/components/ui/CountTab';
 import {
   HeaderIconButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
-import { leadStatusesQuery, myLeadsQuery } from '@/features/leads/leadsApi';
+import {
+  leadStatusesQuery,
+  leadTabCountsQuery,
+  myLeadsQuery,
+  type LeadListTab,
+} from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
 import type { LeadListItem } from '@/types/api';
 import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
@@ -49,7 +57,7 @@ function LeadsScreen() {
   const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusId, setStatusId] = useState<number | undefined>();
+  const [tab, setTab] = useState<LeadListTab>('all');
   const debouncedSearch = useDebounced(search);
 
   useEffect(() => {
@@ -60,10 +68,14 @@ function LeadsScreen() {
   }, [params.focusSearch, router]);
 
   const statuses = useQuery(leadStatusesQuery);
+  const counts = useQuery({
+    ...leadTabCountsQuery(debouncedSearch),
+    placeholderData: keepPreviousData,
+  });
 
   // Keep the current list on screen while a new search / filter loads.
   const leads = useInfiniteQuery({
-    ...myLeadsQuery(debouncedSearch, statusId),
+    ...myLeadsQuery(debouncedSearch, tab),
     placeholderData: keepPreviousData,
   });
 
@@ -71,13 +83,7 @@ function LeadsScreen() {
     () => leads.data?.pages.flatMap((p) => p.items) ?? [],
     [leads.data]
   );
-  const filterChips = useMemo(
-    () => [
-      { id: 0, name: 'All' },
-      ...(Array.isArray(statuses.data) ? statuses.data : []),
-    ],
-    [statuses.data]
-  );
+  const statusTabs = Array.isArray(statuses.data) ? statuses.data : [];
   const { openLead, prefetchLead } = useLeadRowHandlers(items);
   const { openPriority, openHistory, sheets } = useLeadCardSheets();
   const renderLead = useCallback(
@@ -91,6 +97,34 @@ function LeadsScreen() {
       />
     ),
     [openLead, prefetchLead, openPriority, openHistory]
+  );
+
+  // Hisab FAB — hides while scrolling down, comes back on scroll up.
+  const [fabVisible] = useState(() => new Animated.Value(1));
+  const fabShown = useRef(true);
+  const lastScrollY = useRef(0);
+  const setFabShown = useCallback(
+    (show: boolean) => {
+      if (fabShown.current === show) return;
+      fabShown.current = show;
+      Animated.timing(fabVisible, {
+        toValue: show ? 1 : 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    },
+    [fabVisible]
+  );
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      const dy = y - lastScrollY.current;
+      if (y <= 12) setFabShown(true);
+      else if (dy > 4 && y > 24) setFabShown(false);
+      else if (dy < -4) setFabShown(true);
+      lastScrollY.current = y;
+    },
+    [setFabShown]
   );
 
   const toggleSearch = () => {
@@ -148,18 +182,32 @@ function LeadsScreen() {
         </View>
       ) : null}
 
-      <ChipScroll style={styles.chips}>
-        {filterChips.map((item) => {
-          const active = (item.id === 0 && !statusId) || item.id === statusId;
-          return (
-            <FilterChip
-              key={item.id}
-              label={item.name}
-              active={active}
-              onPress={() => setStatusId(item.id === 0 ? undefined : item.id)}
-            />
-          );
-        })}
+      <ChipScroll
+        style={styles.chips}
+        contentContainerStyle={styles.tabsContent}
+      >
+        <CountTab
+          label="All"
+          count={counts.data?.all}
+          active={tab === 'all'}
+          onPress={() => setTab('all')}
+        />
+        <CountTab
+          label="Unread"
+          count={counts.data?.unread}
+          active={tab === 'unread'}
+          onPress={() => setTab('unread')}
+        />
+        {statusTabs.length > 0 ? <CountTabDivider /> : null}
+        {statusTabs.map((status) => (
+          <CountTab
+            key={status.id}
+            label={status.name}
+            count={counts.data ? (counts.data.byStatus[status.id] ?? 0) : undefined}
+            active={tab === status.id}
+            onPress={() => setTab(status.id)}
+          />
+        ))}
       </ChipScroll>
 
       {!leads.data ? (
@@ -182,11 +230,20 @@ function LeadsScreen() {
             }
           }}
           onEndReachedThreshold={0.4}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           ListEmptyComponent={
-            <EmptyState
-              title="No leads found"
-              message="Try a different search or status filter."
-            />
+            tab === 'unread' && !debouncedSearch ? (
+              <EmptyState
+                title="All caught up"
+                message="Every lead assigned to you has been opened."
+              />
+            ) : (
+              <EmptyState
+                title="No leads found"
+                message="Try a different search or tab."
+              />
+            )
           }
           ListFooterComponent={
             leads.isFetchingNextPage ? (
@@ -205,6 +262,39 @@ function LeadsScreen() {
           removeClippedSubviews
         />
       )}
+
+      <Animated.View
+        pointerEvents="box-none"
+        style={[
+          styles.fabWrap,
+          {
+            opacity: fabVisible,
+            transform: [
+              {
+                translateY: fabVisible.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [72, 0],
+                }),
+              },
+              {
+                scale: fabVisible.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.85, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add lead"
+          onPress={() => router.push('/leads/new')}
+          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        >
+          <Ionicons name="add" size={30} color={colors.white} />
+        </Pressable>
+      </Animated.View>
 
       {sheets}
     </View>
@@ -239,13 +329,41 @@ function createStyles(colors: ThemeColors) {
     chips: {
       marginVertical: 10,
     },
+    tabsContent: {
+      gap: spacing.md,
+    },
     list: {
       paddingHorizontal: spacing.lg,
       paddingTop: 0,
-      paddingBottom: spacing.lg,
+      // Room for the FAB over the last row.
+      paddingBottom: 88,
       gap: spacing.md,
       flexGrow: 1,
     },
     stale: { opacity: 0.6 },
+    fabWrap: {
+      position: 'absolute',
+      right: 20,
+      bottom: 20,
+      zIndex: 20,
+      elevation: 12,
+    },
+    fab: {
+      width: 56,
+      height: 56,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.brand,
+      shadowOpacity: 0.35,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+    },
+    fabPressed: {
+      opacity: 0.9,
+      transform: [{ scale: 0.96 }],
+    },
   });
 }
