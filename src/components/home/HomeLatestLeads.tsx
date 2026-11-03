@@ -1,4 +1,5 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns/format';
 import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
@@ -6,17 +7,31 @@ import { isToday } from 'date-fns/isToday';
 import { isYesterday } from 'date-fns/isYesterday';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import {
+  ArrowDownDoubleIcon,
   ArrowRight01Icon,
   CallIcon,
+  FlameIcon,
+  MinusSignIcon,
 } from '@/components/icons/hugeicons';
 import { LeadHistorySheet } from '@/components/home/LeadHistorySheet';
+import { useAuth } from '@/features/auth/AuthContext';
+import { patchLeadInLists } from '@/features/leads/leadDetailCache';
 import {
+  PRIORITIES,
   PRIORITY_META,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
+import { updateLeadPriority } from '@/features/leads/leadsApi';
 import { typography, useTheme, type ThemeColors } from '@/theme';
 import type { LeadPriority, MobileDashboard } from '@/types/api';
 import { formatRelative, parseDate } from '@/utils/dates';
@@ -35,6 +50,12 @@ type HistoryTarget = {
 
 const MAX = 5;
 
+const PRIORITY_ICON = {
+  LOW: ArrowDownDoubleIcon,
+  MEDIUM: MinusSignIcon,
+  HIGH: FlameIcon,
+} as const;
+
 function whenLabel(lead: RecentLead) {
   const due = parseDate(lead.nextFollowupDate);
   if (due) {
@@ -52,14 +73,83 @@ function whenLabel(lead: RecentLead) {
   return formatRelative(lead.updatedAt);
 }
 
+function patchDashboardPriority(
+  data: MobileDashboard | undefined,
+  leadId: number,
+  priority: LeadPriority
+): MobileDashboard | undefined {
+  if (!data?.recentLeads) return data;
+  let changed = false;
+  const recentLeads = data.recentLeads.map((row) => {
+    if (row.id !== leadId) return row;
+    changed = true;
+    return { ...row, priority };
+  });
+  return changed ? { ...data, recentLeads } : data;
+}
+
 export function HomeLatestLeads({ leads }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [history, setHistory] = useState<HistoryTarget | null>(null);
+  const [priorityLeadId, setPriorityLeadId] = useState<number | null>(null);
 
   const items = useMemo(() => leads.slice(0, MAX), [leads]);
+  const openLead = useMemo(
+    () => items.find((l) => l.id === priorityLeadId) ?? null,
+    [items, priorityLeadId]
+  );
+
+  const priorityMutation = useMutation({
+    mutationFn: ({
+      leadId,
+      priority,
+    }: {
+      leadId: number;
+      priority: LeadPriority;
+    }) =>
+      updateLeadPriority(
+        leadId,
+        { priority },
+        { accountId: user?.id }
+      ),
+    onMutate: async ({ leadId, priority }) => {
+      await queryClient.cancelQueries({ queryKey: ['mobile-dashboard'] });
+      const prev = queryClient.getQueryData<MobileDashboard>([
+        'mobile-dashboard',
+      ]);
+      queryClient.setQueryData<MobileDashboard>(['mobile-dashboard'], (cur) =>
+        patchDashboardPriority(cur, leadId, priority)
+      );
+      patchLeadInLists(queryClient, leadId, { priority });
+      setPriorityLeadId(null);
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) {
+        queryClient.setQueryData(['mobile-dashboard'], ctx.prev);
+      }
+      Alert.alert('Could not update priority');
+    },
+    onSuccess: (updated, { leadId }) => {
+      if (!updated) return;
+      queryClient.setQueryData(['lead', leadId], updated);
+      const next = (updated.priority as LeadPriority | null) ?? null;
+      if (next) {
+        queryClient.setQueryData<MobileDashboard>(['mobile-dashboard'], (cur) =>
+          patchDashboardPriority(cur, leadId, next)
+        );
+        patchLeadInLists(queryClient, leadId, {
+          priority: next,
+          updatedAt: updated.updatedAt,
+        });
+      }
+    },
+  });
 
   return (
     <View style={styles.root}>
@@ -101,82 +191,122 @@ export function HomeLatestLeads({ leads }: Props) {
             const subtitle = [lead.source?.name, lead.assignedToName]
               .filter(Boolean)
               .join(' · ');
-
             const historyOpen = history?.leadId === lead.id;
 
             return (
               <View key={lead.id} style={styles.card}>
-                <Pressable
-                  onPress={() => router.push(`/leads/${lead.id}`)}
-                  style={({ pressed }) => [
-                    styles.cardBody,
-                    pressed && styles.pressed,
-                  ]}
-                >
+                <View style={styles.cardBody}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.name} numberOfLines={1}>
-                      {lead.name || 'Unnamed lead'}
-                    </Text>
-                    {priorityMeta && priorityBadge ? (
-                      <View
+                    <Pressable
+                      onPress={() => router.push(`/leads/${lead.id}`)}
+                      style={({ pressed }) => [
+                        styles.nameTap,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <Text style={styles.name} numberOfLines={1}>
+                        {lead.name || 'Unnamed lead'}
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Change priority"
+                      accessibilityState={{
+                        expanded: priorityLeadId === lead.id,
+                      }}
+                      hitSlop={4}
+                      onPress={() =>
+                        setPriorityLeadId((cur) =>
+                          cur === lead.id ? null : lead.id
+                        )
+                      }
+                      style={[
+                        styles.priorityChip,
+                        priorityBadge
+                          ? {
+                              backgroundColor: priorityBadge.backgroundColor,
+                              borderColor: priorityBadge.borderColor,
+                            }
+                          : {
+                              backgroundColor: colors.surfaceMuted,
+                              borderColor: colors.border,
+                            },
+                      ]}
+                    >
+                      {priority ? (
+                        <HugeiconsIcon
+                          icon={PRIORITY_ICON[priority]}
+                          size={12}
+                          color={priorityBadge!.color}
+                          strokeWidth={1.5}
+                        />
+                      ) : null}
+                      <Text
                         style={[
-                          styles.priorityPill,
+                          styles.priorityText,
                           {
-                            backgroundColor: priorityBadge.backgroundColor,
-                            borderColor: priorityBadge.borderColor,
+                            color:
+                              priorityBadge?.color ?? colors.textMuted,
                           },
                         ]}
                       >
-                        <Text
+                        {priorityMeta?.label ?? 'Priority'}
+                      </Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={12}
+                        color={priorityBadge?.color ?? colors.textMuted}
+                      />
+                    </Pressable>
+                  </View>
+
+                  <Pressable
+                    onPress={() => router.push(`/leads/${lead.id}`)}
+                    style={({ pressed }) => [
+                      styles.cardMain,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {subtitle ? (
+                      <Text style={styles.subtitle} numberOfLines={1}>
+                        {subtitle}
+                      </Text>
+                    ) : null}
+
+                    <View style={styles.metaRow}>
+                      <View style={styles.ribbonWrap}>
+                        <View
                           style={[
-                            styles.priorityText,
-                            { color: priorityBadge.color },
+                            styles.ribbon,
+                            { backgroundColor: statusColor },
                           ]}
                         >
-                          {priorityMeta.label}
-                        </Text>
+                          <Text style={styles.ribbonText} numberOfLines={1}>
+                            {statusName}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.ribbonTip,
+                            { borderLeftColor: statusColor },
+                          ]}
+                        />
                       </View>
-                    ) : null}
-                  </View>
-
-                  {subtitle ? (
-                    <Text style={styles.subtitle} numberOfLines={1}>
-                      {subtitle}
-                    </Text>
-                  ) : null}
-
-                  <View style={styles.metaRow}>
-                    <View style={styles.ribbonWrap}>
-                      <View
+                      <Text
                         style={[
-                          styles.ribbon,
-                          { backgroundColor: statusColor },
+                          styles.when,
+                          whenLabel(lead).startsWith('Overdue') && {
+                            color: colors.danger,
+                          },
                         ]}
+                        numberOfLines={1}
                       >
-                        <Text style={styles.ribbonText} numberOfLines={1}>
-                          {statusName}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.ribbonTip,
-                          { borderLeftColor: statusColor },
-                        ]}
-                      />
+                        {whenLabel(lead)}
+                      </Text>
                     </View>
-                    <Text
-                      style={[
-                        styles.when,
-                        whenLabel(lead).startsWith('Overdue') && {
-                          color: colors.danger,
-                        },
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {whenLabel(lead)}
-                    </Text>
-                  </View>
-                </Pressable>
+                  </Pressable>
+                </View>
 
                 <View style={styles.cardFooter}>
                   <Pressable
@@ -268,6 +398,68 @@ export function HomeLatestLeads({ leads }: Props) {
         </View>
       )}
 
+      <Modal
+        visible={!!openLead}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPriorityLeadId(null)}
+      >
+        <View style={styles.priorityBackdrop}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPriorityLeadId(null)}
+          />
+          <View style={styles.prioritySheet}>
+            <Text style={styles.prioritySheetTitle}>Set priority</Text>
+            {PRIORITIES.map((p) => {
+              const opt = priorityBadgeColors(p, isDark);
+              const selected = openLead?.priority === p;
+              return (
+                <Pressable
+                  key={p}
+                  disabled={priorityMutation.isPending}
+                  onPress={() => {
+                    if (!openLead || selected) {
+                      setPriorityLeadId(null);
+                      return;
+                    }
+                    priorityMutation.mutate({
+                      leadId: openLead.id,
+                      priority: p,
+                    });
+                  }}
+                  style={({ pressed }) => [
+                    styles.priorityOption,
+                    selected && {
+                      backgroundColor: opt.backgroundColor,
+                      borderColor: opt.borderColor,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <HugeiconsIcon
+                    icon={PRIORITY_ICON[p]}
+                    size={16}
+                    color={opt.color}
+                    strokeWidth={1.5}
+                  />
+                  <Text
+                    style={[styles.priorityOptionText, { color: opt.color }]}
+                  >
+                    {PRIORITY_META[p].label}
+                  </Text>
+                  {selected ? (
+                    <Ionicons name="checkmark" size={18} color={opt.color} />
+                  ) : (
+                    <View style={{ width: 18 }} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
+
       <LeadHistorySheet
         open={!!history}
         leadId={history?.leadId ?? null}
@@ -278,7 +470,7 @@ export function HomeLatestLeads({ leads }: Props) {
   );
 }
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
+function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       gap: 12,
@@ -328,22 +520,30 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       paddingBottom: 12,
       gap: 8,
     },
+    cardMain: {
+      gap: 8,
+    },
     nameRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
     },
+    nameTap: {
+      flex: 1,
+      minWidth: 0,
+    },
     name: {
       ...typography.subtitle,
-      flex: 1,
       fontSize: 16,
       fontWeight: '700',
       color: colors.text,
-      minWidth: 0,
     },
-    priorityPill: {
+    priorityChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
       paddingHorizontal: 8,
-      paddingVertical: 3,
+      paddingVertical: 4,
       borderRadius: 6,
       borderWidth: StyleSheet.hairlineWidth,
       flexShrink: 0,
@@ -351,6 +551,46 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     priorityText: {
       ...typography.caption,
       fontSize: 11,
+      fontWeight: '700',
+    },
+    priorityBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      justifyContent: 'flex-end',
+      padding: 16,
+    },
+    prioritySheet: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 12,
+      gap: 4,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    prioritySheetTitle: {
+      ...typography.caption,
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textMuted,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    priorityOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: 'transparent',
+    },
+    priorityOptionText: {
+      ...typography.subtitle,
+      flex: 1,
+      fontSize: 15,
       fontWeight: '700',
     },
     subtitle: {
