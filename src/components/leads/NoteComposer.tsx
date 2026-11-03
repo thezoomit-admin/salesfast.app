@@ -101,6 +101,15 @@ const METER_TICK_MS = 80;
 /** Player status events — the scrub thumb glides between them. */
 const STATUS_INTERVAL_MS = 50;
 
+/**
+ * Loudest reading below this is no sound at all: Android reports -160 dB
+ * (amplitude 0) when the OS hands the app silence — mic in use by a call or
+ * another app, or turned off in privacy settings. A quiet room is ~-50 dB.
+ */
+const SILENT_DB = -100;
+/** Readings needed before a recording can be judged silent (~1s). */
+const MIN_METER_READINGS = 12;
+
 /** Recorder metering (dBFS, about -60…0) → 0…1, peaks emphasised like WhatsApp. */
 function meterLevel(db: number | undefined) {
   if (typeof db !== 'number' || !Number.isFinite(db)) return 0;
@@ -285,6 +294,8 @@ export function NoteComposer({
   const [recordSec, setRecordSec] = useState(0);
   const [levels, setLevels] = useState<number[]>([]);
   const levelHistory = useRef<number[]>([]);
+  // Raw metering seen this recording — how a silent capture is detected.
+  const meterStats = useRef({ readings: 0, maxDb: -Infinity });
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [playProgress, setPlayProgress] = useState(0);
@@ -303,6 +314,10 @@ export function NoteComposer({
         db = recorder.getStatus().metering;
       } catch {
         db = undefined;
+      }
+      if (typeof db === 'number' && Number.isFinite(db)) {
+        meterStats.current.readings += 1;
+        meterStats.current.maxDb = Math.max(meterStats.current.maxDb, db);
       }
       const level = meterLevel(db);
       levelHistory.current.push(level);
@@ -371,12 +386,14 @@ export function NoteComposer({
     await setAudioModeAsync({
       allowsRecording: false,
       playsInSilentMode: true,
+      shouldRouteThroughEarpiece: false,
     });
     if (!playerRef.current) {
       const player = createAudioPlayer(clip.uri, {
         updateInterval: STATUS_INTERVAL_MS,
       });
       player.addListener('playbackStatusUpdate', onPlaybackStatus);
+      player.volume = 1;
       playerRef.current = player;
       setPlayProgress(0);
       setPlayDisplaySec(clip.durationSec);
@@ -459,6 +476,7 @@ export function NoteComposer({
       await recorder.prepareToRecordAsync();
       recordStartedAt.current = nowMs();
       levelHistory.current = [];
+      meterStats.current = { readings: 0, maxDb: -Infinity };
       setLevels([]);
       setRecordSec(0);
       recorder.record();
@@ -484,6 +502,14 @@ export function NoteComposer({
       setRecording(false);
       setRecordSec(0);
       if (!uri) return;
+      const { readings, maxDb } = meterStats.current;
+      if (readings >= MIN_METER_READINGS && maxDb < SILENT_DB) {
+        Alert.alert(
+          'No sound was recorded',
+          'The microphone only picked up silence. It may be in use by a call or another app (voice assistant, screen recorder), or turned off in your privacy settings. Close that and try again.'
+        );
+        return;
+      }
       onChangeClips((prev) => [
         ...prev,
         {
