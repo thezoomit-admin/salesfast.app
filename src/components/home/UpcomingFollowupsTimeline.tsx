@@ -9,6 +9,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FollowUpCard } from '@/components/followups/FollowUpCard';
 import {
   dayKey,
+  followupTypeIcon,
   kindTones,
   useMinuteClock,
   type FollowUpKind,
@@ -43,6 +44,7 @@ const TYPE_LABEL: Record<string, string> = {
   FOLLOW_UP: 'Follow-up',
   OFFICE_VISIT: 'Office visit',
   SITE_VISIT: 'Site visit',
+  COLD_CALL: 'Cold call',
   CALL: 'Call',
   WHATSAPP: 'WhatsApp',
 };
@@ -166,6 +168,7 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
                           key={item.id}
                           name={item.leadName}
                           label={typeLabel(item.type)}
+                          labelIcon={followupTypeIcon(item.type)}
                           kind={kind}
                           due={due}
                           overdue={due.getTime() < now.getTime()}
@@ -229,6 +232,9 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       backgroundColor: colors.surface,
+      borderRadius: 18,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
       gap: 4,
     },
     pressed: { opacity: 0.6 },
@@ -236,8 +242,7 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingLeft: 14,
-      paddingRight: 16,
+      paddingRight: 2,
     },
     title: {
       ...typography.subtitle,
@@ -253,7 +258,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     emptyCard: {
-      paddingHorizontal: 16,
+      paddingHorizontal: 2,
       paddingVertical: 8,
     },
     emptyText: {
@@ -265,7 +270,6 @@ function createStyles(colors: ThemeColors) {
       ...typography.caption,
       fontWeight: '600',
       color: colors.textMuted,
-      paddingHorizontal: 14,
       paddingTop: 10,
       paddingBottom: 6,
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -279,7 +283,7 @@ function createStyles(colors: ThemeColors) {
     hourLabel: { width: 56, alignItems: 'center', paddingTop: 16 },
     hourValue: { fontSize: 19, color: colors.textMuted },
     hourSuffix: { fontSize: 13, color: colors.textMuted, marginTop: -2 },
-    slot: { flex: 1, gap: 6, paddingVertical: 6, paddingRight: 12 },
+    slot: { flex: 1, gap: 6, paddingVertical: 6 },
     nowLine: {
       position: 'absolute',
       left: 0,

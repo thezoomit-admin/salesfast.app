@@ -18,6 +18,7 @@ import {
   kindTones,
   leadName,
   NO_FOLLOW_UPS,
+  statusTypeIcon,
   useMinuteClock,
   type DayFollowUp,
 } from '@/components/followups/followUpCalendar';
@@ -150,10 +151,12 @@ function FollowUpWeekViewImpl({
                     key={lead.id}
                     name={leadName(lead)}
                     label={followUpLabel(lead)}
+                    labelIcon={statusTypeIcon(followUpLabel(lead))}
                     kind={followUpKind(lead)}
                     due={due}
                     overdue={due.getTime() < now.getTime()}
                     tone={tones[followUpKind(lead)]}
+                    note={lead.lastNote}
                     onPress={() => onOpenLead(lead)}
                     onPressIn={() => onPressInLead(lead)}
                   />

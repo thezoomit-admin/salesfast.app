@@ -101,6 +101,8 @@ export type LeadListItem = {
   priority?: LeadPriority | null;
   nextFollowupDate?: string | null;
   lastContactDate?: string | null;
+  /** Latest note's own text (no Activity Flow block) — the follow-up's note. Missing on old servers. */
+  lastNote?: string | null;
   updatedAt?: string;
   createdAt?: string;
   followUpCount?: number;

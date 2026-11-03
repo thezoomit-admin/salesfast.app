@@ -1,6 +1,21 @@
 import { format } from 'date-fns/format';
+import type { IconSvgElement } from '@hugeicons/react-native';
 import { useEffect, useState } from 'react';
 
+import {
+  Building2Icon,
+  CalendarClockIcon,
+  CircleCheckIcon,
+  CircleXIcon,
+  ClipboardCheckIcon,
+  LucideHandshakeIcon,
+  HardHatIcon,
+  HeadsetIcon,
+  LandPlotIcon,
+  MapPinnedIcon,
+  MessageSquareIcon,
+  LucidePhoneOutgoingIcon,
+} from '@/components/icons/hugeicons';
 import type { LeadListItem } from '@/types/api';
 import { parseDate } from '@/utils/dates';
 
@@ -89,4 +104,36 @@ export function groupByDay(leads: readonly LeadListItem[]) {
     list.sort((a, b) => a.due.getTime() - b.due.getTime());
   }
   return byDay;
+}
+
+/** Badge icon for a lead status name — same rules as the web admin's statusTypeIcon. */
+export function statusTypeIcon(name: string): IconSvgElement {
+  const n = name.trim().toLowerCase();
+  if (/cold\s*call/.test(n)) return HeadsetIcon;
+  if (/site\s*visit/.test(n)) return MapPinnedIcon;
+  if (/^visited$/.test(n)) return ClipboardCheckIcon;
+  if (/office/.test(n)) return Building2Icon;
+  if (/project/.test(n)) return HardHatIcon;
+  if (/negotiat/.test(n)) return LucideHandshakeIcon;
+  if (/^won$/.test(n)) return CircleCheckIcon;
+  if (/^lost$/.test(n)) return CircleXIcon;
+  if (/phone|call/.test(n)) return LucidePhoneOutgoingIcon;
+  if (/visit/.test(n)) return LandPlotIcon;
+  return MessageSquareIcon;
+}
+
+/** Badge icon for a follow-up type — same as the web admin's followupTypeIcon. */
+export function followupTypeIcon(type: string | null | undefined): IconSvgElement {
+  switch (type) {
+    case 'SITE_VISIT':
+      return MapPinnedIcon;
+    case 'OFFICE_VISIT':
+      return Building2Icon;
+    case 'COLD_CALL':
+      return HeadsetIcon;
+    case 'FOLLOWUP':
+      return CalendarClockIcon;
+    default:
+      return MessageSquareIcon;
+  }
 }

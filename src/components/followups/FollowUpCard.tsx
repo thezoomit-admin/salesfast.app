@@ -1,4 +1,4 @@
-import { HugeiconsIcon } from '@hugeicons/react-native';
+import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react-native';
 import { format } from 'date-fns/format';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,6 +11,7 @@ import {
 import {
   Calendar03Icon,
   Clock01Icon,
+  ClockAlertIcon,
   MoreVerticalIcon,
   Notification01Icon,
 } from '@/components/icons/hugeicons';
@@ -19,6 +20,8 @@ import { useTheme, type ThemeColors } from '@/theme';
 type Props = {
   name: string;
   label: string;
+  /** Icon inside the label badge — the same one the web admin shows. */
+  labelIcon: IconSvgElement;
   kind: FollowUpKind;
   due: Date;
   overdue: boolean;
@@ -35,6 +38,7 @@ type Props = {
 export function FollowUpCard({
   name,
   label,
+  labelIcon,
   kind,
   due,
   overdue,
@@ -51,10 +55,24 @@ export function FollowUpCard({
   const time = (
     <View style={styles.cardTime}>
       <HugeiconsIcon icon={Clock01Icon} size={20} color={colors.text} strokeWidth={1.5} />
-      <Text style={styles.cardTimeText}>
-        {format(due, 'h:mm a')}
-        {overdue ? <Text style={styles.overdue}> · Overdue</Text> : null}
-      </Text>
+      <Text style={styles.cardTimeText}>{format(due, 'h:mm a')}</Text>
+    </View>
+  );
+
+  const badges = (
+    <View style={styles.badges}>
+      <View style={[styles.badge, { backgroundColor: `${tone.accent}26` }]}>
+        <HugeiconsIcon icon={labelIcon} size={13} color={tone.accent} strokeWidth={2} />
+        <Text style={[styles.badgeText, { color: tone.accent }]} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+      {overdue ? (
+        <View style={[styles.badge, { backgroundColor: colors.dangerSoft }]}>
+          <HugeiconsIcon icon={ClockAlertIcon} size={13} color={colors.danger} strokeWidth={2} />
+          <Text style={[styles.badgeText, { color: colors.danger }]}>Overdue</Text>
+        </View>
+      ) : null}
     </View>
   );
 
@@ -99,16 +117,12 @@ export function FollowUpCard({
 
       {kind === 'reminder' ? (
         <View style={[styles.cardInline, styles.cardInlineReminder]}>
-          <Text style={[styles.cardKind, styles.cardKindInline]} numberOfLines={1}>
-            {label}
-          </Text>
+          {badges}
           {time}
         </View>
       ) : (
         <>
-          <Text style={styles.cardKind} numberOfLines={1}>
-            {label}
-          </Text>
+          <View style={styles.badgesBlock}>{badges}</View>
           <View style={styles.cardDivider} />
           <View style={styles.cardInline}>
             {time}
@@ -150,7 +164,18 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     more: { marginLeft: -4, marginRight: -6, paddingTop: 2 },
     note: { fontSize: 14, lineHeight: 19, color: ink, opacity: 0.8, marginTop: 6 },
-    cardKind: { fontSize: 14, color: colors.textSecondary, marginTop: 10 },
+    badges: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+    badgesBlock: { marginTop: 12 },
+    badge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      flexShrink: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+    },
+    badgeText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '600' },
     cardDivider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
@@ -163,10 +188,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       gap: 8,
     },
     cardInlineReminder: { marginTop: 12 },
-    cardKindInline: { marginTop: 0, flexShrink: 1 },
     cardTime: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     cardTimeText: { fontSize: 15, color: ink },
-    overdue: { color: colors.danger, fontWeight: '600' },
     avatar: {
       width: 38,
       height: 38,
