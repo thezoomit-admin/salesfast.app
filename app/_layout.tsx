@@ -90,6 +90,7 @@ function ThemedStack() {
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         {/* Folder route: Overview / History / Calls / Views under leads/[id]/ */}
         <Stack.Screen name="leads/[id]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="leads/new" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="activities" />
         <Stack.Screen name="call-sync/setup" />

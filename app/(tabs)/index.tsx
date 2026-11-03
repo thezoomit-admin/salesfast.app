@@ -1,7 +1,7 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,7 +24,7 @@ function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
 }
 
-export default function HomeScreen() {
+function HomeScreen() {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
   const pageWash = isDark ? colors.background : '#EEF1F4';
@@ -141,6 +141,8 @@ export default function HomeScreen() {
     </Screen>
   );
 }
+
+export default memo(HomeScreen);
 
 function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   useEffect(() => {

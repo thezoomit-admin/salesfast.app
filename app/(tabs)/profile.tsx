@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -188,7 +188,7 @@ function maskEmail(email: string) {
   return `${user[0]}${'*'.repeat(Math.min(user.length - 2, 4))}${user[user.length - 1]}${domain}`;
 }
 
-export default function ProfileScreen() {
+function ProfileScreen() {
   const {
     user,
     signOut,
@@ -609,6 +609,8 @@ export default function ProfileScreen() {
     </View>
   );
 }
+
+export default memo(ProfileScreen);
 
 function createStyles(more: MoreChrome) {
   return StyleSheet.create({

@@ -1,21 +1,22 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
 import { memo, useMemo } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
-  radii,
-  spacing,
-  typography,
-  useTheme,
-  type ThemeColors,
-} from "@/theme";
-import type { LeadListItem, LeadPriority } from "@/types/api";
-import { formatDate, formatRelative } from "@/utils/dates";
+  ArrowDownDoubleIcon,
+  CallIcon,
+  FlameIcon,
+  MinusSignIcon,
+} from "@/components/icons/hugeicons";
 import {
-  formatPhoneDisplay,
-  openPhoneDialer,
-  openWhatsApp,
-} from "@/utils/phone";
+  PRIORITY_META,
+  priorityBadgeColors,
+} from "@/features/leads/leadPriority";
+import { typography, useTheme, type ThemeColors } from "@/theme";
+import type { LeadListItem } from "@/types/api";
+import { followupWhenLabel } from "@/utils/dates";
+import { openPhoneDialer, openWhatsApp } from "@/utils/phone";
 
 type Props = {
   lead: LeadListItem;
@@ -23,78 +24,25 @@ type Props = {
   onPress: (lead: LeadListItem) => void;
   /** Touch down — e.g. start loading the detail. Keep stable too. */
   onPressIn?: (lead: LeadListItem) => void;
+  /** Priority chip tap. Keep stable too. */
+  onPriorityPress?: (lead: LeadListItem) => void;
+  /** History button tap. Keep stable too. */
+  onHistoryPress?: (lead: LeadListItem) => void;
 };
 
-function parseRgb(hex: string): { r: number; g: number; b: number } | null {
-  const raw = hex.trim().replace("#", "");
-  const full =
-    raw.length === 3
-      ? raw
-          .split("")
-          .map((c) => c + c)
-          .join("")
-      : raw;
-  if (full.length !== 6) return null;
-  const n = Number.parseInt(full, 16);
-  if (Number.isNaN(n)) return null;
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
+const PRIORITY_ICON = {
+  LOW: ArrowDownDoubleIcon,
+  MEDIUM: MinusSignIcon,
+  HIGH: FlameIcon,
+} as const;
 
-function toHex(r: number, g: number, b: number): string {
-  const h = (c: number) =>
-    Math.max(0, Math.min(255, Math.round(c)))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${h(r)}${h(g)}${h(b)}`;
-}
-
-function mix(
-  hex: string,
-  target: { r: number; g: number; b: number },
-  amount: number,
-): string {
-  const rgb = parseRgb(hex);
-  if (!rgb) return hex;
-  return toHex(
-    rgb.r + (target.r - rgb.r) * amount,
-    rgb.g + (target.g - rgb.g) * amount,
-    rgb.b + (target.b - rgb.b) * amount,
-  );
-}
-
-const WHITE = { r: 255, g: 255, b: 255 };
-const BLACK = { r: 0, g: 0, b: 0 };
-
-function stageBadgeStyle(statusColor: string, isDark: boolean) {
-  if (!isDark) {
-    return {
-      backgroundColor: mix(statusColor, WHITE, 0.86),
-      borderColor: mix(statusColor, WHITE, 0.72),
-      color: mix(statusColor, BLACK, 0.12),
-    };
-  }
-  return {
-    backgroundColor: mix(statusColor, BLACK, 0.72),
-    borderColor: mix(statusColor, BLACK, 0.5),
-    color: mix(statusColor, WHITE, 0.38),
-  };
-}
-
-const PRIORITY_META: Record<LeadPriority, { label: string; color: string }> = {
-  LOW: { label: "Low", color: "#0ba5ec" },
-  MEDIUM: { label: "Medium", color: "#d97706" },
-  HIGH: { label: "High", color: "#f04438" },
-};
-
-function priorityBadgeStyle(priority: LeadPriority, isDark: boolean) {
-  const base = PRIORITY_META[priority].color;
-  return stageBadgeStyle(base, isDark);
-}
-
+/** Same layout as the home "Latest leads" card. */
 export const LeadListItemCard = memo(function LeadListItemCard({
   lead,
   onPress,
   onPressIn,
+  onPriorityPress,
+  onHistoryPress,
 }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === "dark";
@@ -102,26 +50,23 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   const name = lead.buyerPersona?.fullName || "Unnamed lead";
   const phone = lead.buyerPersona?.phone;
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
+  const statusName = lead.leadStatus?.name || "Lead";
   const statusColor = lead.leadStatus?.color || colors.brand;
-  const stageBadge = useMemo(
-    () => stageBadgeStyle(statusColor, isDark),
-    [statusColor, isDark],
-  );
   const priority = lead.priority ?? null;
   const priorityMeta = priority ? PRIORITY_META[priority] : null;
   const priorityBadge = useMemo(
-    () => (priority ? priorityBadgeStyle(priority, isDark) : null),
+    () => (priority ? priorityBadgeColors(priority, isDark) : null),
     [priority, isDark],
   );
+  const subtitle = [lead.leadSource?.name, lead.assignedToName]
+    .filter(Boolean)
+    .join(" · ");
+  const when = followupWhenLabel(lead.nextFollowupDate, lead.updatedAt);
+  // Only an explicit false — old servers don't send the flag.
+  const unread = lead.viewed === false;
 
-  const metaBits = [
-    lead.leadSource?.name,
-    lead.nextFollowupDate
-      ? `Follow-up ${formatDate(lead.nextFollowupDate)}`
-      : lead.updatedAt
-        ? formatRelative(lead.updatedAt)
-        : null,
-  ].filter(Boolean);
+  const open = () => onPress(lead);
+  const pressIn = onPressIn ? () => onPressIn(lead) : undefined;
 
   async function onCall() {
     const ok = await openPhoneDialer(phone);
@@ -138,97 +83,151 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   }
 
   return (
-    <Pressable
-      onPress={() => onPress(lead)}
-      onPressIn={onPressIn ? () => onPressIn(lead) : undefined}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-    >
-      <View style={styles.row}>
-        <View style={styles.main}>
-          <Text style={styles.name} numberOfLines={1}>
-            {name}
-          </Text>
-          <Text style={styles.phone}>{formatPhoneDisplay(phone)}</Text>
-        </View>
-        <View
-          style={[
-            styles.badge,
-            {
-              backgroundColor: stageBadge.backgroundColor,
-              borderColor: stageBadge.borderColor,
-            },
-          ]}
-        >
-          <Text
-            style={[styles.badgeText, { color: stageBadge.color }]}
-            numberOfLines={1}
+    <View style={styles.card}>
+      <View style={styles.cardBody}>
+        <View style={styles.nameRow}>
+          <Pressable
+            onPress={open}
+            onPressIn={pressIn}
+            accessibilityLabel={unread ? `${name}, unread` : undefined}
+            style={({ pressed }) => [styles.nameTap, pressed && styles.pressed]}
           >
-            {lead.leadStatus?.name || "No status"}
-          </Text>
-        </View>
-      </View>
+            {/* Bold name = unread, like the web lead list. */}
+            <Text
+              style={[styles.name, unread && styles.nameUnread]}
+              numberOfLines={1}
+            >
+              {name}
+            </Text>
+          </Pressable>
 
-      <View style={styles.footer}>
-        <View style={styles.footerMeta}>
-          {priorityMeta && priorityBadge ? (
-            <View
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Change priority"
+            disabled={!onPriorityPress}
+            hitSlop={4}
+            onPress={() => onPriorityPress?.(lead)}
+            style={[
+              styles.priorityChip,
+              priorityBadge
+                ? {
+                    backgroundColor: priorityBadge.backgroundColor,
+                    borderColor: priorityBadge.borderColor,
+                  }
+                : {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
+            ]}
+          >
+            {priority && priorityBadge ? (
+              <HugeiconsIcon
+                icon={PRIORITY_ICON[priority]}
+                size={12}
+                color={priorityBadge.color}
+                strokeWidth={1.5}
+              />
+            ) : null}
+            <Text
               style={[
-                styles.priorityBadge,
-                {
-                  backgroundColor: priorityBadge.backgroundColor,
-                  borderColor: priorityBadge.borderColor,
-                },
+                styles.priorityText,
+                { color: priorityBadge?.color ?? colors.textMuted },
               ]}
             >
-              <Text
-                style={[styles.badgeText, { color: priorityBadge.color }]}
-                numberOfLines={1}
-              >
-                {priorityMeta.label}
-              </Text>
-            </View>
-          ) : null}
-          {metaBits.length > 0 ? (
-            <Text style={styles.metaText} numberOfLines={1}>
-              {metaBits.join(" · ")}
+              {priorityMeta?.label ?? "Priority"}
             </Text>
-          ) : null}
+            {onPriorityPress ? (
+              <Ionicons
+                name="chevron-down"
+                size={12}
+                color={priorityBadge?.color ?? colors.textMuted}
+              />
+            ) : null}
+          </Pressable>
         </View>
 
-        <View style={styles.actions}>
+        <Pressable
+          onPress={open}
+          onPressIn={pressIn}
+          style={({ pressed }) => [styles.cardMain, pressed && styles.pressed]}
+        >
+          {subtitle ? (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+
+          <View style={styles.metaRow}>
+            <View style={styles.ribbonWrap}>
+              <View style={[styles.ribbon, { backgroundColor: statusColor }]}>
+                <Text style={styles.ribbonText} numberOfLines={1}>
+                  {statusName}
+                </Text>
+              </View>
+              <View
+                style={[styles.ribbonTip, { borderLeftColor: statusColor }]}
+              />
+            </View>
+            <Text
+              style={[
+                styles.when,
+                when.startsWith("Overdue") && { color: colors.danger },
+              ]}
+              numberOfLines={1}
+            >
+              {when}
+            </Text>
+          </View>
+        </Pressable>
+      </View>
+
+      <View style={styles.cardFooter}>
+        {onHistoryPress ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Call"
-            hitSlop={8}
-            disabled={!phone}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              void onCall();
-            }}
+            accessibilityLabel="Open lead history"
+            hitSlop={6}
+            onPress={() => onHistoryPress(lead)}
             style={({ pressed }) => [
-              styles.actionBtn,
-              (pressed || !phone) && styles.actionFaded,
+              styles.historyBtn,
+              pressed && styles.pressed,
             ]}
           >
+            <Text style={styles.historyText}>History</Text>
             <Ionicons
-              name="call-outline"
-              size={20}
-              color={phone ? colors.textSecondary : colors.textMuted}
+              name="chevron-down"
+              size={16}
+              color={colors.textSecondary}
             />
           </Pressable>
+        ) : (
+          <View />
+        )}
+
+        <View style={styles.actionBtns}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="WhatsApp"
+            accessibilityLabel="Call lead"
+            disabled={!phone}
             hitSlop={8}
+            onPress={() => void onCall()}
+            style={({ pressed }) => [(!phone || pressed) && styles.pressed]}
+          >
+            <HugeiconsIcon
+              icon={CallIcon}
+              size={20}
+              color={phone ? colors.textSecondary : colors.textMuted}
+              strokeWidth={2}
+            />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="WhatsApp lead"
             disabled={!whatsapp}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              void onWhatsApp();
-            }}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              (pressed || !whatsapp) && styles.actionFaded,
-            ]}
+            hitSlop={8}
+            onPress={() => void onWhatsApp()}
+            style={({ pressed }) => [(!whatsapp || pressed) && styles.pressed]}
           >
             <Ionicons
               name="logo-whatsapp"
@@ -238,70 +237,138 @@ export const LeadListItemCard = memo(function LeadListItemCard({
           </Pressable>
         </View>
       </View>
-    </Pressable>
+    </View>
   );
 });
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    pressed: { opacity: 0.9 },
     card: {
       backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      padding: spacing.lg,
-      borderWidth: 1,
+      borderRadius: 16,
+      overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      gap: spacing.sm,
     },
-    pressed: { opacity: 0.92 },
-    row: { flexDirection: "row", gap: spacing.md, alignItems: "flex-start" },
-    main: { flex: 1, gap: 2, minWidth: 0 },
-    name: { ...typography.subtitle, color: colors.text },
-    phone: { ...typography.body, color: colors.textSecondary },
-    badge: {
-      borderRadius: radii.pill,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 4,
-      maxWidth: 120,
-      borderWidth: StyleSheet.hairlineWidth,
+    cardBody: {
+      paddingHorizontal: 14,
+      paddingTop: 14,
+      paddingBottom: 12,
+      gap: 8,
     },
-    priorityBadge: {
-      borderRadius: radii.pill,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: 3,
-      borderWidth: StyleSheet.hairlineWidth,
-      flexShrink: 0,
+    cardMain: {
+      gap: 8,
     },
-    badgeText: { ...typography.caption, fontWeight: "700" },
-    footer: {
+    nameRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.sm,
-      marginTop: 2,
+      gap: 8,
     },
-    footerMeta: {
+    nameTap: {
       flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: spacing.sm,
       minWidth: 0,
     },
-    metaText: {
-      ...typography.caption,
-      color: colors.textMuted,
-      flexShrink: 1,
+    name: {
+      ...typography.subtitle,
+      fontSize: 16,
+      fontWeight: "500",
+      // Read leads recede; unread ones keep full-strength text.
+      color: colors.textSecondary,
     },
-    actions: {
+    nameUnread: {
+      fontWeight: "800",
+      color: colors.text,
+    },
+    priorityChip: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+      borderWidth: StyleSheet.hairlineWidth,
       flexShrink: 0,
     },
-    actionBtn: {
-      width: 28,
-      height: 32,
-      alignItems: "center",
-      justifyContent: "center",
+    priorityText: {
+      ...typography.caption,
+      fontSize: 11,
+      fontWeight: "700",
     },
-    actionFaded: { opacity: 0.45 },
+    subtitle: {
+      ...typography.caption,
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: -2,
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
+      marginTop: 2,
+    },
+    ribbonWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexShrink: 1,
+      maxWidth: "62%",
+    },
+    ribbon: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderTopLeftRadius: 4,
+      borderBottomLeftRadius: 4,
+      maxWidth: "100%",
+    },
+    ribbonText: {
+      ...typography.caption,
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#FFFFFF",
+    },
+    ribbonTip: {
+      width: 0,
+      height: 0,
+      borderTopWidth: 12,
+      borderBottomWidth: 12,
+      borderLeftWidth: 9,
+      borderTopColor: "transparent",
+      borderBottomColor: "transparent",
+    },
+    when: {
+      ...typography.caption,
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textMuted,
+      flexShrink: 0,
+    },
+    cardFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      gap: 12,
+    },
+    historyBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    historyText: {
+      ...typography.caption,
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    actionBtns: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      flexShrink: 0,
+    },
   });
 }

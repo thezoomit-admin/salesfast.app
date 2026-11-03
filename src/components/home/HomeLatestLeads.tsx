@@ -1,10 +1,5 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { format } from 'date-fns/format';
-import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
-import { isToday } from 'date-fns/isToday';
-import { isYesterday } from 'date-fns/isYesterday';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -18,16 +13,14 @@ import {
 } from '@/components/icons/hugeicons';
 import { LeadHistorySheet } from '@/components/home/LeadHistorySheet';
 import { PriorityPickerSheet } from '@/components/home/PriorityPickerSheet';
-import { useAuth } from '@/features/auth/AuthContext';
-import { patchLeadInLists } from '@/features/leads/leadDetailCache';
 import {
   PRIORITY_META,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
-import { updateLeadPriority } from '@/features/leads/leadsApi';
+import { useLeadPriorityMutation } from '@/features/leads/useLeadPriorityMutation';
 import { typography, useTheme, type ThemeColors } from '@/theme';
 import type { LeadPriority, MobileDashboard } from '@/types/api';
-import { formatRelative, parseDate } from '@/utils/dates';
+import { followupWhenLabel } from '@/utils/dates';
 import { openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 type RecentLead = MobileDashboard['recentLeads'][number];
@@ -50,35 +43,7 @@ const PRIORITY_ICON = {
 } as const;
 
 function whenLabel(lead: RecentLead) {
-  const due = parseDate(lead.nextFollowupDate);
-  if (due) {
-    const now = new Date();
-    const dayDiff = differenceInCalendarDays(now, due);
-    if (dayDiff > 0) {
-      return dayDiff === 1
-        ? 'Overdue by 1 day'
-        : `Overdue by ${dayDiff} days`;
-    }
-    if (isToday(due)) return format(due, 'h:mm a');
-    if (isYesterday(due)) return 'Yesterday';
-    return format(due, 'dd MMM');
-  }
-  return formatRelative(lead.updatedAt);
-}
-
-function patchDashboardPriority(
-  data: MobileDashboard | undefined,
-  leadId: number,
-  priority: LeadPriority
-): MobileDashboard | undefined {
-  if (!data?.recentLeads) return data;
-  let changed = false;
-  const recentLeads = data.recentLeads.map((row) => {
-    if (row.id !== leadId) return row;
-    changed = true;
-    return { ...row, priority };
-  });
-  return changed ? { ...data, recentLeads } : data;
+  return followupWhenLabel(lead.nextFollowupDate, lead.updatedAt);
 }
 
 export function HomeLatestLeads({ leads }: Props) {
@@ -86,8 +51,6 @@ export function HomeLatestLeads({ leads }: Props) {
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [history, setHistory] = useState<HistoryTarget | null>(null);
   const [priorityLeadId, setPriorityLeadId] = useState<number | null>(null);
 
@@ -97,54 +60,9 @@ export function HomeLatestLeads({ leads }: Props) {
     [items, priorityLeadId]
   );
 
-  const priorityMutation = useMutation({
-    mutationFn: ({
-      leadId,
-      priority,
-    }: {
-      leadId: number;
-      priority: LeadPriority;
-    }) =>
-      updateLeadPriority(
-        leadId,
-        { priority },
-        { accountId: user?.id }
-      ),
-    onMutate: async ({ leadId, priority }) => {
-      await queryClient.cancelQueries({ queryKey: ['mobile-dashboard'] });
-      const prev = queryClient.getQueryData<MobileDashboard>([
-        'mobile-dashboard',
-      ]);
-      queryClient.setQueryData<MobileDashboard>(['mobile-dashboard'], (cur) =>
-        patchDashboardPriority(cur, leadId, priority)
-      );
-      patchLeadInLists(queryClient, leadId, { priority });
-      return { prev };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) {
-        queryClient.setQueryData(['mobile-dashboard'], ctx.prev);
-      }
-      Alert.alert('Could not update priority');
-    },
-    onSuccess: (updated, { leadId }) => {
-      if (updated) {
-        queryClient.setQueryData(['lead', leadId], updated);
-        const next = (updated.priority as LeadPriority | null) ?? null;
-        if (next) {
-          queryClient.setQueryData<MobileDashboard>(
-            ['mobile-dashboard'],
-            (cur) => patchDashboardPriority(cur, leadId, next)
-          );
-          patchLeadInLists(queryClient, leadId, {
-            priority: next,
-            updatedAt: updated.updatedAt,
-          });
-        }
-      }
-      setPriorityLeadId(null);
-    },
-  });
+  const priorityMutation = useLeadPriorityMutation(() =>
+    setPriorityLeadId(null)
+  );
 
   return (
     <View style={styles.root}>
@@ -401,7 +319,11 @@ export function HomeLatestLeads({ leads }: Props) {
         onClose={() => setPriorityLeadId(null)}
         onSelect={(priority) => {
           if (!openLead) return;
-          priorityMutation.mutate({ leadId: openLead.id, priority });
+          priorityMutation.mutate({
+            leadId: openLead.id,
+            priority,
+            previous: (openLead.priority as LeadPriority | null) ?? null,
+          });
         }}
       />
 

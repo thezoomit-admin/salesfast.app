@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
@@ -109,7 +109,7 @@ function formatDuration(sec: number) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-export default function CallsScreen() {
+function CallsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
@@ -192,19 +192,9 @@ export default function CallsScreen() {
         : callSync.message
   );
 
-  const headerSubtitle =
-    callSync.status === 'configured'
-      ? 'Syncing lead calls'
-      : callSync.status === 'paused'
-        ? 'Paused — tap to resume'
-        : callSync.status === 'not_configured'
-          ? 'Connect phone calls to CRM leads'
-          : callSync.label;
-
   const pageHeader = (
     <ScreenHeader
       title="Calls"
-      subtitle={headerSubtitle}
       showBack={false}
       right={
         <HeaderIconButton
@@ -388,6 +378,8 @@ export default function CallsScreen() {
     </View>
   );
 }
+
+export default memo(CallsScreen);
 
 function CallRow({
   call,

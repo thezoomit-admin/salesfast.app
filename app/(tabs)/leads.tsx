@@ -3,13 +3,19 @@ import {
   keepPreviousData,
   useInfiniteQuery,
   useQuery,
+  useQueryClient,
 } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
+  type NativeScrollEvent,
+  type LayoutChangeEvent,
+  type NativeSyntheticEvent,
   Pressable,
+  type ScrollViewInstance,
   StyleSheet,
   TextInput,
   type TextInputInstance,
@@ -18,17 +24,23 @@ import {
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
 import { ChipScroll } from '@/components/ui/ChipScroll';
-import { FilterChip } from '@/components/ui/FilterChip';
+import { CountTab, CountTabDivider } from '@/components/ui/CountTab';
 import {
   HeaderIconButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
-import { leadStatusesQuery, myLeadsQuery } from '@/features/leads/leadsApi';
+import {
+  leadStatusesQuery,
+  leadTabCountsQuery,
+  myLeadsQuery,
+  type LeadListTab,
+} from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
-import type { LeadListItem } from '@/types/api';
+import type { LeadListItem, LeadStatus } from '@/types/api';
 import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -40,7 +52,13 @@ function useDebounced<T>(value: T, delay = 350) {
   return debounced;
 }
 
-export default function LeadsScreen() {
+// Name fallback until every server sends `code`.
+const isDraftStatus = (s: LeadStatus) =>
+  s.code === 'DRAFT' || /^draft$/i.test(s.name.trim());
+const isAssignStatus = (s: LeadStatus) =>
+  s.code === 'ASSIGN' || /^assign(ed)?$/i.test(s.name.trim());
+
+function LeadsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
@@ -48,8 +66,9 @@ export default function LeadsScreen() {
   const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusId, setStatusId] = useState<number | undefined>();
+  const [tab, setTab] = useState<LeadListTab>('all');
   const debouncedSearch = useDebounced(search);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (params.focusSearch !== '1') return;
@@ -59,34 +78,134 @@ export default function LeadsScreen() {
   }, [params.focusSearch, router]);
 
   const statuses = useQuery(leadStatusesQuery);
-
-  // Keep the current list on screen while a new search / filter loads.
-  const leads = useInfiniteQuery({
-    ...myLeadsQuery(debouncedSearch, statusId),
+  const counts = useQuery({
+    ...leadTabCountsQuery(debouncedSearch),
     placeholderData: keepPreviousData,
+  });
+
+  // A new search keeps the tab's current rows on screen; a tab with nothing
+  // cached shows the skeleton, never another tab's leads.
+  const leads = useInfiniteQuery({
+    ...myLeadsQuery(debouncedSearch, tab),
+    placeholderData: (prev, prevQuery) =>
+      prevQuery?.queryKey[1] === tab ? prev : undefined,
   });
 
   const items = useMemo(
     () => leads.data?.pages.flatMap((p) => p.items) ?? [],
     [leads.data]
   );
-  const filterChips = useMemo(
-    () => [
-      { id: 0, name: 'All' },
-      ...(Array.isArray(statuses.data) ? statuses.data : []),
-    ],
-    [statuses.data]
+  // Draft never reaches an agent's list; Unread sits right after Assign.
+  const { assignTab, statusTabs } = useMemo(() => {
+    const list = (Array.isArray(statuses.data) ? statuses.data : []).filter(
+      (s) => !isDraftStatus(s)
+    );
+    const assign = list.find(isAssignStatus);
+    return { assignTab: assign, statusTabs: list.filter((s) => s !== assign) };
+  }, [statuses.data]);
+
+  // Warm every tab's first page once this one is in, so switching is instant.
+  // Fresh cache is skipped, so this costs nothing on later visits.
+  const listReady = Boolean(leads.data) && !leads.isPlaceholderData;
+  const tabIds = useMemo(
+    () =>
+      [assignTab, ...statusTabs]
+        .filter((s): s is LeadStatus => Boolean(s))
+        .map((s) => s.id)
+        .join(','),
+    [assignTab, statusTabs]
+  );
+  useEffect(() => {
+    if (!listReady || !tabIds) return;
+    const all: LeadListTab[] = ['all', 'unread', ...tabIds.split(',').map(Number)];
+    for (const t of all) {
+      void queryClient.prefetchInfiniteQuery(myLeadsQuery('', t));
+    }
+  }, [listReady, tabIds, queryClient]);
+
+  // Finger down on a tab starts its request ahead of the tap (covers search).
+  const prefetchTab = useCallback(
+    (t: LeadListTab) =>
+      void queryClient.prefetchInfiniteQuery(myLeadsQuery(debouncedSearch, t)),
+    [queryClient, debouncedSearch]
   );
   const { openLead, prefetchLead } = useLeadRowHandlers(items);
+  const { openPriority, openHistory, sheets } = useLeadCardSheets();
   const renderLead = useCallback(
     ({ item }: { item: LeadListItem }) => (
       <LeadListItemCard
         lead={item}
         onPress={openLead}
         onPressIn={prefetchLead}
+        onPriorityPress={openPriority}
+        onHistoryPress={openHistory}
       />
     ),
-    [openLead, prefetchLead]
+    [openLead, prefetchLead, openPriority, openHistory]
+  );
+
+  // Hisab FAB — hides while scrolling down, comes back on scroll up.
+  const [fabVisible] = useState(() => new Animated.Value(1));
+  const fabShown = useRef(true);
+  const lastScrollY = useRef(0);
+  const setFabShown = useCallback(
+    (show: boolean) => {
+      if (fabShown.current === show) return;
+      fabShown.current = show;
+      Animated.timing(fabVisible, {
+        toValue: show ? 1 : 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    },
+    [fabVisible]
+  );
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      const dy = y - lastScrollY.current;
+      if (y <= 12) setFabShown(true);
+      else if (dy > 4 && y > 24) setFabShown(false);
+      else if (dy < -4) setFabShown(true);
+      lastScrollY.current = y;
+    },
+    [setFabShown]
+  );
+
+  // Picking a tab slides the row so that tab sits in the middle — the
+  // neighbours on the side you moved toward scroll into view.
+  const tabScrollRef = useRef<ScrollViewInstance>(null);
+  const tabLayouts = useRef(new Map<string, { x: number; width: number }>());
+  const tabRow = useRef({ viewport: 0, content: 0 });
+  const centerTab = useCallback((t: LeadListTab) => {
+    const item = tabLayouts.current.get(String(t));
+    const { viewport, content } = tabRow.current;
+    if (!item || !viewport) return;
+    const max = Math.max(0, content - viewport);
+    const x = Math.min(max, Math.max(0, item.x + item.width / 2 - viewport / 2));
+    tabScrollRef.current?.scrollTo({ x, animated: true });
+  }, []);
+  useEffect(() => {
+    centerTab(tab);
+  }, [tab, centerTab]);
+  const onTabLayout = useCallback(
+    (t: LeadListTab) => (e: LayoutChangeEvent) => {
+      const { x, width } = e.nativeEvent.layout;
+      tabLayouts.current.set(String(t), { x, width });
+    },
+    []
+  );
+
+  const renderStatusTab = (status: LeadStatus) => (
+    <CountTab
+      key={status.id}
+      label={status.name}
+      count={counts.data ? (counts.data.byStatus[status.id] ?? 0) : undefined}
+      active={tab === status.id}
+      onPress={() => setTab(status.id)}
+      onPressIn={() => prefetchTab(status.id)}
+      onLayout={onTabLayout(status.id)}
+    />
   );
 
   const toggleSearch = () => {
@@ -144,18 +263,36 @@ export default function LeadsScreen() {
         </View>
       ) : null}
 
-      <ChipScroll style={styles.chips}>
-        {filterChips.map((item) => {
-          const active = (item.id === 0 && !statusId) || item.id === statusId;
-          return (
-            <FilterChip
-              key={item.id}
-              label={item.name}
-              active={active}
-              onPress={() => setStatusId(item.id === 0 ? undefined : item.id)}
-            />
-          );
-        })}
+      <ChipScroll
+        style={styles.chips}
+        contentContainerStyle={styles.tabsContent}
+        scrollRef={tabScrollRef}
+        onLayout={(e) => {
+          tabRow.current.viewport = e.nativeEvent.layout.width;
+        }}
+        onContentSizeChange={(w) => {
+          tabRow.current.content = w;
+        }}
+      >
+        <CountTab
+          label="All"
+          count={counts.data?.all}
+          active={tab === 'all'}
+          onPress={() => setTab('all')}
+          onPressIn={() => prefetchTab('all')}
+          onLayout={onTabLayout('all')}
+        />
+        <CountTabDivider />
+        {assignTab ? renderStatusTab(assignTab) : null}
+        <CountTab
+          label="Unread"
+          count={counts.data?.unread}
+          active={tab === 'unread'}
+          onPress={() => setTab('unread')}
+          onPressIn={() => prefetchTab('unread')}
+          onLayout={onTabLayout('unread')}
+        />
+        {statusTabs.map(renderStatusTab)}
       </ChipScroll>
 
       {!leads.data ? (
@@ -166,6 +303,8 @@ export default function LeadsScreen() {
         />
       ) : (
         <FlatList
+          // New tab starts at the top instead of the old tab's scroll offset.
+          key={String(tab)}
           data={items}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
@@ -178,11 +317,20 @@ export default function LeadsScreen() {
             }
           }}
           onEndReachedThreshold={0.4}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           ListEmptyComponent={
-            <EmptyState
-              title="No leads found"
-              message="Try a different search or status filter."
-            />
+            tab === 'unread' && !debouncedSearch ? (
+              <EmptyState
+                title="All caught up"
+                message="Every lead assigned to you has been opened."
+              />
+            ) : (
+              <EmptyState
+                title="No leads found"
+                message="Try a different search or tab."
+              />
+            )
           }
           ListFooterComponent={
             leads.isFetchingNextPage ? (
@@ -201,9 +349,46 @@ export default function LeadsScreen() {
           removeClippedSubviews
         />
       )}
+
+      <Animated.View
+        pointerEvents="box-none"
+        style={[
+          styles.fabWrap,
+          {
+            opacity: fabVisible,
+            transform: [
+              {
+                translateY: fabVisible.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [72, 0],
+                }),
+              },
+              {
+                scale: fabVisible.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.85, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add lead"
+          onPress={() => router.push('/leads/new')}
+          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        >
+          <Ionicons name="add" size={30} color={colors.white} />
+        </Pressable>
+      </Animated.View>
+
+      {sheets}
     </View>
   );
 }
+
+export default memo(LeadsScreen);
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
@@ -231,13 +416,41 @@ function createStyles(colors: ThemeColors) {
     chips: {
       marginVertical: 10,
     },
+    tabsContent: {
+      gap: spacing.md,
+    },
     list: {
       paddingHorizontal: spacing.lg,
       paddingTop: 0,
-      paddingBottom: spacing.lg,
+      // Room for the FAB over the last row.
+      paddingBottom: 88,
       gap: spacing.md,
       flexGrow: 1,
     },
     stale: { opacity: 0.6 },
+    fabWrap: {
+      position: 'absolute',
+      right: 20,
+      bottom: 20,
+      zIndex: 20,
+      elevation: 12,
+    },
+    fab: {
+      width: 56,
+      height: 56,
+      borderRadius: radii.pill,
+      backgroundColor: colors.brand,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.brand,
+      shadowOpacity: 0.35,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 8,
+    },
+    fabPressed: {
+      opacity: 0.9,
+      transform: [{ scale: 0.96 }],
+    },
   });
 }

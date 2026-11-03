@@ -59,6 +59,8 @@ export type MobileRefreshResult = {
 export type LeadStatus = {
   id: number;
   name: string;
+  /** Stable automation key (DRAFT, ASSIGN, …). */
+  code?: string | null;
   color?: string | null;
   sortOrder?: number | null;
   isWonStage?: boolean;
@@ -102,6 +104,8 @@ export type LeadListItem = {
   updatedAt?: string;
   createdAt?: string;
   followUpCount?: number;
+  /** false → nobody has opened the lead yet (Unread). Missing on old servers. */
+  viewed?: boolean;
 };
 
 export type LeadNote = {
