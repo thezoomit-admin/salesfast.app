@@ -83,22 +83,16 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   }
 
   return (
-    <View style={[styles.card, unread && styles.cardUnread]}>
-      {/* Unread (nobody has opened it) stands out like an unread notification. */}
-      {unread ? <View style={styles.unreadBar} /> : null}
+    <View style={styles.card}>
       <View style={styles.cardBody}>
         <View style={styles.nameRow}>
           <Pressable
             onPress={open}
             onPressIn={pressIn}
             accessibilityLabel={unread ? `${name}, unread` : undefined}
-            style={({ pressed }) => [
-              styles.nameTap,
-              unread && styles.nameTapUnread,
-              pressed && styles.pressed,
-            ]}
+            style={({ pressed }) => [styles.nameTap, pressed && styles.pressed]}
           >
-            {unread ? <View style={styles.unreadDot} /> : null}
+            {/* Bold name = unread, like the web lead list. */}
             <Text
               style={[styles.name, unread && styles.nameUnread]}
               numberOfLines={1}
@@ -257,26 +251,6 @@ function createStyles(colors: ThemeColors) {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
     },
-    cardUnread: {
-      // ~6% brand tint over the surface, readable in light and dark.
-      backgroundColor: `${colors.brand}10`,
-      borderColor: `${colors.brand}55`,
-    },
-    unreadBar: {
-      position: "absolute",
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 3,
-      backgroundColor: colors.brand,
-    },
-    unreadDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.brand,
-      flexShrink: 0,
-    },
     cardBody: {
       paddingHorizontal: 14,
       paddingTop: 14,
@@ -295,20 +269,16 @@ function createStyles(colors: ThemeColors) {
       flex: 1,
       minWidth: 0,
     },
-    nameTapUnread: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
     name: {
       ...typography.subtitle,
       fontSize: 16,
-      fontWeight: "700",
-      color: colors.text,
+      fontWeight: "500",
+      // Read leads recede; unread ones keep full-strength text.
+      color: colors.textSecondary,
     },
     nameUnread: {
-      flexShrink: 1,
       fontWeight: "800",
+      color: colors.text,
     },
     priorityChip: {
       flexDirection: "row",
