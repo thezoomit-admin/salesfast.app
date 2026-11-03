@@ -16,7 +16,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   dayKey,
@@ -37,6 +36,7 @@ import {
   Calendar03Icon,
   Notification01Icon,
 } from '@/components/icons/hugeicons';
+import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
 import type { LeadListItem } from '@/types/api';
 import { useTheme, type ThemeColors } from '@/theme';
 
@@ -75,7 +75,6 @@ function FollowUpMonthViewImpl({
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const tones = useMemo(() => kindTones(isDark), [isDark]);
-  const insets = useSafeAreaInsets();
   const now = useMinuteClock().getTime();
 
   // Leading blanks, then every day of the month; padded to whole weeks.
@@ -90,153 +89,144 @@ function FollowUpMonthViewImpl({
   const tasks = byDay.get(dayKey(selected)) ?? [];
 
   return (
-    <ScrollView
-      style={styles.root}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <LinearGradient
-        colors={[colors.primary50, colors.surface]}
-        start={{ x: 0.8, y: 0 }}
-        end={{ x: 0.3, y: 1 }}
-        style={[styles.calendar, { paddingTop: insets.top + 24 }]}
+    <View style={styles.root}>
+      <ScreenHeader
+        title={format(selected, 'd MMM, yy EEEE')}
+        showBack={false}
+        right={
+          <>
+            <HeaderIconButton label="Previous month" onPress={() => onShiftMonth(-1)}>
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={colors.text} />
+            </HeaderIconButton>
+            <HeaderIconButton label="Next month" onPress={() => onShiftMonth(1)}>
+              <HugeiconsIcon icon={ArrowRight01Icon} size={22} color={colors.text} />
+            </HeaderIconButton>
+          </>
+        }
+      />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <View style={styles.header}>
-          <Text style={styles.headerDate} numberOfLines={1}>
-            {format(selected, 'd MMM, yy')}{' '}
-            <Text style={styles.headerWeekday}>{format(selected, 'EEEE')}</Text>
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Previous month"
-            hitSlop={8}
-            onPress={() => onShiftMonth(-1)}
-            style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}
-          >
-            <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={colors.textSecondary} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Next month"
-            hitSlop={8}
-            onPress={() => onShiftMonth(1)}
-            style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}
-          >
-            <HugeiconsIcon icon={ArrowRight01Icon} size={22} color={colors.textSecondary} />
-          </Pressable>
-        </View>
+        <LinearGradient
+          colors={[colors.primary50, colors.surface]}
+          start={{ x: 0.8, y: 0 }}
+          end={{ x: 0.3, y: 1 }}
+          style={styles.calendar}
+        >
+          <View style={styles.weekRow}>
+            {WEEKDAYS.map((name) => (
+              <Text key={name} style={styles.weekday}>
+                {name}
+              </Text>
+            ))}
+          </View>
 
-        <View style={styles.weekRow}>
-          {WEEKDAYS.map((name) => (
-            <Text key={name} style={styles.weekday}>
-              {name}
+          <View style={styles.grid}>
+            {cells.map((day, index) => {
+              if (!day) return <View key={`blank-${index}`} style={styles.cell} />;
+              const active = isSameDay(day, selected);
+              const today = isToday(day);
+              const first = byDay.get(dayKey(day))?.[0];
+              const dotColor = first
+                ? first.due.getTime() < now
+                  ? colors.danger
+                  : tones[followUpKind(first.lead)].accent
+                : null;
+              return (
+                <Pressable
+                  key={dayKey(day)}
+                  accessibilityRole="button"
+                  accessibilityLabel={format(day, 'EEEE d MMMM')}
+                  accessibilityState={{ selected: active }}
+                  onPress={() => onSelect(day)}
+                  style={styles.cell}
+                >
+                  <View style={[styles.dayCircle, active && styles.dayCircleActive]}>
+                    <Text
+                      style={[
+                        styles.dayText,
+                        today && !active && styles.dayTextToday,
+                        active && styles.dayTextActive,
+                      ]}
+                    >
+                      {day.getDate()}
+                    </Text>
+                  </View>
+                  {dotColor && !active ? (
+                    <View style={[styles.dot, { backgroundColor: dotColor }]} />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </LinearGradient>
+
+        <View style={styles.tasks}>
+          <View style={styles.tasksHeader}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open week timeline"
+              onPress={onOpenWeek}
+              style={({ pressed }) => [styles.tasksTitleBtn, pressed && styles.pressed]}
+            >
+              <Text style={styles.tasksTitle} numberOfLines={1}>
+                {isToday(selected) ? 'Today’s Task' : `${format(selected, 'd MMM')} Task`}
+              </Text>
+              <HugeiconsIcon icon={ArrowDown01Icon} size={22} color={colors.text} strokeWidth={1.8} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Schedule a follow-up"
+              onPress={onAdd}
+              style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
+            >
+              <HugeiconsIcon icon={Add01Icon} size={22} color={colors.white} strokeWidth={2} />
+            </Pressable>
+          </View>
+
+          {tasks.length > 0 ? (
+            tasks.map(({ lead, due }) => {
+              const overdue = due.getTime() < now;
+              return (
+                <Pressable
+                  key={lead.id}
+                  onPress={() => onOpenLead(lead)}
+                  onPressIn={() => onPressInLead(lead)}
+                  style={({ pressed }) => [styles.task, pressed && styles.pressed]}
+                >
+                  <View style={styles.taskIcon}>
+                    <TaskIcon kind={followUpKind(lead)} styles={styles} />
+                  </View>
+                  <View style={styles.taskBody}>
+                    <Text style={styles.taskKind} numberOfLines={1}>
+                      {followUpLabel(lead)}
+                    </Text>
+                    <Text style={styles.taskTitle} numberOfLines={2}>
+                      {leadName(lead)}
+                    </Text>
+                    <Text style={styles.taskTime}>
+                      {format(due, 'h:mm a')}
+                      {overdue ? <Text style={styles.overdue}>  · Overdue</Text> : null}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })
+          ) : loading ? (
+            <ActivityIndicator style={styles.state} color={colors.textMuted} />
+          ) : (
+            <Text style={styles.stateText}>
+              {errorMessage ?? 'No follow-ups on this day.'}
             </Text>
-          ))}
+          )}
         </View>
-
-        <View style={styles.grid}>
-          {cells.map((day, index) => {
-            if (!day) return <View key={`blank-${index}`} style={styles.cell} />;
-            const active = isSameDay(day, selected);
-            const today = isToday(day);
-            const first = byDay.get(dayKey(day))?.[0];
-            const dotColor = first
-              ? first.due.getTime() < now
-                ? colors.danger
-                : tones[followUpKind(first.lead)].accent
-              : null;
-            return (
-              <Pressable
-                key={dayKey(day)}
-                accessibilityRole="button"
-                accessibilityLabel={format(day, 'EEEE d MMMM')}
-                accessibilityState={{ selected: active }}
-                onPress={() => onSelect(day)}
-                style={styles.cell}
-              >
-                <View style={[styles.dayCircle, active && styles.dayCircleActive]}>
-                  <Text
-                    style={[
-                      styles.dayText,
-                      today && !active && styles.dayTextToday,
-                      active && styles.dayTextActive,
-                    ]}
-                  >
-                    {day.getDate()}
-                  </Text>
-                </View>
-                {dotColor && !active ? (
-                  <View style={[styles.dot, { backgroundColor: dotColor }]} />
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      </LinearGradient>
-
-      <View style={styles.tasks}>
-        <View style={styles.tasksHeader}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open week timeline"
-            onPress={onOpenWeek}
-            style={({ pressed }) => [styles.tasksTitleBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.tasksTitle} numberOfLines={1}>
-              {isToday(selected) ? 'Today’s Task' : `${format(selected, 'd MMM')} Task`}
-            </Text>
-            <HugeiconsIcon icon={ArrowDown01Icon} size={22} color={colors.text} strokeWidth={1.8} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Schedule a follow-up"
-            onPress={onAdd}
-            style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-          >
-            <HugeiconsIcon icon={Add01Icon} size={22} color={colors.white} strokeWidth={2} />
-          </Pressable>
-        </View>
-
-        {tasks.length > 0 ? (
-          tasks.map(({ lead, due }) => {
-            const overdue = due.getTime() < now;
-            return (
-              <Pressable
-                key={lead.id}
-                onPress={() => onOpenLead(lead)}
-                onPressIn={() => onPressInLead(lead)}
-                style={({ pressed }) => [styles.task, pressed && styles.pressed]}
-              >
-                <View style={styles.taskIcon}>
-                  <TaskIcon kind={followUpKind(lead)} styles={styles} />
-                </View>
-                <View style={styles.taskBody}>
-                  <Text style={styles.taskKind} numberOfLines={1}>
-                    {followUpLabel(lead)}
-                  </Text>
-                  <Text style={styles.taskTitle} numberOfLines={2}>
-                    {leadName(lead)}
-                  </Text>
-                  <Text style={styles.taskTime}>
-                    {format(due, 'h:mm a')}
-                    {overdue ? <Text style={styles.overdue}>  · Overdue</Text> : null}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })
-        ) : loading ? (
-          <ActivityIndicator style={styles.state} color={colors.textMuted} />
-        ) : (
-          <Text style={styles.stateText}>
-            {errorMessage ?? 'No follow-ups on this day.'}
-          </Text>
-        )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -264,19 +254,10 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
   const ink = isDark ? '#FFFFFF' : '#111111';
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.surface },
+    scroll: { flex: 1 },
     content: { paddingBottom: 24 },
     pressed: { opacity: 0.6 },
-    calendar: { paddingHorizontal: 12, paddingBottom: 8 },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 14,
-      paddingHorizontal: 8,
-      marginBottom: 18,
-    },
-    headerDate: { flex: 1, fontSize: 19, fontWeight: '500', color: ink },
-    headerWeekday: { fontWeight: '400', color: colors.textSecondary },
-    navBtn: { padding: 2 },
+    calendar: { paddingHorizontal: 12, paddingTop: 4, paddingBottom: 8 },
     weekRow: { flexDirection: 'row', marginBottom: 6 },
     weekday: {
       flex: 1,
