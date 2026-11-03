@@ -15,9 +15,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { followUpTypeLabel } from '@/components/followups/followUpCalendar';
 import {
   Calendar03Icon,
   CallIcon,
+  CircleCheckIcon,
   UserIcon,
 } from '@/components/icons/hugeicons';
 import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
@@ -33,7 +35,7 @@ type HugeIconData = ComponentProps<
   typeof HugeiconsIcon
 >['icon'];
 
-type ActionKey = 'open' | 'reschedule' | 'call';
+type ActionKey = 'done' | 'open' | 'reschedule' | 'call';
 
 type Props = {
   open: boolean;
@@ -45,12 +47,11 @@ type Props = {
   onOpenLead: () => void;
   onReschedule: () => void;
   onCall?: () => void;
+  /** Shown while the follow-up is still open. */
+  onComplete?: () => void;
 };
 
-function typeLabel(type: string | null) {
-  if (!type?.trim()) return 'Follow-up';
-  return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
+const typeLabel = followUpTypeLabel;
 
 function subtitleFor(props: {
   followUpType: string | null;
@@ -74,6 +75,12 @@ const ACTIONS: Array<{
   icon: HugeIconData;
   needsPhone?: boolean;
 }> = [
+  {
+    key: 'done',
+    label: 'Mark as done',
+    hint: () => 'Log the outcome & set the next step',
+    icon: CircleCheckIcon,
+  },
   {
     key: 'open',
     label: 'Open lead',
@@ -106,6 +113,7 @@ export function FollowUpActionsSheet({
   onOpenLead,
   onReschedule,
   onCall,
+  onComplete,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -223,12 +231,15 @@ export function FollowUpActionsSheet({
   );
 
   const visibleActions = ACTIONS.filter(
-    (a) => !a.needsPhone || Boolean(leadPhone?.trim() && onCall)
+    (a) =>
+      (a.key !== 'done' || Boolean(onComplete)) &&
+      (!a.needsPhone || Boolean(leadPhone?.trim() && onCall))
   );
 
   const runAction = (key: ActionKey) => {
     // Fire action while parent still holds the selected item, then dismiss.
-    if (key === 'open') onOpenLead();
+    if (key === 'done') onComplete?.();
+    else if (key === 'open') onOpenLead();
     else if (key === 'reschedule') onReschedule();
     else if (key === 'call') onCall?.();
     animateClose();

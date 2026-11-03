@@ -3,20 +3,21 @@ import { useRouter } from 'expo-router';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
 import { isTomorrow } from 'date-fns/isTomorrow';
-import { useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useFollowUpActions, type FollowUpTarget } from '@/components/followups/FollowUpActions';
 import { FollowUpCard } from '@/components/followups/FollowUpCard';
 import {
   dayKey,
+  followUpKind,
+  followUpState,
+  followUpTypeLabel,
   followupTypeIcon,
   kindTones,
   useMinuteClock,
-  type FollowUpKind,
 } from '@/components/followups/followUpCalendar';
 import { ArrowRight01Icon } from '@/components/icons/hugeicons';
-import { FollowUpActionsSheet } from '@/components/home/FollowUpActionsSheet';
-import { RescheduleFollowUpSheet } from '@/components/home/RescheduleFollowUpSheet';
 import { typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
@@ -26,38 +27,10 @@ type Props = {
   queue: QueueItem[];
 };
 
-type MenuTarget = QueueItem;
-
-type RescheduleTarget = {
-  leadId: number;
-  leadName: string;
-  followUpType: string | null;
-};
-
 type HourSlot = { hour: number; items: { item: QueueItem; due: Date }[] };
 type DaySection = { key: string; day: Date; hours: HourSlot[] };
 
 const NOW_DASHES = 60;
-
-const TYPE_LABEL: Record<string, string> = {
-  FOLLOWUP: 'Follow-up',
-  FOLLOW_UP: 'Follow-up',
-  OFFICE_VISIT: 'Office visit',
-  SITE_VISIT: 'Site visit',
-  COLD_CALL: 'Cold call',
-  CALL: 'Call',
-  WHATSAPP: 'WhatsApp',
-};
-
-function typeLabel(type: string | null) {
-  if (!type?.trim()) return 'Follow-up';
-  return TYPE_LABEL[type] ?? type.replace(/_/g, ' ');
-}
-
-/** The dashboard has no lead status, so the card style comes from the follow-up type. */
-function kindFor(type: string | null): FollowUpKind {
-  return type && /VISIT/.test(type) ? 'event' : 'reminder';
-}
 
 function dayTitle(day: Date) {
   if (isToday(day)) return 'Today';
@@ -90,10 +63,15 @@ function groupQueue(queue: QueueItem[]) {
   return days;
 }
 
-function dialablePhone(raw: string | null | undefined) {
-  if (!raw?.trim()) return null;
-  const digits = raw.replace(/[^\d+]/g, '');
-  return digits.length >= 7 ? digits : null;
+function targetOf(item: QueueItem): FollowUpTarget {
+  return {
+    leadId: item.leadId,
+    leadName: item.leadName,
+    leadPhone: item.leadPhone,
+    type: item.type,
+    dueAt: item.dueAt,
+    open: true,
+  };
 }
 
 export function UpcomingFollowupsTimeline({ queue }: Props) {
@@ -103,8 +81,7 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
   const tones = useMemo(() => kindTones(isDark), [isDark]);
   const router = useRouter();
   const now = useMinuteClock();
-  const [menu, setMenu] = useState<MenuTarget | null>(null);
-  const [reschedule, setReschedule] = useState<RescheduleTarget | null>(null);
+  const actions = useFollowUpActions();
 
   const days = useMemo(() => groupQueue(queue), [queue]);
 
@@ -161,24 +138,22 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
                     <Text style={styles.hourSuffix}>{label.suffix}</Text>
                   </View>
                   <View style={styles.slot}>
-                    {items.map(({ item, due }) => {
-                      const kind = kindFor(item.type);
-                      return (
-                        <FollowUpCard
-                          key={item.id}
-                          name={item.leadName}
-                          label={typeLabel(item.type)}
-                          labelIcon={followupTypeIcon(item.type)}
-                          kind={kind}
-                          due={due}
-                          overdue={due.getTime() < now.getTime()}
-                          tone={tones[kind]}
-                          note={item.note}
-                          onPress={() => router.push(`/leads/${item.leadId}`)}
-                          onMore={() => setMenu(item)}
-                        />
-                      );
-                    })}
+                    {items.map(({ item, due }) => (
+                      <FollowUpCard
+                        key={item.id}
+                        name={item.leadName}
+                        label={followUpTypeLabel(item.type)}
+                        labelIcon={followupTypeIcon(item.type)}
+                        due={due}
+                        // The dashboard queue only lists Pending follow-ups.
+                        state={followUpState({ status: 'PENDING', onTime: null }, due, now)}
+                        tone={tones[followUpKind(item.type)]}
+                        note={item.note}
+                        onPress={() => router.push(`/leads/${item.leadId}`)}
+                        onMore={() => actions.openMenu(targetOf(item))}
+                        onComplete={() => actions.openComplete(targetOf(item))}
+                      />
+                    ))}
                   </View>
                 </View>
               );
@@ -187,43 +162,7 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
         ))
       )}
 
-      <FollowUpActionsSheet
-        open={!!menu}
-        leadName={menu?.leadName ?? ''}
-        leadPhone={menu?.leadPhone}
-        followUpType={menu?.type ?? null}
-        dueAt={menu?.dueAt ?? null}
-        onClose={() => setMenu(null)}
-        onOpenLead={() => {
-          const leadId = menu?.leadId;
-          if (leadId != null) router.push(`/leads/${leadId}`);
-        }}
-        onReschedule={() => {
-          if (menu) {
-            setReschedule({
-              leadId: menu.leadId,
-              leadName: menu.leadName,
-              followUpType: menu.type,
-            });
-          }
-        }}
-        onCall={
-          dialablePhone(menu?.leadPhone)
-            ? () => {
-                const phone = dialablePhone(menu?.leadPhone);
-                if (phone) void Linking.openURL(`tel:${phone}`);
-              }
-            : undefined
-        }
-      />
-
-      <RescheduleFollowUpSheet
-        open={!!reschedule}
-        leadId={reschedule?.leadId ?? 0}
-        leadName={reschedule?.leadName ?? ''}
-        followUpType={reschedule?.followUpType ?? null}
-        onClose={() => setReschedule(null)}
-      />
+      {actions.sheets}
     </View>
   );
 }
