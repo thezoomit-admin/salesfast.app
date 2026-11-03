@@ -50,11 +50,25 @@ function seedLists(c) {
     ],
     pageParams: [1, 2],
   });
-  c.setQueryData(['follow-up-leads', 'today'], {
-    items: [row(2, '2026-11-02T08:00:00Z', { priority: 'HIGH' })],
-    meta: {},
+  c.setQueryData(['my-follow-ups', 'month', '2026-11'], {
+    items: [followUp(1, 2, '2026-11-02T08:00:00Z', 'HIGH')],
   });
 }
+
+// A follow-up row whose own id (1) collides with another lead's id.
+const followUp = (id, leadId, updatedAt, priority) => ({
+  id,
+  dueAt: '2026-11-03T10:00:00Z',
+  status: 'PENDING',
+  lead: {
+    id: leadId,
+    name: `Lead ${leadId}`,
+    phone: null,
+    priority,
+    status: { id: 1, name: 'New' },
+    updatedAt,
+  },
+});
 
 describe('findListLead', () => {
   it('finds a row in any page of the infinite Leads list', () => {
@@ -73,7 +87,7 @@ describe('findListLead', () => {
     const c = newClient();
     seedLists(c);
     c.setQueryData(['my-leads', 'broken'], { pages: null });
-    c.setQueryData(['follow-up-leads', 'odd'], 'not a list');
+    c.setQueryData(['my-follow-ups', 'odd'], 'not a list');
     assert.equal(findListLead(c, 99), undefined);
   });
 
@@ -90,26 +104,21 @@ describe('findListLead', () => {
 });
 
 describe('patchLeadInLists', () => {
-  it('updates the lead row in infinite my-leads and flat follow-up lists', () => {
+  it('updates the lead row in the infinite my-leads list', () => {
     const c = newClient();
     seedLists(c);
     patchLeadInLists(c, 2, { priority: 'LOW' });
     const myLeads = c.getQueryData(['my-leads', '', undefined]);
     assert.equal(myLeads.pages[0].items[1].priority, 'LOW');
-    assert.equal(
-      c.getQueryData(['follow-up-leads', 'today']).items[0].priority,
-      'LOW'
-    );
   });
 
-  it('leaves unrelated rows unchanged', () => {
+  it('never patches follow-up rows, even when a follow-up id matches the lead', () => {
     const c = newClient();
     seedLists(c);
-    patchLeadInLists(c, 1, { priority: 'HIGH' });
-    assert.equal(
-      c.getQueryData(['follow-up-leads', 'today']).items[0].priority,
-      'HIGH'
-    );
+    patchLeadInLists(c, 1, { priority: 'LOW' });
+    const followUps = c.getQueryData(['my-follow-ups', 'month', '2026-11']);
+    assert.equal(followUps.items[0].lead.priority, 'HIGH');
+    assert.equal(followUps.items[0].priority, undefined);
   });
 });
 

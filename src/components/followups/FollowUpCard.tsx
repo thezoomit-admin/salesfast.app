@@ -5,15 +5,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   initials,
-  type FollowUpKind,
+  isClosedState,
+  type FollowUpState,
   type KindTone,
 } from '@/components/followups/followUpCalendar';
 import {
-  Calendar03Icon,
+  CircleCheckIcon,
   Clock01Icon,
   ClockAlertIcon,
   MoreVerticalIcon,
-  Notification01Icon,
 } from '@/components/icons/hugeicons';
 import { useTheme, type ThemeColors } from '@/theme';
 
@@ -22,16 +22,26 @@ type Props = {
   label: string;
   /** Icon inside the label badge — the same one the web admin shows. */
   labelIcon: IconSvgElement;
-  kind: FollowUpKind;
   due: Date;
-  overdue: boolean;
+  state: FollowUpState;
   tone: KindTone;
   /** Follow-up note, shown under the name when present. */
   note?: string | null;
   onPress: () => void;
   onPressIn?: () => void;
-  /** Adds a ⋮ button beside the kind icon. */
+  /** Adds a ⋮ button for more actions. */
   onMore?: () => void;
+  /** Adds a "mark as done" check while the follow-up is still open. */
+  onComplete?: () => void;
+};
+
+const STATE_BADGE: Partial<
+  Record<FollowUpState, { label: string; icon: IconSvgElement; tone: 'danger' | 'success' | 'warning' }>
+> = {
+  overdue: { label: 'Overdue', icon: ClockAlertIcon, tone: 'danger' },
+  missed: { label: 'Missed', icon: ClockAlertIcon, tone: 'danger' },
+  done: { label: 'Done', icon: CircleCheckIcon, tone: 'success' },
+  late: { label: 'Done late', icon: CircleCheckIcon, tone: 'warning' },
 };
 
 /** Follow-up card shared by the Follow-ups timeline and Home. */
@@ -39,65 +49,53 @@ export function FollowUpCard({
   name,
   label,
   labelIcon,
-  kind,
   due,
-  overdue,
+  state,
   tone,
   note,
   onPress,
   onPressIn,
   onMore,
+  onComplete,
 }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
-
-  const time = (
-    <View style={styles.cardTime}>
-      <HugeiconsIcon icon={Clock01Icon} size={20} color={colors.text} strokeWidth={1.5} />
-      <Text style={styles.cardTimeText}>{format(due, 'h:mm a')}</Text>
-    </View>
-  );
-
-  const badges = (
-    <View style={styles.badges}>
-      <View style={[styles.badge, { backgroundColor: `${tone.accent}26` }]}>
-        <HugeiconsIcon icon={labelIcon} size={13} color={tone.accent} strokeWidth={2} />
-        <Text style={[styles.badgeText, { color: tone.accent }]} numberOfLines={1}>
-          {label}
-        </Text>
-      </View>
-      {overdue ? (
-        <View style={[styles.badge, { backgroundColor: colors.dangerSoft }]}>
-          <HugeiconsIcon icon={ClockAlertIcon} size={13} color={colors.danger} strokeWidth={2} />
-          <Text style={[styles.badgeText, { color: colors.danger }]} numberOfLines={1}>
-            Overdue
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
+  const closed = isClosedState(state);
+  const stateBadge = STATE_BADGE[state];
+  const stateInk = stateBadge ? colors[stateBadge.tone] : colors.text;
+  const stateSoft = stateBadge ? colors[`${stateBadge.tone}Soft`] : colors.surface;
 
   return (
     <Pressable
       onPress={onPress}
       onPressIn={onPressIn}
-      style={({ pressed }) => [styles.card, { backgroundColor: tone.bg }, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: tone.bg },
+        closed && styles.closed,
+        pressed && styles.pressed,
+      ]}
     >
       <View style={styles.cardTop}>
         <Text style={styles.cardTitle} numberOfLines={2}>
           {name}
         </Text>
-        {kind === 'todo' ? (
-          <View style={styles.checkbox} />
-        ) : (
-          <HugeiconsIcon
-            icon={kind === 'event' ? Calendar03Icon : Notification01Icon}
-            size={24}
-            color={colors.text}
-            strokeWidth={1.5}
-          />
-        )}
+        {closed ? (
+          <View accessibilityLabel="Done" style={styles.check}>
+            <HugeiconsIcon icon={CircleCheckIcon} size={26} color={stateInk} strokeWidth={2} />
+          </View>
+        ) : onComplete ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Mark follow-up as done"
+            hitSlop={10}
+            onPress={onComplete}
+            style={({ pressed }) => [styles.check, pressed && styles.pressed]}
+          >
+            <View style={styles.checkCircle} />
+          </Pressable>
+        ) : null}
         {onMore ? (
           <Pressable
             accessibilityRole="button"
@@ -117,23 +115,34 @@ export function FollowUpCard({
         </Text>
       ) : null}
 
-      {kind === 'reminder' ? (
-        <View style={[styles.cardInline, styles.cardInlineReminder]}>
-          {badges}
-          {time}
+      {/* Badges keep their full width and wrap to a new line rather than squeeze. */}
+      <View style={styles.badges}>
+        <View style={[styles.badge, { backgroundColor: `${tone.accent}26` }]}>
+          <HugeiconsIcon icon={labelIcon} size={13} color={tone.accent} strokeWidth={2} />
+          <Text style={[styles.badgeText, { color: tone.accent }]} numberOfLines={1}>
+            {label}
+          </Text>
         </View>
-      ) : (
-        <>
-          <View style={styles.badgesBlock}>{badges}</View>
-          <View style={styles.cardDivider} />
-          <View style={styles.cardInline}>
-            {time}
-            <View style={[styles.avatar, { backgroundColor: tone.accent }]}>
-              <Text style={styles.avatarText}>{initials(name)}</Text>
-            </View>
+        {stateBadge ? (
+          <View style={[styles.badge, { backgroundColor: stateSoft }]}>
+            <HugeiconsIcon icon={stateBadge.icon} size={13} color={stateInk} strokeWidth={2} />
+            <Text style={[styles.badgeText, { color: stateInk }]} numberOfLines={1}>
+              {stateBadge.label}
+            </Text>
           </View>
-        </>
-      )}
+        ) : null}
+      </View>
+
+      <View style={styles.cardDivider} />
+      <View style={styles.cardInline}>
+        <View style={styles.cardTime}>
+          <HugeiconsIcon icon={Clock01Icon} size={20} color={colors.text} strokeWidth={1.5} />
+          <Text style={styles.cardTimeText}>{format(due, 'h:mm a')}</Text>
+        </View>
+        <View style={[styles.avatar, { backgroundColor: tone.accent }]}>
+          <Text style={styles.avatarText}>{initials(name)}</Text>
+        </View>
+      </View>
     </Pressable>
   );
 }
@@ -143,6 +152,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
     pressed: { opacity: 0.6 },
     card: { borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16 },
+    // Done follow-ups stay visible for the record but step back.
+    closed: { opacity: 0.72 },
     cardTop: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -157,24 +168,23 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       letterSpacing: -0.3,
       color: ink,
     },
-    checkbox: {
+    check: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+    checkCircle: {
       width: 24,
       height: 24,
-      borderRadius: 7,
-      borderWidth: 1.6,
+      borderRadius: 12,
+      borderWidth: 1.8,
       borderColor: colors.text,
     },
     more: { marginLeft: -4, marginRight: -6, paddingTop: 2 },
     note: { fontSize: 14, lineHeight: 19, color: ink, opacity: 0.8, marginTop: 6 },
-    // Badges keep their full width and wrap to a new line rather than squeeze.
     badges: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'center',
       gap: 6,
-      maxWidth: '100%',
+      marginTop: 12,
     },
-    badgesBlock: { marginTop: 12 },
     badge: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -196,8 +206,6 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       justifyContent: 'space-between',
       gap: 8,
     },
-    // Time drops under the badges when the card is too narrow for one line.
-    cardInlineReminder: { marginTop: 12, flexWrap: 'wrap', rowGap: 10 },
     cardTime: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 },
     cardTimeText: { fontSize: 15, color: ink },
     avatar: {

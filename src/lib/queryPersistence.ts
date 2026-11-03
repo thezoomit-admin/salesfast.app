@@ -28,7 +28,7 @@ const MAX_LEAD_DETAILS = 30;
 const PERSISTED_ROOTS = new Set([
   'mobile-dashboard',
   'my-leads',
-  'follow-up-leads',
+  'my-follow-ups',
   'lead',
   // Option labels for the lead detail sections (admin lookups, no lead data).
   'lead-meta',

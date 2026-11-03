@@ -5,28 +5,20 @@ import { useEffect, useState } from 'react';
 import {
   Building2Icon,
   CalendarClockIcon,
-  CircleCheckIcon,
-  CircleXIcon,
-  ClipboardCheckIcon,
-  LucideHandshakeIcon,
-  HardHatIcon,
   HeadsetIcon,
-  LandPlotIcon,
   MapPinnedIcon,
   MessageSquareIcon,
-  LucidePhoneOutgoingIcon,
 } from '@/components/icons/hugeicons';
-import type { LeadListItem } from '@/types/api';
-import { parseDate } from '@/utils/dates';
+import type { MyFollowUp } from '@/types/api';
 
-/** Card style of a follow-up — matches the calendar reference (bell / box / calendar). */
+/** Card colour family of a follow-up, from its type. */
 export type FollowUpKind = 'reminder' | 'todo' | 'event';
 
-const KINDS: readonly FollowUpKind[] = ['reminder', 'todo', 'event'];
-
-/** One lead status always gets the same card style, so colors stay meaningful. */
-export function followUpKind(lead: LeadListItem): FollowUpKind {
-  return KINDS[Math.abs(lead.leadStatus?.id ?? 0) % KINDS.length];
+/** Visits are events, calls are reminders, everything else is a to-do. */
+export function followUpKind(type: string | null | undefined): FollowUpKind {
+  if (type === 'SITE_VISIT' || type === 'OFFICE_VISIT') return 'event';
+  if (type === 'COLD_CALL') return 'reminder';
+  return 'todo';
 }
 
 export type KindTone = { bg: string; accent: string };
@@ -45,81 +37,20 @@ export function kindTones(isDark: boolean): Record<FollowUpKind, KindTone> {
       };
 }
 
-export function followUpLabel(lead: LeadListItem) {
-  return lead.leadStatus?.name?.trim() || 'Follow-up';
-}
+const TYPE_LABEL: Record<string, string> = {
+  FOLLOWUP: 'Follow-up',
+  FOLLOW_UP: 'Follow-up',
+  OFFICE_VISIT: 'Office visit',
+  SITE_VISIT: 'Site visit',
+  COLD_CALL: 'Cold call',
+  CALL: 'Call',
+  WHATSAPP: 'WhatsApp',
+};
 
-export function leadName(lead: LeadListItem) {
-  return lead.buyerPersona?.fullName?.trim() || 'Unknown lead';
-}
-
-export function initials(name: string) {
-  const parts = name.split(/\s+/).filter(Boolean);
-  const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : name.slice(0, 2);
-  return letters.toUpperCase();
-}
-
-export function dayKey(d: Date) {
-  return format(d, 'yyyy-MM-dd');
-}
-
-export type DayFollowUp = { lead: LeadListItem; due: Date };
-
-export const NO_FOLLOW_UPS: DayFollowUp[] = [];
-
-/** Current time, refreshed every minute (overdue labels, the "now" line). */
-export function useMinuteClock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
-
-/** Dot under a calendar day: red if its first follow-up is overdue, else that card's accent. */
-export function dayDotColor(
-  list: DayFollowUp[] | undefined,
-  now: number,
-  tones: Record<FollowUpKind, KindTone>,
-  overdueColor: string
-) {
-  const first = list?.[0];
-  if (!first) return null;
-  return first.due.getTime() < now ? overdueColor : tones[followUpKind(first.lead)].accent;
-}
-
-/** Follow-ups per calendar day (`yyyy-MM-dd`), each day sorted by due time. */
-export function groupByDay(leads: readonly LeadListItem[]) {
-  const byDay = new Map<string, DayFollowUp[]>();
-  for (const lead of leads) {
-    const due = parseDate(lead.nextFollowupDate);
-    if (!due || Number.isNaN(due.getTime())) continue;
-    const key = dayKey(due);
-    const list = byDay.get(key);
-    if (list) list.push({ lead, due });
-    else byDay.set(key, [{ lead, due }]);
-  }
-  for (const list of byDay.values()) {
-    list.sort((a, b) => a.due.getTime() - b.due.getTime());
-  }
-  return byDay;
-}
-
-/** Badge icon for a lead status name — same rules as the web admin's statusTypeIcon. */
-export function statusTypeIcon(name: string): IconSvgElement {
-  const n = name.trim().toLowerCase();
-  if (/cold\s*call/.test(n)) return HeadsetIcon;
-  if (/site\s*visit/.test(n)) return MapPinnedIcon;
-  if (/^visited$/.test(n)) return ClipboardCheckIcon;
-  if (/office/.test(n)) return Building2Icon;
-  if (/project/.test(n)) return HardHatIcon;
-  if (/negotiat/.test(n)) return LucideHandshakeIcon;
-  if (/^won$/.test(n)) return CircleCheckIcon;
-  if (/^lost$/.test(n)) return CircleXIcon;
-  if (/phone|call/.test(n)) return LucidePhoneOutgoingIcon;
-  if (/visit/.test(n)) return LandPlotIcon;
-  return MessageSquareIcon;
+/** Same labels as the web admin's follow-up type options. */
+export function followUpTypeLabel(type: string | null | undefined) {
+  if (!type?.trim()) return 'Follow-up';
+  return TYPE_LABEL[type] ?? type.replace(/_/g, ' ');
 }
 
 /** Badge icon for a follow-up type — same as the web admin's followupTypeIcon. */
@@ -136,4 +67,84 @@ export function followupTypeIcon(type: string | null | undefined): IconSvgElemen
     default:
       return MessageSquareIcon;
   }
+}
+
+/**
+ * Where a follow-up stands. Overdue = still open past its due time; Missed =
+ * still open 24h after (the nightly scan); Done vs Late = completed within
+ * 24h of due or after, the same rule as the admin performance report.
+ */
+export type FollowUpState = 'upcoming' | 'overdue' | 'missed' | 'done' | 'late';
+
+export function followUpState(
+  f: Pick<MyFollowUp, 'status' | 'onTime'>,
+  due: Date,
+  now: Date
+): FollowUpState {
+  if (f.status === 'DONE') return f.onTime === false ? 'late' : 'done';
+  if (f.status === 'MISSED') return 'missed';
+  return due.getTime() < now.getTime() ? 'overdue' : 'upcoming';
+}
+
+export const isClosedState = (s: FollowUpState) => s === 'done' || s === 'late';
+
+export function initials(name: string) {
+  const parts = name.split(/\s+/).filter(Boolean);
+  const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : name.slice(0, 2);
+  return letters.toUpperCase();
+}
+
+export function dayKey(d: Date) {
+  return format(d, 'yyyy-MM-dd');
+}
+
+export type DayFollowUp = { item: MyFollowUp; due: Date };
+
+export const NO_FOLLOW_UPS: DayFollowUp[] = [];
+
+/** Current time, refreshed every minute (overdue labels, the "now" line). */
+export function useMinuteClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
+
+/**
+ * Dot under a calendar day: red when something there is overdue or missed,
+ * green when everything is done, else the first open card's accent.
+ */
+export function dayDotColor(
+  list: DayFollowUp[] | undefined,
+  now: Date,
+  tones: Record<FollowUpKind, KindTone>,
+  colors: { danger: string; success: string }
+) {
+  if (!list?.length) return null;
+  let firstOpen: DayFollowUp | null = null;
+  for (const entry of list) {
+    const state = followUpState(entry.item, entry.due, now);
+    if (state === 'overdue' || state === 'missed') return colors.danger;
+    if (!firstOpen && !isClosedState(state)) firstOpen = entry;
+  }
+  return firstOpen ? tones[followUpKind(firstOpen.item.type)].accent : colors.success;
+}
+
+/** Follow-ups per calendar day (`yyyy-MM-dd`), each day sorted by due time. */
+export function groupByDay(items: readonly MyFollowUp[]) {
+  const byDay = new Map<string, DayFollowUp[]>();
+  for (const item of items) {
+    const due = new Date(item.dueAt);
+    if (Number.isNaN(due.getTime())) continue;
+    const key = dayKey(due);
+    const list = byDay.get(key);
+    if (list) list.push({ item, due });
+    else byDay.set(key, [{ item, due }]);
+  }
+  for (const list of byDay.values()) {
+    list.sort((a, b) => a.due.getTime() - b.due.getTime());
+  }
+  return byDay;
 }

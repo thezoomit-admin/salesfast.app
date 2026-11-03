@@ -476,7 +476,7 @@ export function AddNoteSheet({
       const prev = rating;
       const prevLists = queryClient
         .getQueriesData({ queryKey: ['my-leads'] })
-        .concat(queryClient.getQueriesData({ queryKey: ['follow-up-leads'] }));
+        .concat(queryClient.getQueriesData({ queryKey: ['my-follow-ups'] }));
       setRating(next);
       setPriorityOpen(false);
       patchLeadInLists(queryClient, lead.id, { priority: next });

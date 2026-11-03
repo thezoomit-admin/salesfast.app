@@ -1,7 +1,7 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 
-import type { LeadDetail, LeadListItem } from '@/types/api';
+import type { LeadDetail, LeadListItem, MyFollowUp } from '@/types/api';
 
 /**
  * How the lead detail cache relates to the lead lists. No React Native
@@ -31,8 +31,30 @@ export async function detailOrNull(
 
 type ListPage = { items: LeadListItem[] };
 
-/** List caches whose rows are LeadListItem (Leads tab, Follow-ups tab). */
-const LIST_ROOTS = ['my-leads', 'follow-up-leads'] as const;
+/** List caches whose rows are LeadListItem (Leads tab). */
+const LIST_ROOTS = ['my-leads'] as const;
+
+/** Follow-ups tab cache — rows are follow-ups that carry a lead summary. */
+const FOLLOW_UP_ROOT = 'my-follow-ups';
+
+/** The lead summary on a follow-up row, as a list row (placeholder, staleness). */
+export function leadRowOfFollowUp(f: MyFollowUp): LeadListItem {
+  return {
+    id: f.lead.id,
+    buyerPersona: { fullName: f.lead.name, phone: f.lead.phone },
+    leadStatus: f.lead.status,
+    priority: f.lead.priority,
+    updatedAt: f.lead.updatedAt,
+  };
+}
+
+function followUpLeadRows(data: unknown): LeadListItem[] {
+  const items = (data as { items?: unknown } | null)?.items;
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter((f): f is MyFollowUp => !!f && typeof f === 'object' && !!(f as MyFollowUp).lead)
+    .map(leadRowOfFollowUp);
+}
 
 function rowsOf(data: unknown): LeadListItem[] {
   if (!data || typeof data !== 'object') return [];
@@ -52,13 +74,17 @@ export function findListLead(
   leadId: number
 ): LeadListItem | undefined {
   let newest: LeadListItem | undefined;
+  const consider = (row: LeadListItem) => {
+    if (row.id !== leadId) return;
+    if (!newest || isNewer(row.updatedAt, newest.updatedAt)) newest = row;
+  };
   for (const root of LIST_ROOTS) {
     for (const [, data] of client.getQueriesData({ queryKey: [root] })) {
-      for (const row of rowsOf(data)) {
-        if (row.id !== leadId) continue;
-        if (!newest || isNewer(row.updatedAt, newest.updatedAt)) newest = row;
-      }
+      rowsOf(data).forEach(consider);
     }
+  }
+  for (const [, data] of client.getQueriesData({ queryKey: [FOLLOW_UP_ROOT] })) {
+    followUpLeadRows(data).forEach(consider);
   }
   return newest;
 }
@@ -108,7 +134,8 @@ function mapListData(
 }
 
 /**
- * Patch a lead row across every loaded list cache (Leads + Follow-ups).
+ * Patch a lead row across the loaded Leads list caches. Follow-up rows are
+ * not lead rows; they refetch after any lead write.
  * Used so detail edits (e.g. priority) show immediately when navigating back
  * without waiting for a full list refetch.
  */

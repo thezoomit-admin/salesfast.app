@@ -119,7 +119,7 @@ function refreshAfterWrite(client: QueryClient, leadId: number, writeCount: numb
   void client.invalidateQueries({ queryKey: ['lead', leadId] });
   void client.invalidateQueries({ queryKey: ['my-leads'] });
   void client.invalidateQueries({ queryKey: ['mobile-dashboard'] });
-  void client.invalidateQueries({ queryKey: ['follow-up-leads'] });
+  void client.invalidateQueries({ queryKey: ['my-follow-ups'] });
 }
 
 function pendingWritesFor(client: QueryClient, leadId: number) {

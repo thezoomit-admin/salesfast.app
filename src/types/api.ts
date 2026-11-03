@@ -101,8 +101,6 @@ export type LeadListItem = {
   priority?: LeadPriority | null;
   nextFollowupDate?: string | null;
   lastContactDate?: string | null;
-  /** Latest note's own text (no Activity Flow block) — the follow-up's note. Missing on old servers. */
-  lastNote?: string | null;
   updatedAt?: string;
   createdAt?: string;
   followUpCount?: number;
@@ -274,5 +272,50 @@ export type MobileDashboard = {
   callSync: {
     status: string;
     message: string;
+  };
+  /** Missing on old servers. */
+  followUpStats?: FollowUpStats;
+};
+
+/** Last 30 days: on time = done within 24h of due (same rule as the admin report). */
+export type FollowUpStats = {
+  windowDays: number;
+  due: number;
+  onTime: number;
+  late: number;
+  missed: number;
+  onTimePercent: number | null;
+};
+
+export type FollowUpOutcome =
+  | 'REACHED'
+  | 'NO_ANSWER'
+  | 'BUSY'
+  | 'CALL_BACK_LATER'
+  | 'NOT_INTERESTED';
+
+/** One of my follow-ups (`/crm/mobile/dashboard/follow-ups`). Cancelled ones are not listed. */
+export type MyFollowUp = {
+  id: number;
+  dueAt: string;
+  type: string | null;
+  status: 'PENDING' | 'DONE' | 'MISSED';
+  doneAt: string | null;
+  doneByName: string | null;
+  /** Done rows only: completed within 24h of due. */
+  onTime: boolean | null;
+  outcome: FollowUpOutcome | null;
+  channel: string | null;
+  /** The note written when it was scheduled. */
+  agenda: string | null;
+  /** Done rows only: the note logged when it was completed. */
+  outcomeNote: string | null;
+  lead: {
+    id: number;
+    name: string;
+    phone: string | null;
+    priority: LeadPriority | null;
+    status: { id: number; name: string } | null;
+    updatedAt?: string;
   };
 };

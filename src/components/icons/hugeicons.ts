@@ -270,54 +270,9 @@ export const MessageSquareIcon: IconSvgElement = [
   ['path', { d: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', ...lucide, key: '0' }],
 ];
 
-/** lucide ClipboardCheck — status "Visited". */
-export const ClipboardCheckIcon: IconSvgElement = [
-  ['rect', { width: '8', height: '4', x: '8', y: '2', rx: '1', ry: '1', ...lucide, key: '0' }],
-  ['path', { d: 'M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2', ...lucide, key: '1' }],
-  ['path', { d: 'm9 14 2 2 4-4', ...lucide, key: '2' }],
-];
-
-/** lucide HardHat — project visit. */
-export const HardHatIcon: IconSvgElement = [
-  ['path', { d: 'M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5', ...lucide, key: '0' }],
-  ['path', { d: 'M14 6a6 6 0 0 1 6 6v3', ...lucide, key: '1' }],
-  ['path', { d: 'M4 15v-3a6 6 0 0 1 6-6', ...lucide, key: '2' }],
-  ['rect', { x: '2', y: '15', width: '20', height: '4', rx: '1', ...lucide, key: '3' }],
-];
-
-/** lucide Handshake — negotiation. */
-export const LucideHandshakeIcon: IconSvgElement = [
-  ['path', { d: 'm11 17 2 2a1 1 0 1 0 3-3', ...lucide, key: '0' }],
-  ['path', { d: 'm14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4', ...lucide, key: '1' }],
-  ['path', { d: 'm21 3 1 11h-2', ...lucide, key: '2' }],
-  ['path', { d: 'M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3', ...lucide, key: '3' }],
-  ['path', { d: 'M3 4h8', ...lucide, key: '4' }],
-];
-
-/** lucide CircleCheck — Won. */
+/** lucide CircleCheck — follow-up done. */
 export const CircleCheckIcon: IconSvgElement = [
   ['circle', { cx: '12', cy: '12', r: '10', ...lucide, key: '0' }],
   ['path', { d: 'm9 12 2 2 4-4', ...lucide, key: '1' }],
 ];
 
-/** lucide CircleX — Lost. */
-export const CircleXIcon: IconSvgElement = [
-  ['circle', { cx: '12', cy: '12', r: '10', ...lucide, key: '0' }],
-  ['path', { d: 'm15 9-6 6', ...lucide, key: '1' }],
-  ['path', { d: 'm9 9 6 6', ...lucide, key: '2' }],
-];
-
-/** lucide PhoneOutgoing — phone / call statuses. */
-export const LucidePhoneOutgoingIcon: IconSvgElement = [
-  ['path', { d: 'm16 8 6-6', ...lucide, key: '0' }],
-  ['path', { d: 'M22 8V2h-6', ...lucide, key: '1' }],
-  ['path', { d: 'M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384', ...lucide, key: '2' }],
-];
-
-/** lucide LandPlot — other visit statuses. */
-export const LandPlotIcon: IconSvgElement = [
-  ['path', { d: 'm12 8 6-3-6-3v10', ...lucide, key: '0' }],
-  ['path', { d: 'm8 11.99-5.5 3.14a1 1 0 0 0 0 1.74l8.5 4.86a2 2 0 0 0 2 0l8.5-4.86a1 1 0 0 0 0-1.74L16 12', ...lucide, key: '1' }],
-  ['path', { d: 'm6.49 12.85 11.02 6.3', ...lucide, key: '2' }],
-  ['path', { d: 'M17.51 12.85 6.5 19.15', ...lucide, key: '3' }],
-];

@@ -82,7 +82,7 @@ export function RescheduleFollowUpSheet({
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: dashboardQuery.queryKey }),
-        queryClient.invalidateQueries({ queryKey: ['follow-up-leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['my-follow-ups'] }),
         queryClient.invalidateQueries({ queryKey: ['lead', leadId] }),
       ]);
       onSuccess?.();

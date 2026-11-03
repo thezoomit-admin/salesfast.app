@@ -124,7 +124,7 @@ export default function LeadDetailScreen() {
       await queryClient.cancelQueries({ queryKey: ['lead', leadId] });
       const prevDetail = leadQuery.data;
       const prevLists = queryClient.getQueriesData({ queryKey: ['my-leads'] })
-        .concat(queryClient.getQueriesData({ queryKey: ['follow-up-leads'] }));
+        .concat(queryClient.getQueriesData({ queryKey: ['my-follow-ups'] }));
       if (prevDetail) {
         queryClient.setQueryData(['lead', leadId], { ...prevDetail, priority });
       }

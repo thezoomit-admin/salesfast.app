@@ -7,11 +7,13 @@ import {
 } from '@/features/leads/leadDetailCache';
 import type {
   ApiResponse,
+  FollowUpOutcome,
   LeadDetail,
   LeadListItem,
   LeadMeta,
   LeadStatus,
   LeadViewHistory,
+  MyFollowUp,
 } from '@/types/api';
 
 export type LeadListParams = {
@@ -145,7 +147,9 @@ export async function addLeadNote(
     followupDate?: string;
     followupType?: string;
     reminderMinutes?: number;
+    /** Mark the open follow-up done with this note, whatever the channel. */
     completeFollowup?: boolean;
+    outcome?: FollowUpOutcome;
   },
   options: WriteOptions & {
     /** Same key on every retry → the server creates the note only once. */
@@ -353,29 +357,21 @@ export function followUpMonthKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-/** The server caps a page at 100 rows; a month rarely needs more than one. */
-const FOLLOW_UP_MONTH_MAX_PAGES = 5;
-
-/** Every lead of mine with a follow-up due in `month` (`yyyy-MM`, local time). */
+/** My follow-ups due in `month` (`yyyy-MM`, local time) — Pending, Done and Missed. */
 export const followUpMonthQuery = (month: string) =>
   queryOptions({
-    queryKey: ['follow-up-leads', 'month', month],
+    queryKey: ['my-follow-ups', 'month', month],
     queryFn: async () => {
       const [year, monthNo] = month.split('-').map(Number);
-      const from = new Date(year, monthNo - 1, 1).toISOString();
-      const to = new Date(year, monthNo, 0, 23, 59, 59, 999).toISOString();
-      const items: LeadListItem[] = [];
-      for (let page = 1; page <= FOLLOW_UP_MONTH_MAX_PAGES; page++) {
-        const res = await fetchMyLeads({
-          followupFrom: from,
-          followupTo: to,
-          page,
-          per_page: 100,
-        });
-        items.push(...res.items);
-        const lastPage = res.meta.last_page ?? res.meta.totalPages ?? page;
-        if (page >= lastPage) break;
-      }
-      return { items };
+      const { data } = await api.get<ApiResponse<MyFollowUp[]>>(
+        '/crm/mobile/dashboard/follow-ups',
+        {
+          params: {
+            from: new Date(year, monthNo - 1, 1).toISOString(),
+            to: new Date(year, monthNo, 0, 23, 59, 59, 999).toISOString(),
+          },
+        }
+      );
+      return { items: data.data };
     },
   });
