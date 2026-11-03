@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 
 import { dayKey } from '@/components/followups/followUpCalendar';
-import { useTheme, type ThemeColors } from '@/theme';
+import { radii, useThemeColors, type ThemeColors } from '@/theme';
 
 /** Swipeable range either side of the current week (~5 years). */
 const WEEKS_EACH_SIDE = 260;
@@ -29,11 +29,10 @@ type Props = {
   onSelect: (day: Date) => void;
 };
 
-/** One week per page; swiping moves the selection by whole weeks. */
+/** One week per page; swiping only browses — tapping a day selects it. */
 function WeekStripImpl({ selected, onSelect }: Props) {
-  const { colors, resolved } = useTheme();
-  const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [anchor] = useState(() => startOfWeek(new Date()));
   const [width, setWidth] = useState(0);
   const listRef = useRef<FlatList<number>>(null);
@@ -44,20 +43,18 @@ function WeekStripImpl({ selected, onSelect }: Props) {
   );
   const shownPage = useRef(selectedPage);
 
-  // Header arrows / calendar picks move the strip to the selected week.
+  // Header arrows / calendar picks bring the selected week back into view.
   useEffect(() => {
     if (!width || shownPage.current === selectedPage) return;
     shownPage.current = selectedPage;
     listRef.current?.scrollToIndex({ index: selectedPage, animated: true });
-  }, [selectedPage, width]);
+    // Re-run on every new selection, even within the same week.
+  }, [selected, selectedPage, width]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
   const onSwipeEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const page = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (page === shownPage.current) return;
-    shownPage.current = page;
-    onSelect(addWeeks(selected, page - selectedPage));
+    shownPage.current = Math.round(e.nativeEvent.contentOffset.x / width);
   };
 
   const renderWeek = useCallback(
@@ -127,20 +124,19 @@ function WeekStripImpl({ selected, onSelect }: Props) {
 
 export const WeekStrip = memo(WeekStripImpl);
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
-  const ink = isDark ? '#FFFFFF' : '#111111';
+function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: { minHeight: 82 },
     week: { flexDirection: 'row' },
     day: { flex: 1, alignItems: 'center' },
     name: { fontSize: 15, color: colors.textMuted },
-    nameActive: { color: ink, fontWeight: '600' },
+    nameActive: { color: colors.brand, fontWeight: '600' },
     bar: { width: 44, height: 2, borderRadius: 1, marginTop: 6, marginBottom: 10 },
-    barActive: { backgroundColor: ink },
+    barActive: { backgroundColor: colors.brand },
     date: {
-      width: 44,
-      height: 38,
-      borderRadius: 10,
+      width: 40,
+      height: 40,
+      borderRadius: radii.lg,
       alignItems: 'center',
       justifyContent: 'center',
     },

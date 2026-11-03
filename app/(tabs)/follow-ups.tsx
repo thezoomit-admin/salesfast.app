@@ -5,7 +5,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 
 import { getErrorMessage } from '@/api/client';
 import { groupByDay } from '@/components/followups/followUpCalendar';
-import { FollowUpCalendarModal } from '@/components/followups/FollowUpCalendarModal';
+import { FollowUpCalendarSheet } from '@/components/followups/FollowUpCalendarSheet';
 import { FollowUpWeekView } from '@/components/followups/FollowUpWeekView';
 import {
   followUpMonthKey,
@@ -67,7 +67,7 @@ function FollowUpsScreen() {
         onOpenLead={openLead}
         onPressInLead={prefetchLead}
       />
-      <FollowUpCalendarModal
+      <FollowUpCalendarSheet
         open={pickerOpen}
         selected={selected}
         onSelect={setSelected}
