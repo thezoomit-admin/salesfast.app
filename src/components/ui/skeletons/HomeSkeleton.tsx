@@ -14,21 +14,23 @@ export function HomeSkeleton() {
     <SkeletonPulse style={styles.root}>
       <View style={styles.focusCard}>
         <View style={styles.focusTop}>
-          <SkeletonBone width={96} height={10} />
-          <SkeletonBone width={56} height={22} radius={radii.sm} />
+          <SkeletonBone width={110} height={14} />
+          <SkeletonBone width={36} height={36} radius={18} />
         </View>
-        <SkeletonBone width={72} height={40} radius={8} style={styles.focusValue} />
-        <SkeletonBone width="70%" height={12} style={styles.focusHint} />
-        <View style={styles.focusSplit}>
-          <View style={styles.focusSplitItem}>
-            <SkeletonBone width={40} height={18} />
-            <SkeletonBone width={64} height={10} />
+        <View style={styles.focusBody}>
+          <View style={styles.focusCopy}>
+            <SkeletonBone width={64} height={36} radius={8} />
+            <SkeletonBone width="80%" height={12} />
           </View>
-          <View style={styles.focusSplitRule} />
-          <View style={styles.focusSplitItem}>
-            <SkeletonBone width={40} height={18} />
-            <SkeletonBone width={56} height={10} />
+          <View style={styles.focusBars}>
+            {[28, 40, 22, 34].map((h, i) => (
+              <SkeletonBone key={i} width={16} height={h} radius={8} />
+            ))}
           </View>
+        </View>
+        <View style={styles.focusFooter}>
+          <SkeletonBone width={72} height={26} radius={13} />
+          <SkeletonBone width={72} height={12} />
         </View>
       </View>
 
@@ -165,34 +167,36 @@ function createStyles(colors: ThemeColors) {
     },
     focusCard: {
       backgroundColor: colors.surface,
-      borderRadius: radii.md,
+      borderRadius: 24,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
       paddingHorizontal: 18,
       paddingTop: 16,
       paddingBottom: 16,
+      gap: 16,
     },
     focusTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
     },
-    focusValue: { marginBottom: 8 },
-    focusHint: { marginBottom: 14 },
-    focusSplit: {
+    focusBody: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 16,
+    },
+    focusCopy: { flex: 1, gap: 8 },
+    focusBars: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+      height: 48,
+    },
+    focusFooter: {
       flexDirection: 'row',
       alignItems: 'center',
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      paddingTop: 12,
-    },
-    focusSplitItem: { flex: 1, gap: 6 },
-    focusSplitRule: {
-      width: StyleSheet.hairlineWidth,
-      height: 32,
-      backgroundColor: colors.border,
-      marginHorizontal: 14,
+      justifyContent: 'space-between',
     },
     scoreBoard: {
       flexDirection: 'row',

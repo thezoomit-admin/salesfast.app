@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
@@ -11,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { HomeReports } from '@/components/home/HomeReports';
+import { Search02Icon } from '@/components/icons/hugeicons';
 import { Screen } from '@/components/ui/Screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
@@ -22,15 +24,6 @@ import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { markFirstContent } from '@/lib/perfMonitor';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import { formatRelative, parseDate } from '@/utils/dates';
-
-function greetingForHour(hour: number) {
-  if (hour < 5) return 'Good night';
-  if (hour < 12) return 'Good morning';
-  if (hour < 14) return 'Good noon';
-  if (hour < 17) return 'Good afternoon';
-  if (hour < 21) return 'Good evening';
-  return 'Good night';
-}
 
 function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
@@ -118,33 +111,35 @@ export default function HomeScreen() {
     }, [callSync.refresh])
   );
 
-  const firstName = user?.name?.split(/\s+/)[0] || 'Agent';
-  const greeting = useMemo(
-    () => `${greetingForHour(new Date().getHours())}, ${firstName}`,
-    [firstName]
-  );
+  const displayName = user?.name?.trim() || 'Agent';
   const syncOk =
     callSync.status === 'configured' || callSync.status === 'unavailable_web';
-  const roleLine = user?.designation?.name?.trim() || 'Sales agent';
+
+  const openLeadSearch = useCallback(() => {
+    router.navigate({
+      pathname: '/(tabs)/leads',
+      params: { focusSearch: '1' },
+    });
+  }, [router]);
 
   const homeHeader = (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-      <View style={styles.headerLeft}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open profile"
-          onPress={() => router.navigate('/(tabs)/profile')}
-          style={({ pressed }) => pressed && styles.pressed}
-        >
-          <UserAvatar uri={user?.profilePhoto} name={user?.name} size={40} />
-        </Pressable>
-        <View style={styles.headerText}>
-          <Text style={styles.greeting} numberOfLines={1}>
-            {greeting}
-          </Text>
-          <Text style={styles.roleLine} numberOfLines={1}>
-            {roleLine}
-          </Text>
+      <View style={styles.headerTop}>
+        <View style={styles.headerIdentity}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open profile"
+            onPress={() => router.navigate('/(tabs)/profile')}
+            style={({ pressed }) => [
+              styles.headerIdentityTap,
+              pressed && styles.pressed,
+            ]}
+          >
+            <UserAvatar uri={user?.profilePhoto} name={user?.name} size={40} />
+            <Text style={styles.headerName} numberOfLines={1}>
+              {displayName}
+            </Text>
+          </Pressable>
           {!syncOk ? (
             <Pressable
               onPress={() => router.navigate('/call-sync/setup')}
@@ -162,8 +157,61 @@ export default function HomeScreen() {
             </Pressable>
           ) : null}
         </View>
+
+        <View style={styles.headerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open activities"
+            onPress={() => router.navigate('/activities')}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.headerIconBtn,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={22}
+              color={colors.text}
+            />
+          </Pressable>
+          <NotificationBell plain />
+        </View>
       </View>
-      <NotificationBell plain />
+
+      <View style={styles.searchBar}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Search leads"
+          onPress={openLeadSearch}
+          style={({ pressed }) => [
+            styles.searchMain,
+            pressed && styles.pressed,
+          ]}
+        >
+          <HugeiconsIcon
+            icon={Search02Icon}
+            size={18}
+            color={colors.textMuted}
+            strokeWidth={1.8}
+          />
+          <Text style={styles.searchPlaceholder} numberOfLines={1}>
+            Search leads...
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open lead search"
+          onPress={openLeadSearch}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.searchTrailing,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons name="qr-code-outline" size={20} color={colors.text} />
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -228,7 +276,7 @@ export default function HomeScreen() {
       onRefresh={() => query.refetch()}
       contentStyle={styles.screenContent}
     >
-      {/* Day focus — full-width primary board */}
+      {/* Day focus — analytics-style hero card */}
       <Pressable
         onPress={() => router.navigate('/(tabs)/follow-ups')}
         style={({ pressed }) => [styles.focusCard, pressed && styles.pressed]}
@@ -236,39 +284,156 @@ export default function HomeScreen() {
         accessibilityLabel={`Today's focus: ${focusTotal} items`}
       >
         <View style={styles.focusTop}>
-          <Text style={styles.focusEyebrow}>{"TODAY'S FOCUS"}</Text>
-          <View style={styles.focusCta}>
-            <Text style={styles.focusCtaText}>Queue</Text>
+          <View style={styles.focusTitleRow}>
+            <Text style={styles.focusTitle}>{"Today's focus"}</Text>
+            {!queueClear ? (
+              <View
+                style={[
+                  styles.focusBadge,
+                  kpis.overdueFollowUps > 0
+                    ? styles.focusBadgeWarn
+                    : styles.focusBadgeOk,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.focusBadgeText,
+                    kpis.overdueFollowUps > 0
+                      ? styles.focusBadgeTextWarn
+                      : styles.focusBadgeTextOk,
+                  ]}
+                >
+                  {kpis.overdueFollowUps > 0
+                    ? `${kpis.overdueFollowUps} overdue`
+                    : 'On track'}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.focusArrowBtn}>
             <Ionicons
-              name="arrow-forward"
-              size={14}
-              color={isDark ? colors.brand : colors.white}
+              name="arrow-up-outline"
+              size={16}
+              color={colors.text}
+              style={styles.focusArrowIcon}
             />
           </View>
         </View>
-        <Text style={styles.focusValue}>{focusTotal}</Text>
-        <Text style={styles.focusHint}>
-          {queueClear
-            ? 'Nothing urgent — you are clear for now'
-            : `${kpis.todayFollowUps} due today · ${kpis.overdueFollowUps} overdue`}
-        </Text>
-        <View style={styles.focusSplit}>
-          <View style={styles.focusSplitItem}>
-            <Text style={styles.focusSplitValue}>{kpis.todayFollowUps}</Text>
-            <Text style={styles.focusSplitLabel}>Due today</Text>
-          </View>
-          <View style={styles.focusSplitRule} />
-          <View style={styles.focusSplitItem}>
-            <Text
-              style={[
-                styles.focusSplitValue,
-                kpis.overdueFollowUps > 0 && styles.focusSplitDanger,
-              ]}
-            >
-              {kpis.overdueFollowUps}
+
+        <View style={styles.focusBody}>
+          <View style={styles.focusCopy}>
+            <Text style={styles.focusValue}>{focusTotal}</Text>
+            <Text style={styles.focusHint}>
+              {queueClear
+                ? 'Nothing urgent — you are clear for now'
+                : `${kpis.todayFollowUps} due today · ${kpis.overdueFollowUps} overdue`}
             </Text>
-            <Text style={styles.focusSplitLabel}>Overdue</Text>
           </View>
+
+          <View style={styles.focusChart}>
+            {(
+              [
+                {
+                  key: 'due',
+                  label: 'Due',
+                  value: kpis.todayFollowUps,
+                  active: true,
+                },
+                {
+                  key: 'late',
+                  label: 'Late',
+                  value: kpis.overdueFollowUps,
+                  active: false,
+                },
+                {
+                  key: 'new',
+                  label: 'New',
+                  value: kpis.newLeads,
+                  active: false,
+                },
+                {
+                  key: 'done',
+                  label: 'Done',
+                  value: kpis.completedActivities,
+                  active: false,
+                },
+              ] as const
+            ).map((bar) => {
+              const max = Math.max(
+                kpis.todayFollowUps,
+                kpis.overdueFollowUps,
+                kpis.newLeads,
+                kpis.completedActivities,
+                1
+              );
+              const h = Math.max(14, Math.round((bar.value / max) * 56));
+              return (
+                <View key={bar.key} style={styles.focusBarCol}>
+                  <View
+                    style={[
+                      styles.focusBar,
+                      {
+                        height: h,
+                        backgroundColor: bar.active
+                          ? colors.brand
+                          : colors.brandSoft,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.focusBarLabel,
+                      bar.active && styles.focusBarLabelActive,
+                    ]}
+                  >
+                    {bar.label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.focusFooter}>
+          <View style={styles.focusAvatarStack}>
+            {recentLeads.slice(0, 3).map((lead, i) => (
+              <View
+                key={lead.id}
+                style={[
+                  styles.focusAvatar,
+                  {
+                    marginLeft: i === 0 ? 0 : -8,
+                    zIndex: 3 - i,
+                    backgroundColor:
+                      ['#0F766E', '#F2461C', '#D97706'][i] ?? colors.brand,
+                  },
+                ]}
+              >
+                <Text style={styles.focusAvatarText}>
+                  {(lead.name || '?').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            ))}
+            {recentLeads.length > 3 ? (
+              <View
+                style={[
+                  styles.focusAvatar,
+                  styles.focusAvatarMore,
+                  { marginLeft: -8 },
+                ]}
+              >
+                <Text style={styles.focusAvatarMoreText}>
+                  +{Math.min(recentLeads.length - 3, 99)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <Text style={styles.focusFooterLink}>View queue</Text>
+          <Ionicons
+            name="arrow-forward"
+            size={14}
+            color={colors.brand}
+          />
         </View>
       </Pressable>
 
@@ -508,35 +673,7 @@ function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   }, [screen, hasData, fetched]);
 }
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
-  const focusOnDark = {
-    cardBg: colors.surface,
-    cardBorder: colors.border,
-    eyebrow: colors.textMuted,
-    ctaBg: colors.brandSoft,
-    ctaText: colors.brandMuted,
-    value: colors.text,
-    hint: colors.textSecondary,
-    splitRule: colors.border,
-    splitValue: colors.text,
-    splitLabel: colors.textMuted,
-    splitDanger: colors.warning,
-  };
-  const focusOnLight = {
-    cardBg: colors.brand,
-    cardBorder: colors.brand,
-    eyebrow: 'rgba(255,255,255,0.78)',
-    ctaBg: 'rgba(255,255,255,0.16)',
-    ctaText: colors.white,
-    value: colors.white,
-    hint: 'rgba(255,255,255,0.88)',
-    splitRule: 'rgba(255,255,255,0.28)',
-    splitValue: colors.white,
-    splitLabel: 'rgba(255,255,255,0.75)',
-    splitDanger: '#FFE1A8',
-  };
-  const focus = isDark ? focusOnDark : focusOnLight;
-
+function createStyles(colors: ThemeColors, _isDark: boolean) {
   return StyleSheet.create({
     screenContent: {
       gap: 16,
@@ -546,41 +683,88 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     pressed: { opacity: 0.88 },
 
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingBottom: 12,
+      gap: 12,
       backgroundColor: colors.background,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
-    headerLeft: {
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    headerIdentity: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
+    headerIdentityTap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 0,
+    },
+    headerName: {
+      ...typography.subtitle,
+      flexShrink: 1,
+      fontSize: 17,
+      lineHeight: 22,
+      fontWeight: '600',
+      color: colors.text,
+      minWidth: 0,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+    },
+    headerIconBtn: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: radii.pill,
+      paddingLeft: 14,
+      paddingRight: 10,
+      minHeight: 46,
+      gap: 4,
+    },
+    searchMain: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      marginRight: 12,
+      gap: 10,
+      minWidth: 0,
+      paddingVertical: 10,
+    },
+    searchPlaceholder: {
+      ...typography.body,
+      flex: 1,
+      fontSize: 15,
+      lineHeight: 20,
+      color: colors.textMuted,
       minWidth: 0,
     },
-    headerText: { flexShrink: 1, minWidth: 0, marginLeft: 10, gap: 2 },
-    greeting: {
-      ...typography.subtitle,
-      fontSize: 17,
-      lineHeight: 22,
-      fontWeight: '700',
-      color: colors.text,
-    },
-    roleLine: {
-      ...typography.caption,
-      fontSize: 13,
-      lineHeight: 18,
-      color: colors.textSecondary,
+    searchTrailing: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     syncWarn: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
       marginTop: 2,
+      marginLeft: 50,
       alignSelf: 'flex-start',
     },
     syncWarnText: {
@@ -591,82 +775,156 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
 
     focusCard: {
-      backgroundColor: focus.cardBg,
-      borderRadius: radii.md,
+      backgroundColor: colors.surface,
+      borderRadius: 24,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: focus.cardBorder,
+      borderColor: colors.border,
       paddingHorizontal: 18,
       paddingTop: 16,
       paddingBottom: 16,
+      gap: 16,
     },
     focusTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 8,
+      gap: 10,
     },
-    focusEyebrow: {
-      ...typography.label,
-      fontSize: 11,
-      letterSpacing: 1,
-      color: focus.eyebrow,
-    },
-    focusCta: {
+    focusTitleRow: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      backgroundColor: focus.ctaBg,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: radii.sm,
+      gap: 8,
+      minWidth: 0,
     },
-    focusCtaText: {
+    focusTitle: {
+      ...typography.subtitle,
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      flexShrink: 1,
+    },
+    focusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: radii.pill,
+      flexShrink: 0,
+    },
+    focusBadgeOk: { backgroundColor: colors.successSoft },
+    focusBadgeWarn: { backgroundColor: colors.warningSoft },
+    focusBadgeText: {
       ...typography.caption,
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: '700',
-      color: focus.ctaText,
+    },
+    focusBadgeTextOk: { color: colors.success },
+    focusBadgeTextWarn: { color: colors.warning },
+    focusArrowBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceMuted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    focusArrowIcon: {
+      transform: [{ rotate: '45deg' }],
+    },
+    focusBody: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 16,
+    },
+    focusCopy: {
+      flex: 1,
+      gap: 6,
+      minWidth: 0,
+      paddingBottom: 2,
     },
     focusValue: {
       fontSize: 44,
       lineHeight: 48,
       fontWeight: '700',
       letterSpacing: -1.2,
-      color: focus.value,
+      color: colors.text,
     },
     focusHint: {
       ...typography.caption,
       fontSize: 13,
       lineHeight: 18,
-      color: focus.hint,
-      marginTop: 4,
-      marginBottom: 14,
+      color: colors.textMuted,
     },
-    focusSplit: {
+    focusChart: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+      height: 76,
+    },
+    focusBarCol: {
+      width: 24,
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      height: '100%',
+    },
+    focusBar: {
+      width: 16,
+      borderRadius: 8,
+      marginTop: 'auto',
+    },
+    focusBarLabel: {
+      ...typography.caption,
+      fontSize: 9,
+      fontWeight: '600',
+      color: colors.textMuted,
+    },
+    focusBarLabelActive: {
+      color: colors.brand,
+    },
+    focusFooter: {
       flexDirection: 'row',
       alignItems: 'center',
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: focus.splitRule,
-      paddingTop: 12,
+      gap: 8,
+      paddingTop: 2,
     },
-    focusSplitItem: { flex: 1, gap: 2 },
-    focusSplitValue: {
-      ...typography.subtitle,
-      fontSize: 20,
-      lineHeight: 24,
-      fontWeight: '700',
-      color: focus.splitValue,
+    focusAvatarStack: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 4,
     },
-    focusSplitDanger: { color: focus.splitDanger },
-    focusSplitLabel: {
+    focusAvatar: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: colors.surface,
+    },
+    focusAvatarText: {
       ...typography.caption,
-      fontSize: 12,
-      color: focus.splitLabel,
+      fontSize: 10,
+      fontWeight: '700',
+      color: '#FFFFFF',
     },
-    focusSplitRule: {
-      width: StyleSheet.hairlineWidth,
-      height: 32,
-      backgroundColor: focus.splitRule,
-      marginHorizontal: 14,
+    focusAvatarMore: {
+      backgroundColor: colors.successSoft,
+    },
+    focusAvatarMoreText: {
+      ...typography.caption,
+      fontSize: 9,
+      fontWeight: '700',
+      color: colors.success,
+    },
+    focusFooterLink: {
+      ...typography.caption,
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.brand,
+      marginLeft: 'auto',
     },
 
     scoreBoard: {
