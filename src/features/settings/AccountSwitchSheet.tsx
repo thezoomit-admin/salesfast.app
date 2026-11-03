@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Easing,
   Modal,
   PanResponder,
   Pressable,
@@ -20,6 +21,9 @@ import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme'
 const MAX_VISIBLE_OTHERS = 2;
 const DISMISS_DISTANCE = 100;
 const DISMISS_VELOCITY = 0.9;
+const SHEET_OFFSCREEN = 560;
+const OPEN_MS = 280;
+const CLOSE_MS = 240;
 
 const AVATAR_TONES = [
   '#A78BFA',
@@ -116,8 +120,12 @@ export function AccountSwitchSheet({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [showAll, setShowAll] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
-  const dragY = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(false);
+  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
+  const backdropOp = useRef(new Animated.Value(0)).current;
   const busyRef = useRef(false);
+  const closingRef = useRef(false);
+  const mountedRef = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -177,48 +185,97 @@ export function AccountSwitchSheet({
   const busy = switching || switchingId !== null;
   busyRef.current = busy;
 
-  const handleClose = () => {
-    if (busyRef.current) return;
+  const finishClose = (notifyParent: boolean) => {
+    mountedRef.current = false;
+    setMounted(false);
     setShowAll(false);
-    dragY.setValue(0);
-    onCloseRef.current();
+    setSwitchingId(null);
+    translateY.setValue(SHEET_OFFSCREEN);
+    backdropOp.setValue(0);
+    closingRef.current = false;
+    if (notifyParent) onCloseRef.current();
+  };
+
+  const runCloseAnimation = (notifyParent: boolean) => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    Animated.parallel([
+      Animated.timing(backdropOp, {
+        toValue: 0,
+        duration: CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: SHEET_OFFSCREEN,
+        duration: CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) finishClose(notifyParent);
+      else closingRef.current = false;
+    });
+  };
+
+  const animateClose = () => {
+    if (busyRef.current || closingRef.current) return;
+    runCloseAnimation(true);
   };
 
   useEffect(() => {
-    if (!open) {
-      setShowAll(false);
-      setSwitchingId(null);
-      dragY.setValue(0);
+    if (open) {
+      closingRef.current = false;
+      mountedRef.current = true;
+      setMounted(true);
+      translateY.setValue(SHEET_OFFSCREEN);
+      backdropOp.setValue(0);
+      const frame = requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.timing(backdropOp, {
+            toValue: 1,
+            duration: OPEN_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: OPEN_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+      return () => cancelAnimationFrame(frame);
     }
-  }, [open, dragY]);
+
+    if (!mountedRef.current || closingRef.current) return;
+    // Parent flipped `open` off — slide down, don't notify again.
+    runCloseAnimation(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => !busyRef.current,
+        onStartShouldSetPanResponder: () =>
+          !busyRef.current && !closingRef.current,
         onMoveShouldSetPanResponder: (_, g) =>
-          !busyRef.current && g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+          !busyRef.current &&
+          !closingRef.current &&
+          g.dy > 4 &&
+          Math.abs(g.dy) > Math.abs(g.dx),
         onPanResponderMove: (_, g) => {
-          if (g.dy > 0) dragY.setValue(g.dy);
+          if (g.dy > 0) translateY.setValue(g.dy);
         },
         onPanResponderRelease: (_, g) => {
           const shouldDismiss =
             g.dy > DISMISS_DISTANCE || g.vy > DISMISS_VELOCITY;
           if (shouldDismiss) {
-            Animated.timing(dragY, {
-              toValue: 480,
-              duration: 180,
-              useNativeDriver: true,
-            }).start(({ finished }) => {
-              if (finished) {
-                setShowAll(false);
-                dragY.setValue(0);
-                onCloseRef.current();
-              }
-            });
+            runCloseAnimation(true);
             return;
           }
-          Animated.spring(dragY, {
+          Animated.spring(translateY, {
             toValue: 0,
             useNativeDriver: true,
             bounciness: 0,
@@ -226,19 +283,21 @@ export function AccountSwitchSheet({
           }).start();
         },
         onPanResponderTerminate: () => {
-          Animated.spring(dragY, {
+          Animated.spring(translateY, {
             toValue: 0,
             useNativeDriver: true,
             bounciness: 0,
           }).start();
         },
       }),
-    [dragY]
+    // finishClose uses refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [translateY, backdropOp]
   );
 
   const handlePress = (item: ListItem) => {
     if (item.isCurrent) {
-      handleClose();
+      animateClose();
       return;
     }
     if (busy || !item.account) return;
@@ -254,27 +313,34 @@ export function AccountSwitchSheet({
     });
   };
 
+  if (!mounted && !open) return null;
+
   return (
     <Modal
-      visible={open}
+      visible={mounted || open}
       transparent
-      animationType="fade"
+      animationType="none"
       statusBarTranslucent
-      onRequestClose={handleClose}
+      onRequestClose={animateClose}
     >
       <View style={styles.root}>
         <Pressable
-          style={styles.backdrop}
-          onPress={handleClose}
+          style={styles.backdropHit}
+          onPress={animateClose}
           accessibilityRole="button"
           accessibilityLabel="Close"
-        />
+        >
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.backdropFill, { opacity: backdropOp }]}
+          />
+        </Pressable>
         <Animated.View
           style={[
             styles.sheet,
             {
               paddingBottom: Math.max(insets.bottom, 12),
-              transform: [{ translateY: dragY }],
+              transform: [{ translateY }],
             },
           ]}
         >
@@ -436,12 +502,18 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       flex: 1,
+      justifyContent: 'flex-end',
     },
-    backdrop: {
-      flex: 1,
+    backdropHit: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 0,
+    },
+    backdropFill: {
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(17, 24, 39, 0.45)',
     },
     sheet: {
+      zIndex: 1,
       backgroundColor: colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
