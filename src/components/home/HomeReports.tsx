@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useMemo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ArrowRight01Icon } from '@/components/icons/hugeicons';
 import { radii, typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
@@ -347,7 +349,12 @@ function ReportCard({
     >
       <View style={styles.cardHeader}>
         <Text style={styles.cardTitle}>{title}</Text>
-        <Ionicons name="chevron-forward" size={16} color={chevronColor} />
+        <HugeiconsIcon
+          icon={ArrowRight01Icon}
+          size={16}
+          color={chevronColor}
+          strokeWidth={2}
+        />
       </View>
       {children}
     </Pressable>

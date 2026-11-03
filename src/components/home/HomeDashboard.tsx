@@ -226,10 +226,11 @@ export function HomeDashboard({
               color={colors.warning}
             />
             <Text style={styles.syncWarnText}>Set up call sync</Text>
-            <Ionicons
-              name="chevron-forward"
+            <HugeiconsIcon
+              icon={ArrowRight01Icon}
               size={14}
               color={colors.warning}
+              strokeWidth={2}
             />
           </Pressable>
         ) : null}
@@ -299,8 +300,19 @@ export function HomeDashboard({
       {/* Live monitoring — 2 horizontal cards, no border/shadow */}
       <View style={styles.sectionHead}>
         <Text style={styles.sectionTitle}>Live queue monitoring</Text>
-        <Pressable onPress={() => go('/(tabs)/follow-ups')} hitSlop={6}>
-          <Text style={styles.sectionLink}>View all</Text>
+        <Pressable
+          onPress={() => go('/(tabs)/follow-ups')}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Open follow-ups"
+          style={({ pressed }) => [styles.sectionArrowBtn, pressed && styles.pressed]}
+        >
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            size={18}
+            color={colors.brand}
+            strokeWidth={2}
+          />
         </Pressable>
       </View>
 
@@ -451,7 +463,12 @@ export function HomeDashboard({
       >
         <View style={styles.insightHeader}>
           <Text style={styles.insightTitle}>Follow-up completion</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            size={16}
+            color={colors.textMuted}
+            strokeWidth={2}
+          />
         </View>
         <View style={styles.insightRow}>
           <View style={styles.insightStat}>
@@ -488,7 +505,12 @@ export function HomeDashboard({
       >
         <View style={styles.insightHeader}>
           <Text style={styles.insightTitle}>Overdue pressure</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            size={16}
+            color={colors.textMuted}
+            strokeWidth={2}
+          />
         </View>
         <View style={styles.alertRow}>
           <View style={styles.alertCopy}>
@@ -572,7 +594,12 @@ export function HomeDashboard({
       >
         <View style={styles.insightHeader}>
           <Text style={styles.insightTitle}>Pipeline overview</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          <HugeiconsIcon
+            icon={ArrowRight01Icon}
+            size={16}
+            color={colors.textMuted}
+            strokeWidth={2}
+          />
         </View>
         <View style={styles.overviewRow}>
           <ProgressRing
@@ -591,7 +618,7 @@ export function HomeDashboard({
             <Text style={styles.overviewSub}>
               {kpis.newLeads} new · {kpis.completedActivities} activities done
             </Text>
-            <Text style={styles.overviewLink}>Browse leads →</Text>
+            <Text style={styles.overviewLink}>Browse leads</Text>
           </View>
         </View>
       </Pressable>
@@ -755,11 +782,12 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
       color: colors.text,
       flex: 1,
     },
-    sectionLink: {
-      ...typography.caption,
-      fontSize: 13,
-      fontWeight: '700',
-      color: colors.brand,
+    sectionArrowBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     liveRow: {
