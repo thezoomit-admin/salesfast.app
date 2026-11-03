@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  Add01Icon,
+  ArrowRight01Icon,
   Bookmark02Icon,
   MoreVerticalIcon,
 } from '@/components/icons/hugeicons';
@@ -107,12 +107,12 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
           onPress={() => router.navigate('/(tabs)/follow-ups')}
           hitSlop={6}
           style={({ pressed }) => [
-            styles.addBtn,
+            styles.arrowBtn,
             pressed && styles.pressed,
           ]}
         >
           <HugeiconsIcon
-            icon={Add01Icon}
+            icon={ArrowRight01Icon}
             size={18}
             color={colors.brand}
             strokeWidth={2}
@@ -373,13 +373,12 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       fontWeight: '700',
       color: colors.text,
     },
-    addBtn: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+    arrowBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: isDark ? colors.brandSoft : colors.primary50,
     },
     emptyCard: {
       borderRadius: 18,
