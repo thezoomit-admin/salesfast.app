@@ -283,21 +283,6 @@ export function PriorityPickerSheet({
               </Pressable>
             );
           })}
-
-          <View style={styles.footerRule} />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Cancel"
-            disabled={saving}
-            onPress={animateClose}
-            style={({ pressed }) => [
-              styles.footerRow,
-              pressed && !saving && styles.pressed,
-            ]}
-          >
-            <Text style={styles.footerLabel}>Cancel</Text>
-          </Pressable>
         </Animated.View>
       </View>
     </Modal>
@@ -387,26 +372,6 @@ function createStyles(colors: ThemeColors) {
       fontSize: 13,
       fontWeight: '400',
       color: colors.textSecondary,
-    },
-    footerRule: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.border,
-      marginTop: 12,
-      marginBottom: 4,
-      marginHorizontal: -spacing.lg,
-    },
-    footerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 2,
-    },
-    footerLabel: {
-      ...typography.subtitle,
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.text,
     },
     pressed: {
       opacity: 0.72,
