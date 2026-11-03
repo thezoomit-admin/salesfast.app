@@ -22,7 +22,7 @@ import {
   UserIcon,
 } from '@/components/icons/hugeicons';
 import { UpcomingFollowupsTimeline } from '@/components/home/UpcomingFollowupsTimeline';
-import { radii, typography, useTheme, type ThemeColors } from '@/theme';
+import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -246,11 +246,12 @@ export function HomeDashboard({
         </Pressable>
       </View>
 
-      {/* KPI slider — reference style, flat white cards */}
+      {/* KPI slider — bleeds to screen edges (cancels Screen content padding) */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.kpiRow}
+        style={styles.kpiSlider}
         decelerationRate="fast"
         snapToInterval={kpiCardWidth + 12}
       >
@@ -697,9 +698,12 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
       color: colors.white,
     },
 
+    kpiSlider: {
+      marginHorizontal: -spacing.lg,
+    },
     kpiRow: {
       gap: 12,
-      paddingRight: 4,
+      paddingHorizontal: spacing.lg,
     },
     kpiCard: {
       ...card,
@@ -795,18 +799,18 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
     liveSection: {
       backgroundColor: colors.surface,
       borderRadius: 18,
-      paddingHorizontal: 14,
       paddingTop: 14,
       paddingBottom: 14,
       gap: 12,
+      overflow: 'hidden',
     },
     liveSectionHead: {
       marginTop: 0,
+      paddingHorizontal: 14,
     },
-
     liveRow: {
       gap: 12,
-      paddingRight: 4,
+      paddingHorizontal: 14,
     },
     liveCard: {
       borderRadius: 20,

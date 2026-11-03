@@ -1,24 +1,34 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Modal,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { FollowupDateTimeField } from '@/components/leads/FollowupDateTimeField';
+import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
   formatFollowupDateOnly,
   formatFollowupDisplay,
 } from '@/features/leads/addNoteLogic';
 import { addLeadNote } from '@/features/leads/leadsApi';
-import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
+
+const DISMISS_DISTANCE = 100;
+const DISMISS_VELOCITY = 0.9;
+const SHEET_OFFSCREEN = 560;
+const OPEN_MS = 280;
+const CLOSE_MS = 240;
 
 type Props = {
   open: boolean;
@@ -32,10 +42,10 @@ type Props = {
 function defaultSlot() {
   const d = new Date();
   d.setHours(d.getHours() + 1, 0, 0, 0);
-  if (d.getMinutes() !== 0) d.setMinutes(d.getMinutes() < 30 ? 30 : 60, 0, 0);
   return d;
 }
 
+/** Bottom sheet — same motion/chrome as AccountSwitchSheet. */
 export function RescheduleFollowUpSheet({
   open,
   leadId,
@@ -45,18 +55,20 @@ export function RescheduleFollowUpSheet({
   onSuccess,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const { colors, resolved } = useTheme();
-  const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const queryClient = useQueryClient();
   const [when, setWhen] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    setWhen(defaultSlot());
-    setError(null);
-  }, [open, leadId]);
+  const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
+  const backdropOp = useRef(new Animated.Value(0)).current;
+  const closingRef = useRef(false);
+  const mountedRef = useRef(false);
+  const busyRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const mutation = useMutation({
     mutationFn: async (at: Date) => {
@@ -74,41 +86,167 @@ export function RescheduleFollowUpSheet({
         queryClient.invalidateQueries({ queryKey: ['lead', leadId] }),
       ]);
       onSuccess?.();
-      onClose();
+      busyRef.current = false;
+      runCloseAnimation(true);
     },
     onError: (err) => {
       setError(getErrorMessage(err));
     },
   });
 
+  busyRef.current = mutation.isPending;
+
+  const finishClose = (notifyParent: boolean) => {
+    mountedRef.current = false;
+    setMounted(false);
+    setWhen(null);
+    setError(null);
+    translateY.setValue(SHEET_OFFSCREEN);
+    backdropOp.setValue(0);
+    closingRef.current = false;
+    if (notifyParent) onCloseRef.current();
+  };
+
+  const runCloseAnimation = (notifyParent: boolean) => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    Animated.parallel([
+      Animated.timing(backdropOp, {
+        toValue: 0,
+        duration: CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: SHEET_OFFSCREEN,
+        duration: CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) finishClose(notifyParent);
+      else closingRef.current = false;
+    });
+  };
+
+  const animateClose = () => {
+    if (closingRef.current || busyRef.current) return;
+    runCloseAnimation(true);
+  };
+
+  useEffect(() => {
+    if (open) {
+      closingRef.current = false;
+      mountedRef.current = true;
+      setMounted(true);
+      setWhen(defaultSlot());
+      setError(null);
+      translateY.setValue(SHEET_OFFSCREEN);
+      backdropOp.setValue(0);
+      const frame = requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.timing(backdropOp, {
+            toValue: 1,
+            duration: OPEN_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: OPEN_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+
+    if (!mountedRef.current || closingRef.current) return;
+    runCloseAnimation(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, leadId]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () =>
+          !busyRef.current && !closingRef.current,
+        onMoveShouldSetPanResponder: (_, g) =>
+          !busyRef.current &&
+          !closingRef.current &&
+          g.dy > 4 &&
+          Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderMove: (_, g) => {
+          if (g.dy > 0) translateY.setValue(g.dy);
+        },
+        onPanResponderRelease: (_, g) => {
+          const shouldDismiss =
+            g.dy > DISMISS_DISTANCE || g.vy > DISMISS_VELOCITY;
+          if (shouldDismiss) {
+            runCloseAnimation(true);
+            return;
+          }
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 0,
+            speed: 18,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 0,
+          }).start();
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [translateY, backdropOp]
+  );
+
   const canSave =
     !!when && when.getTime() > Date.now() && !mutation.isPending;
 
+  if (!mounted && !open) return null;
+
   return (
     <Modal
-      visible={open}
+      visible={mounted || open}
       transparent
-      animationType="slide"
-      onRequestClose={mutation.isPending ? undefined : onClose}
+      animationType="none"
+      onRequestClose={mutation.isPending ? undefined : animateClose}
     >
-      <View style={styles.root}>
-        <Pressable
-          style={styles.backdrop}
-          onPress={mutation.isPending ? undefined : onClose}
+      <View style={styles.root} collapsable={false}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.backdropFill, { opacity: backdropOp }]}
+        />
+        <TouchableWithoutFeedback
+          onPress={mutation.isPending ? undefined : animateClose}
           accessibilityRole="button"
           accessibilityLabel="Close"
-        />
-        <View
+        >
+          <View style={styles.backdropHit} />
+        </TouchableWithoutFeedback>
+
+        <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 20) },
+            {
+              paddingBottom: Math.max(insets.bottom, 12),
+              transform: [{ translateY }],
+            },
           ]}
         >
-          <View style={styles.handle} />
-          <Text style={styles.title}>Reschedule follow-up</Text>
-          <Text style={styles.subtitle} numberOfLines={2}>
-            {leadName}
-          </Text>
+          <View {...panResponder.panHandlers} style={styles.dragZone}>
+            <View style={styles.handle} />
+            <Text style={styles.title}>Reschedule follow-up</Text>
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {leadName}
+            </Text>
+          </View>
 
           <FollowupDateTimeField
             label="New date & time"
@@ -119,125 +257,143 @@ export function RescheduleFollowUpSheet({
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={mutation.isPending}
-              onPress={onClose}
-              style={({ pressed }) => [
-                styles.secondaryBtn,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.secondaryText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={!canSave}
-              onPress={() => {
-                if (!when) return;
-                if (when.getTime() <= Date.now()) {
-                  setError('Pick a time in the future.');
-                  return;
-                }
-                setError(null);
-                mutation.mutate(when);
-              }}
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                pressed && canSave && styles.pressed,
-                !canSave && styles.disabled,
-              ]}
-            >
-              {mutation.isPending ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.primaryText}>Save</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
+          <Pressable
+            accessibilityRole="button"
+            disabled={!canSave}
+            onPress={() => {
+              if (!when) return;
+              if (when.getTime() <= Date.now()) {
+                setError('Pick a time in the future.');
+                return;
+              }
+              setError(null);
+              mutation.mutate(when);
+            }}
+            style={({ pressed }) => [
+              styles.saveBtn,
+              pressed && canSave && styles.pressed,
+              !canSave && styles.disabled,
+            ]}
+          >
+            {mutation.isPending ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveLabel}>Save</Text>
+            )}
+          </Pressable>
+
+          <View style={styles.footerRule} />
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={mutation.isPending}
+            onPress={animateClose}
+            style={({ pressed }) => [
+              styles.footerRow,
+              pressed && !mutation.isPending && styles.pressed,
+            ]}
+          >
+            <Text style={styles.footerLabel}>Cancel</Text>
+          </Pressable>
+        </Animated.View>
       </View>
     </Modal>
   );
 }
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
+function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       flex: 1,
-      justifyContent: 'flex-end',
     },
-    backdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.45)',
+    backdropFill: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: 'rgba(17, 24, 39, 0.45)',
+    },
+    backdropHit: {
+      flex: 1,
     },
     sheet: {
       backgroundColor: colors.surface,
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      paddingHorizontal: spacing.lg,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
       paddingTop: 10,
-      gap: 14,
+      paddingHorizontal: spacing.lg,
+      shadowColor: colors.black,
+      shadowOffset: { width: 0, height: -6 },
+      shadowOpacity: 0.16,
+      shadowRadius: 16,
+      elevation: 20,
+      gap: 12,
+    },
+    dragZone: {
+      paddingTop: 2,
+      paddingBottom: 4,
     },
     handle: {
       alignSelf: 'center',
-      width: 40,
-      height: 4,
-      borderRadius: 2,
+      width: 44,
+      height: 5,
+      borderRadius: 3,
+      marginBottom: 14,
       backgroundColor: colors.border,
-      marginBottom: 4,
     },
     title: {
       ...typography.subtitle,
       fontSize: 18,
       fontWeight: '700',
       color: colors.text,
+      paddingHorizontal: 2,
     },
     subtitle: {
       ...typography.caption,
       fontSize: 13,
       color: colors.textMuted,
-      marginTop: -8,
+      marginTop: 4,
+      marginBottom: 4,
+      paddingHorizontal: 2,
     },
     error: {
       ...typography.caption,
       color: colors.danger,
     },
-    actions: {
-      flexDirection: 'row',
-      gap: 10,
+    saveBtn: {
       marginTop: 4,
-    },
-    secondaryBtn: {
-      flex: 1,
       minHeight: 48,
-      borderRadius: radii.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: isDark ? colors.surfaceMuted : colors.primary50,
-    },
-    secondaryText: {
-      ...typography.subtitle,
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.text,
-    },
-    primaryBtn: {
-      flex: 1,
-      minHeight: 48,
-      borderRadius: radii.lg,
+      borderRadius: radii.pill,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.brand,
     },
-    primaryText: {
+    saveLabel: {
       ...typography.subtitle,
       fontSize: 15,
       fontWeight: '700',
       color: '#FFFFFF',
     },
-    pressed: { opacity: 0.88 },
+    footerRule: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginTop: 4,
+      marginBottom: 0,
+      marginHorizontal: -spacing.lg,
+    },
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      paddingHorizontal: 2,
+    },
+    footerLabel: {
+      ...typography.subtitle,
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    pressed: { opacity: 0.72 },
     disabled: { opacity: 0.5 },
   });
 }

@@ -3,23 +3,16 @@ import { useRouter } from 'expo-router';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
 import { useMemo, useState } from 'react';
-import {
-  Linking,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   ArrowRight01Icon,
   Bookmark02Icon,
   MoreVerticalIcon,
 } from '@/components/icons/hugeicons';
+import { FollowUpActionsSheet } from '@/components/home/FollowUpActionsSheet';
 import { RescheduleFollowUpSheet } from '@/components/home/RescheduleFollowUpSheet';
-import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
 type QueueItem = MobileDashboard['upcomingFollowUps'][number];
@@ -67,7 +60,6 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const now = Date.now();
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const [reschedule, setReschedule] = useState<RescheduleTarget | null>(null);
@@ -239,88 +231,35 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
         </View>
       )}
 
-      <Modal
-        visible={!!menu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenu(null)}
-      >
-        <View style={styles.menuRoot}>
-          <Pressable
-            style={styles.menuBackdrop}
-            onPress={() => setMenu(null)}
-            accessibilityRole="button"
-            accessibilityLabel="Close menu"
-          />
-          <View
-            style={[
-              styles.menuSheet,
-              { paddingBottom: Math.max(insets.bottom, 16) },
-            ]}
-          >
-            <View style={styles.menuHandle} />
-            <Text style={styles.menuTitle} numberOfLines={1}>
-              {menu?.leadName ?? 'Follow-up'}
-            </Text>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                const leadId = menu?.leadId;
-                setMenu(null);
-                if (leadId != null) router.push(`/leads/${leadId}`);
-              }}
-              style={({ pressed }) => [
-                styles.menuItem,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.menuItemText}>Open lead</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                if (menu) openReschedule(menu);
-              }}
-              style={({ pressed }) => [
-                styles.menuItem,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.menuItemText}>Reschedule</Text>
-            </Pressable>
-
-            {dialablePhone(menu?.leadPhone) ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  const phone = dialablePhone(menu?.leadPhone);
-                  setMenu(null);
-                  if (phone) void Linking.openURL(`tel:${phone}`);
-                }}
-                style={({ pressed }) => [
-                  styles.menuItem,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.menuItemText}>Call</Text>
-              </Pressable>
-            ) : null}
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setMenu(null)}
-              style={({ pressed }) => [
-                styles.menuCancel,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.menuCancelText}>Cancel</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+      <FollowUpActionsSheet
+        open={!!menu}
+        leadName={menu?.leadName ?? ''}
+        leadPhone={menu?.leadPhone}
+        followUpType={menu?.type ?? null}
+        dueAt={menu?.dueAt ?? null}
+        onClose={() => setMenu(null)}
+        onOpenLead={() => {
+          const leadId = menu?.leadId;
+          if (leadId != null) router.push(`/leads/${leadId}`);
+        }}
+        onReschedule={() => {
+          if (menu) {
+            setReschedule({
+              leadId: menu.leadId,
+              leadName: menu.leadName,
+              followUpType: menu.type,
+            });
+          }
+        }}
+        onCall={
+          dialablePhone(menu?.leadPhone)
+            ? () => {
+                const phone = dialablePhone(menu?.leadPhone);
+                if (phone) void Linking.openURL(`tel:${phone}`);
+              }
+            : undefined
+        }
+      />
 
       <RescheduleFollowUpSheet
         open={!!reschedule}
@@ -351,7 +290,7 @@ function NowMarker({
   );
 }
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
+function createStyles(colors: ThemeColors, _isDark: boolean) {
   return StyleSheet.create({
     root: {
       backgroundColor: colors.surface,
@@ -519,65 +458,6 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       flex: 1,
       height: 2,
       borderRadius: 1,
-    },
-    menuRoot: {
-      flex: 1,
-      justifyContent: 'flex-end',
-    },
-    menuBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.45)',
-    },
-    menuSheet: {
-      backgroundColor: colors.surface,
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      paddingHorizontal: spacing.lg,
-      paddingTop: 10,
-      gap: 4,
-    },
-    menuHandle: {
-      alignSelf: 'center',
-      width: 40,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: colors.border,
-      marginBottom: 8,
-    },
-    menuTitle: {
-      ...typography.subtitle,
-      fontSize: 15,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 6,
-      paddingHorizontal: 4,
-    },
-    menuItem: {
-      minHeight: 48,
-      borderRadius: radii.md,
-      justifyContent: 'center',
-      paddingHorizontal: 12,
-      backgroundColor: isDark ? colors.surfaceMuted : colors.background,
-      marginBottom: 6,
-    },
-    menuItemText: {
-      ...typography.subtitle,
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.text,
-    },
-    menuCancel: {
-      minHeight: 48,
-      borderRadius: radii.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 4,
-    },
-    menuCancelText: {
-      ...typography.subtitle,
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textMuted,
     },
   });
 }
