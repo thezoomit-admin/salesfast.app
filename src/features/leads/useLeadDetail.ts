@@ -11,7 +11,7 @@ import {
   leadMetaQuery,
   startLeadView,
 } from '@/features/leads/leadsApi';
-import { markLeadOpen, markLeadTap } from '@/lib/perfMonitor';
+import { markLeadNavigate, markLeadOpen, markLeadTap } from '@/lib/perfMonitor';
 import type { LeadListItem } from '@/types/api';
 
 /**
@@ -109,13 +109,16 @@ export function useLeadRowHandlers(rows: readonly LeadListItem[]) {
 
   const openLead = useCallback(
     (lead: LeadListItem) => {
-      markLeadTap(lead.id);
+      markLeadNavigate(lead.id);
       router.push(`/leads/${lead.id}`);
     },
     [router]
   );
   const prefetchLead = useCallback(
-    (lead: LeadListItem) => prefetch(lead.id),
+    (lead: LeadListItem) => {
+      markLeadTap(lead.id);
+      prefetch(lead.id);
+    },
     [prefetch]
   );
   return { openLead, prefetchLead };

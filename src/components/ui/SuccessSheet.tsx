@@ -15,11 +15,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
-const SHEET_OFFSCREEN = 520;
-const OPEN_MS = 280;
-const CLOSE_MS = 240;
+const SHEET_OFFSCREEN = 560;
+const OPEN_MS = 420;
+const CLOSE_MS = 320;
 const DISMISS_DISTANCE = 90;
 const DISMISS_VELOCITY = 0.85;
+/** Soft ease — slow settle, no overshoot. */
+const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
+const EASE_SOFT = Easing.bezier(0.33, 0, 0.2, 1);
 
 type Props = {
   open: boolean;
@@ -46,23 +49,33 @@ export function SuccessSheet({
 
   const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
   const backdropOp = useRef(new Animated.Value(0)).current;
-  const checkScale = useRef(new Animated.Value(0)).current;
-  const checkPop = useRef(new Animated.Value(0)).current;
-  const ringPulse = useRef(new Animated.Value(0.85)).current;
+  const checkScale = useRef(new Animated.Value(0.72)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
+  const confettiOp = useRef(new Animated.Value(0)).current;
+  const ringScale = useRef(new Animated.Value(0.94)).current;
+  const contentOp = useRef(new Animated.Value(0)).current;
+  const contentY = useRef(new Animated.Value(12)).current;
   const closingRef = useRef(false);
   const mountedRef = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const [mounted, setMounted] = useState(false);
 
+  const resetHero = () => {
+    checkScale.setValue(0.72);
+    checkOpacity.setValue(0);
+    confettiOp.setValue(0);
+    ringScale.setValue(0.94);
+    contentOp.setValue(0);
+    contentY.setValue(12);
+  };
+
   const finishClose = (notify: boolean) => {
     mountedRef.current = false;
     setMounted(false);
     translateY.setValue(SHEET_OFFSCREEN);
     backdropOp.setValue(0);
-    checkScale.setValue(0);
-    checkPop.setValue(0);
-    ringPulse.setValue(0.85);
+    resetHero();
     closingRef.current = false;
     if (notify) onCloseRef.current();
   };
@@ -74,13 +87,31 @@ export function SuccessSheet({
       Animated.timing(backdropOp, {
         toValue: 0,
         duration: CLOSE_MS,
-        easing: Easing.in(Easing.cubic),
+        easing: EASE_SOFT,
         useNativeDriver: true,
       }),
       Animated.timing(translateY, {
         toValue: SHEET_OFFSCREEN,
         duration: CLOSE_MS,
-        easing: Easing.in(Easing.cubic),
+        easing: EASE_SOFT,
+        useNativeDriver: true,
+      }),
+      Animated.timing(checkOpacity, {
+        toValue: 0,
+        duration: 200,
+        easing: EASE_SOFT,
+        useNativeDriver: true,
+      }),
+      Animated.timing(confettiOp, {
+        toValue: 0,
+        duration: 200,
+        easing: EASE_SOFT,
+        useNativeDriver: true,
+      }),
+      Animated.timing(contentOp, {
+        toValue: 0,
+        duration: 180,
+        easing: EASE_SOFT,
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
@@ -98,54 +129,71 @@ export function SuccessSheet({
       setMounted(true);
       translateY.setValue(SHEET_OFFSCREEN);
       backdropOp.setValue(0);
-      checkScale.setValue(0);
-      checkPop.setValue(0);
-      ringPulse.setValue(0.85);
+      resetHero();
       const frame = requestAnimationFrame(() => {
         Animated.parallel([
           Animated.timing(backdropOp, {
             toValue: 1,
             duration: OPEN_MS,
-            easing: Easing.out(Easing.cubic),
+            easing: EASE_OUT,
             useNativeDriver: true,
           }),
           Animated.timing(translateY, {
             toValue: 0,
             duration: OPEN_MS,
-            easing: Easing.out(Easing.cubic),
+            easing: EASE_OUT,
             useNativeDriver: true,
           }),
-        ]).start(({ finished }) => {
-          if (!finished) return;
-          Animated.parallel([
-            Animated.spring(checkScale, {
-              toValue: 1,
-              friction: 5,
-              tension: 120,
-              useNativeDriver: true,
-            }),
-            Animated.timing(checkPop, {
-              toValue: 1,
-              duration: 320,
-              easing: Easing.out(Easing.back(1.6)),
-              useNativeDriver: true,
-            }),
-            Animated.sequence([
-              Animated.timing(ringPulse, {
-                toValue: 1.06,
-                duration: 280,
-                easing: Easing.out(Easing.cubic),
+          Animated.sequence([
+            Animated.delay(90),
+            Animated.parallel([
+              Animated.timing(ringScale, {
+                toValue: 1,
+                duration: 560,
+                easing: EASE_OUT,
                 useNativeDriver: true,
               }),
-              Animated.spring(ringPulse, {
+              Animated.timing(checkOpacity, {
                 toValue: 1,
-                friction: 6,
-                tension: 80,
+                duration: 480,
+                easing: EASE_OUT,
+                useNativeDriver: true,
+              }),
+              Animated.timing(checkScale, {
+                toValue: 1,
+                duration: 620,
+                easing: EASE_OUT,
+                useNativeDriver: true,
+              }),
+              Animated.sequence([
+                Animated.delay(120),
+                Animated.timing(confettiOp, {
+                  toValue: 1,
+                  duration: 780,
+                  easing: EASE_OUT,
+                  useNativeDriver: true,
+                }),
+              ]),
+            ]),
+          ]),
+          Animated.sequence([
+            Animated.delay(180),
+            Animated.parallel([
+              Animated.timing(contentOp, {
+                toValue: 1,
+                duration: 480,
+                easing: EASE_OUT,
+                useNativeDriver: true,
+              }),
+              Animated.timing(contentY, {
+                toValue: 0,
+                duration: 520,
+                easing: EASE_OUT,
                 useNativeDriver: true,
               }),
             ]),
-          ]).start();
-        });
+          ]),
+        ]).start();
       });
       return () => cancelAnimationFrame(frame);
     }
@@ -222,34 +270,14 @@ export function SuccessSheet({
         >
           <View {...panResponder.panHandlers} style={styles.dragZone}>
             <View style={styles.handle} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={animateClose}
-              hitSlop={12}
-              style={styles.closeBtn}
-            >
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
-            </Pressable>
           </View>
 
           <View style={styles.hero}>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  opacity: checkPop,
-                  transform: [{ scale: checkPop }],
-                },
-              ]}
-            >
-              <ConfettiBurst />
-            </Animated.View>
+            <ConfettiBurst progress={confettiOp} />
             <Animated.View
               style={[
                 styles.ringOuter,
-                { transform: [{ scale: ringPulse }] },
+                { transform: [{ scale: ringScale }] },
               ]}
             >
               <View style={styles.ringMid}>
@@ -257,7 +285,7 @@ export function SuccessSheet({
                   style={[
                     styles.checkCircle,
                     {
-                      opacity: checkScale,
+                      opacity: checkOpacity,
                       transform: [{ scale: checkScale }],
                     },
                   ]}
@@ -268,67 +296,114 @@ export function SuccessSheet({
             </Animated.View>
           </View>
 
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              onAction?.();
-              animateClose();
+          <Animated.View
+            style={{
+              alignSelf: 'stretch',
+              alignItems: 'center',
+              opacity: contentOp,
+              transform: [{ translateY: contentY }],
             }}
-            style={({ pressed }) => [
-              styles.actionBtn,
-              pressed && styles.pressed,
-            ]}
           >
-            <Text style={styles.actionText}>{buttonLabel}</Text>
-          </Pressable>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.message}>{message}</Text>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                onAction?.();
+                animateClose();
+              }}
+              style={({ pressed }) => [
+                styles.actionBtn,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.actionText}>{buttonLabel}</Text>
+            </Pressable>
+          </Animated.View>
         </Animated.View>
       </View>
     </Modal>
   );
 }
 
-function ConfettiBurst() {
+/** Color bits fly out from the check center. */
+function ConfettiBurst({ progress }: { progress: Animated.Value }) {
+  // Final offsets from hero center (80, 70).
   const bits: {
-    top: number;
-    left?: number;
-    right?: number;
+    dx: number;
+    dy: number;
     color: string;
     w: number;
     h: number;
     r: number;
     rot: string;
   }[] = [
-    { top: 8, left: 28, color: '#F97316', w: 7, h: 7, r: 2, rot: '25deg' },
-    { top: 18, left: 58, color: '#A78BFA', w: 6, h: 10, r: 3, rot: '-20deg' },
-    { top: 4, right: 52, color: '#60A5FA', w: 8, h: 4, r: 2, rot: '40deg' },
-    { top: 22, right: 28, color: '#F43F5E', w: 6, h: 6, r: 3, rot: '10deg' },
-    { top: 48, left: 18, color: '#34D399', w: 5, h: 9, r: 2, rot: '-35deg' },
-    { top: 56, right: 16, color: '#FBBF24', w: 7, h: 5, r: 2, rot: '15deg' },
-    { top: 72, left: 48, color: '#818CF8', w: 5, h: 5, r: 2.5, rot: '0deg' },
-    { top: 70, right: 48, color: '#FB923C', w: 8, h: 3, r: 2, rot: '-10deg' },
+    { dx: -46, dy: -52, color: '#F97316', w: 7, h: 7, r: 2, rot: '25deg' },
+    { dx: -18, dy: -48, color: '#A78BFA', w: 6, h: 10, r: 3, rot: '-20deg' },
+    { dx: 22, dy: -58, color: '#60A5FA', w: 8, h: 4, r: 2, rot: '40deg' },
+    { dx: 48, dy: -42, color: '#F43F5E', w: 6, h: 6, r: 3, rot: '10deg' },
+    { dx: -58, dy: -8, color: '#34D399', w: 5, h: 9, r: 2, rot: '-35deg' },
+    { dx: 58, dy: 2, color: '#FBBF24', w: 7, h: 5, r: 2, rot: '15deg' },
+    { dx: -28, dy: 28, color: '#818CF8', w: 5, h: 5, r: 2.5, rot: '0deg' },
+    { dx: 30, dy: 26, color: '#FB923C', w: 8, h: 3, r: 2, rot: '-10deg' },
+    { dx: -8, dy: -62, color: '#C084FC', w: 5, h: 5, r: 2.5, rot: '18deg' },
+    { dx: 10, dy: 38, color: '#2DD4BF', w: 6, h: 4, r: 2, rot: '-12deg' },
   ];
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {bits.map((b, i) => (
-        <View
-          key={i}
-          style={{
-            position: 'absolute',
-            top: b.top,
-            left: b.left,
-            right: b.right,
-            width: b.w,
-            height: b.h,
-            borderRadius: b.r,
-            backgroundColor: b.color,
-            transform: [{ rotate: b.rot }],
-          }}
-        />
-      ))}
+      {bits.map((b, i) => {
+        const delayPad = i * 0.04;
+        const tx = progress.interpolate({
+          inputRange: [0, Math.min(0.15 + delayPad, 0.9), 1],
+          outputRange: [0, b.dx * 0.4, b.dx * 1.35],
+          extrapolate: 'clamp',
+        });
+        const ty = progress.interpolate({
+          inputRange: [0, Math.min(0.15 + delayPad, 0.9), 1],
+          outputRange: [0, b.dy * 0.4, b.dy * 1.35],
+          extrapolate: 'clamp',
+        });
+        const op = progress.interpolate({
+          inputRange: [
+            0,
+            0.08 + delayPad,
+            0.45 + delayPad,
+            0.72 + delayPad,
+            1,
+          ],
+          outputRange: [0, 1, 1, 0.35, 0],
+          extrapolate: 'clamp',
+        });
+        const sc = progress.interpolate({
+          inputRange: [0, 0.2 + delayPad, 0.7, 1],
+          outputRange: [0.2, 1.05, 1, 0.55],
+          extrapolate: 'clamp',
+        });
+
+        return (
+          <Animated.View
+            key={i}
+            style={{
+              position: 'absolute',
+              top: 70 - b.h / 2,
+              left: 80 - b.w / 2,
+              width: b.w,
+              height: b.h,
+              borderRadius: b.r,
+              backgroundColor: b.color,
+              opacity: op,
+              transform: [
+                { translateX: tx },
+                { translateY: ty },
+                { scale: sc },
+                { rotate: b.rot },
+              ],
+            }}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -374,15 +449,6 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       borderRadius: 2,
       backgroundColor: colors.border,
       marginBottom: 4,
-    },
-    closeBtn: {
-      position: 'absolute',
-      right: 0,
-      top: 4,
-      width: 36,
-      height: 36,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     hero: {
       width: 160,

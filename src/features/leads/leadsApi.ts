@@ -1,8 +1,10 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import { isAxiosError } from 'axios';
 
 import { api } from '@/api/client';
-import { leadDetailKey } from '@/features/leads/leadDetailCache';
+import {
+  detailOrNull,
+  leadDetailKey,
+} from '@/features/leads/leadDetailCache';
 import { endOfLocalDayIso, startOfLocalDayIso } from '@/utils/dates';
 import type {
   ApiResponse,
@@ -80,18 +82,8 @@ export const leadDetailQuery = (leadId: number) =>
   queryOptions({
     queryKey: leadDetailKey(leadId),
     // The signal cancels the request when every screen showing it is gone.
-    queryFn: async ({ signal }): Promise<LeadDetail | null> => {
-      try {
-        return await fetchLeadById(leadId, { signal });
-      } catch (error) {
-        // Deleted, or no longer visible to this account (e.g. reassigned):
-        // null replaces any cached copy, so it stops being shown or saved.
-        if (isAxiosError(error) && error.response?.status === 404) {
-          return null;
-        }
-        throw error;
-      }
-    },
+    // Deleted / no longer visible → null (see detailOrNull).
+    queryFn: ({ signal }) => detailOrNull(fetchLeadById(leadId, { signal })),
     staleTime: LEAD_DETAIL_STALE_MS,
     enabled: Number.isFinite(leadId),
   });

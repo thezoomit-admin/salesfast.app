@@ -1,4 +1,5 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 
 import type { LeadDetail, LeadListItem } from '@/types/api';
 
@@ -11,6 +12,22 @@ import type { LeadDetail, LeadListItem } from '@/types/api';
  * sign-out, and the disk copy is one file per account.
  */
 export const leadDetailKey = (leadId: number) => ['lead', leadId] as const;
+
+/**
+ * A 404 means the lead was deleted or is no longer visible to this account
+ * (e.g. reassigned): resolve to null so it replaces any cached copy, which
+ * then stops being shown or saved. Every other failure stays an error.
+ */
+export async function detailOrNull(
+  request: Promise<LeadDetail>
+): Promise<LeadDetail | null> {
+  try {
+    return await request;
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) return null;
+    throw error;
+  }
+}
 
 type ListPage = { items: LeadListItem[] };
 
@@ -54,7 +71,8 @@ function isNewer(a: string | undefined, b: string | undefined) {
 
 /**
  * A list refresh can reveal that a lead changed (e.g. another employee moved
- * it) after its detail was cached. Mark those details stale so the next open
+ * it) after its detail was cached, or that a lead cached as "not found" is
+ * visible again (reassigned back). Mark those details stale so the next open
  * refetches instead of trusting the old copy for the rest of its staleTime.
  * Nothing is fetched here.
  */
@@ -64,9 +82,9 @@ export function markOutdatedLeadDetails(
 ) {
   for (const row of rows) {
     const key = leadDetailKey(row.id);
-    const state = client.getQueryState<LeadDetail>(key);
-    if (!state?.data || state.isInvalidated) continue;
-    if (isNewer(row.updatedAt, state.data.updatedAt)) {
+    const state = client.getQueryState<LeadDetail | null>(key);
+    if (!state || state.data === undefined || state.isInvalidated) continue;
+    if (state.data === null || isNewer(row.updatedAt, state.data.updatedAt)) {
       void client.invalidateQueries({
         queryKey: key,
         exact: true,

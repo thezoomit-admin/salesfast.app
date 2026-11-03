@@ -6,8 +6,10 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
 
 import { QueryClient, QueryObserver } from '@tanstack/query-core';
+import { AxiosError } from 'axios';
 
 import {
+  detailOrNull,
   findListLead,
   leadDetailKey,
   markOutdatedLeadDetails,
@@ -186,16 +188,88 @@ describe('markOutdatedLeadDetails', () => {
     const c = newClient();
     c.setQueryData(leadDetailKey(1), detail(1, '2026-11-01T10:00:00Z'));
     c.setQueryData(leadDetailKey(2), detail(2, '2026-11-05T10:00:00Z'));
-    c.setQueryData(leadDetailKey(3), null); // lead no longer visible
     markOutdatedLeadDetails(c, [
       row(1, '2026-11-01T10:00:00Z'),
       row(2, '2026-11-02T10:00:00Z'),
-      row(3, '2026-11-09T10:00:00Z'),
       row(4, '2026-11-09T10:00:00Z'),
     ]);
     assert.equal(c.getQueryState(leadDetailKey(1)).isInvalidated, false);
     assert.equal(c.getQueryState(leadDetailKey(2)).isInvalidated, false);
-    assert.equal(c.getQueryState(leadDetailKey(3)).isInvalidated, false);
     assert.equal(c.getQueryState(leadDetailKey(4)), undefined);
   });
+
+  it('a "not found" detail is re-checked once the lead shows up in a list again', () => {
+    const c = newClient();
+    c.setQueryData(leadDetailKey(3), null); // was 404 (e.g. reassigned away)
+    markOutdatedLeadDetails(c, [row(3, '2026-11-01T10:00:00Z')]);
+    assert.equal(c.getQueryState(leadDetailKey(3)).isInvalidated, true);
+  });
+});
+
+const httpError = (status) =>
+  new AxiosError(`Request failed with status code ${status}`, 'ERR_BAD_REQUEST', {}, {}, {
+    status,
+    statusText: '',
+    headers: {},
+    config: {},
+    data: {},
+  });
+
+describe('detailOrNull (404 → null)', () => {
+  it('passes a detail through', async () => {
+    assert.deepEqual(await detailOrNull(Promise.resolve({ id: 1 })), { id: 1 });
+  });
+
+  it('maps 404 to null, so a reassigned lead replaces its cached copy', async () => {
+    const c = newClient();
+    c.setQueryData(leadDetailKey(9), detail(9, '2026-11-01T10:00:00Z'));
+    await c.fetchQuery({
+      queryKey: leadDetailKey(9),
+      queryFn: () => detailOrNull(Promise.reject(httpError(404))),
+    });
+    assert.equal(c.getQueryData(leadDetailKey(9)), null);
+  });
+
+  it('keeps every other failure an error (401, 403, 500, network)', async () => {
+    for (const error of [
+      httpError(401),
+      httpError(403),
+      httpError(500),
+      new AxiosError('Network Error', 'ERR_NETWORK'),
+      new Error('boom'),
+    ]) {
+      await assert.rejects(detailOrNull(Promise.reject(error)), (e) => e === error);
+    }
+  });
+});
+
+describe('account switch with a request in flight', () => {
+  // useAccountQueryCache: switch → resetQueries(), sign-out → clear().
+  for (const [label, swap] of [
+    ['switch (resetQueries)', (c) => c.resetQueries()],
+    ['sign-out (clear)', (c) => c.clear()],
+  ]) {
+    it(`${label}: the late response of account A is dropped and its request aborted`, async () => {
+      const c = newClient();
+      const response = deferred();
+      let signal;
+      const observer = new QueryObserver(c, {
+        queryKey: leadDetailKey(21),
+        queryFn: ({ signal: s }) => {
+          signal = s;
+          return response.promise;
+        },
+      });
+      const unsubscribe = observer.subscribe(() => {});
+      await new Promise((r) => setTimeout(r, 0));
+      await swap(c);
+      assert.equal(signal.aborted, true);
+      response.resolve(detail(21, '2026-11-01T10:00:00Z', { owner: 'A' }));
+      await response.promise;
+      await new Promise((r) => setTimeout(r, 0));
+      const data = c.getQueryData(leadDetailKey(21));
+      assert.notEqual(data?.owner, 'A');
+      unsubscribe();
+    });
+  }
 });
