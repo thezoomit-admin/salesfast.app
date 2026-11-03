@@ -127,7 +127,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'https://salesfastapi-dev.thezoomit.com/api',
     eas: {
       projectId:
-        process.env.EAS_PROJECT_ID ?? '37dc35d5-a2b1-476e-bb6c-721668bc7473',
+        process.env.EAS_PROJECT_ID ?? '46fc7cfe-7e09-4e83-8129-1e101cc3ae3f',
     },
   },
 });

@@ -56,7 +56,7 @@
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/register.mjs --test --test-timeout=30000 \"src/**/*.test.mjs\"",
     "prebuild:android": "expo prebuild --platform android",
     "run:android": "expo run:android",
-    "eas:init": "eas init --id 37dc35d5-a2b1-476e-bb6c-721668bc7473",
+    "eas:init": "eas init --id 46fc7cfe-7e09-4e83-8129-1e101cc3ae3f",
     "build:dev": "eas build --platform android --profile development",
     "build:preview": "eas build --platform android --profile preview",
     "build:prod": "eas build --platform android --profile production",
