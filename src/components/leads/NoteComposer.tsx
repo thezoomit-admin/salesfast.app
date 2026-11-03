@@ -7,6 +7,7 @@ import {
   useAudioRecorder,
   type AudioPlayer,
   type AudioStatus,
+  type RecordingSource,
 } from 'expo-audio';
 import * as DocumentPicker from 'expo-document-picker';
 import {
@@ -108,6 +109,24 @@ const STATUS_INTERVAL_MS = 50;
  * another app, or turned off in privacy settings. A quiet room is ~-50 dB.
  */
 const SILENT_DB = -100;
+/**
+ * Android capture sources, tried in order when one yields pure silence. Some
+ * phones only feed the voice-communication path, and Android 10+ silences a
+ * plain MIC capture while another app holds the mic, but lets a
+ * voice-communication capture through.
+ */
+const ANDROID_SOURCES: RecordingSource[] = [
+  'mic',
+  'voice_communication',
+  'voice_recognition',
+  'camcorder',
+];
+/** The source that last produced sound — tried first next time. */
+let workingSource: RecordingSource | null = null;
+const rememberWorkingSource = (source: RecordingSource) => {
+  workingSource = source;
+};
+
 /** `RecordingInput.type` of the phone's own microphone. */
 const BUILT_IN_MIC = 'MicrophoneBuiltIn';
 /** Readings needed before a recording can be judged silent (~1s). */
@@ -299,6 +318,9 @@ export function NoteComposer({
   const levelHistory = useRef<number[]>([]);
   // Raw metering seen this recording — how a silent capture is detected.
   const meterStats = useRef({ readings: 0, maxDb: -Infinity });
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sourceIndex = useRef(0);
+  const switchingSource = useRef(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [playProgress, setPlayProgress] = useState(0);
@@ -307,31 +329,8 @@ export function NoteComposer({
   const activeClipRef = useRef<VoiceClip | null>(null);
 
   useEffect(() => {
-    if (!recording) return;
-    const t = setInterval(() => {
-      setRecordSec(
-        Math.floor((Date.now() - recordStartedAt.current) / 1000)
-      );
-      let db: number | undefined;
-      try {
-        db = recorder.getStatus().metering;
-      } catch {
-        db = undefined;
-      }
-      if (typeof db === 'number' && Number.isFinite(db)) {
-        meterStats.current.readings += 1;
-        meterStats.current.maxDb = Math.max(meterStats.current.maxDb, db);
-      }
-      const level = meterLevel(db);
-      levelHistory.current.push(level);
-      setLevels((prev) => [...prev.slice(1 - METER_BARS), level]);
-    }, METER_TICK_MS);
-    return () => clearInterval(t);
-  }, [recording, recorder]);
-
-
-  useEffect(() => {
     return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
       try {
         playerRef.current?.pause();
         playerRef.current?.remove();
@@ -459,6 +458,81 @@ export function NoteComposer({
     }
   }
 
+  function stopTicks() {
+    if (tickRef.current) clearInterval(tickRef.current);
+    tickRef.current = null;
+  }
+
+  /** Timer, live waveform and the silence watchdog — every METER_TICK_MS. */
+  function tick() {
+    if (switchingSource.current) return;
+    setRecordSec(Math.floor((nowMs() - recordStartedAt.current) / 1000));
+    let db: number | undefined;
+    try {
+      db = recorder.getStatus().metering;
+    } catch {
+      db = undefined;
+    }
+    if (typeof db === 'number' && Number.isFinite(db)) {
+      meterStats.current.readings += 1;
+      meterStats.current.maxDb = Math.max(meterStats.current.maxDb, db);
+    }
+    const level = meterLevel(db);
+    levelHistory.current.push(level);
+    setLevels((prev) => [...prev.slice(1 - METER_BARS), level]);
+
+    const { readings, maxDb } = meterStats.current;
+    const next = sourceIndex.current + 1;
+    if (
+      Platform.OS === 'android' &&
+      readings >= MIN_METER_READINGS &&
+      maxDb < SILENT_DB &&
+      next < ANDROID_SOURCES.length
+    ) {
+      // Pure silence on this source — restart on the next one.
+      switchingSource.current = true;
+      sourceIndex.current = next;
+      void beginCapture()
+        .catch(() => undefined)
+        .finally(() => {
+          switchingSource.current = false;
+        });
+    }
+  }
+
+  /** (Re)start capture on the current source with a fresh file and meter. */
+  async function beginCapture() {
+    // Native recorder throws if prepared twice — reset first.
+    try {
+      const status = recorder.getStatus();
+      if (status.canRecord || status.isRecording) {
+        await recorder.stop();
+      }
+    } catch {
+      /* ignore — nothing to stop */
+    }
+    await recorder.prepareToRecordAsync(
+      Platform.OS === 'android'
+        ? {
+            ...recordingOptions,
+            android: {
+              ...recordingOptions.android,
+              audioSource: ANDROID_SOURCES[sourceIndex.current],
+            },
+          }
+        : undefined
+    );
+    // Android otherwise records from a plugged-in / Bluetooth headset,
+    // which is silence when it has no mic or its mic is off.
+    if (Platform.OS === 'android') preferBuiltInMic();
+    recordStartedAt.current = nowMs();
+    levelHistory.current = [];
+    meterStats.current = { readings: 0, maxDb: -Infinity };
+    setLevels([]);
+    setRecordSec(0);
+    recorder.record();
+  }
+
   async function startRecording() {
     try {
       stopPlayback(true);
@@ -478,28 +552,16 @@ export function NoteComposer({
         interruptionMode: 'doNotMix',
       });
 
-      // Native recorder throws if prepared twice — reset first.
-      try {
-        const status = recorder.getStatus();
-        if (status.canRecord || status.isRecording) {
-          await recorder.stop();
-        }
-      } catch {
-        /* ignore — nothing to stop */
-      }
-
-      await recorder.prepareToRecordAsync();
-      // Android otherwise records from a plugged-in / Bluetooth headset,
-      // which is silence when it has no mic or its mic is off.
-      if (Platform.OS === 'android') preferBuiltInMic();
-      recordStartedAt.current = nowMs();
-      levelHistory.current = [];
-      meterStats.current = { readings: 0, maxDb: -Infinity };
-      setLevels([]);
-      setRecordSec(0);
-      recorder.record();
+      sourceIndex.current = Math.max(
+        0,
+        workingSource ? ANDROID_SOURCES.indexOf(workingSource) : 0
+      );
+      await beginCapture();
+      stopTicks();
+      tickRef.current = setInterval(tick, METER_TICK_MS);
       setRecording(true);
     } catch (err) {
+      stopTicks();
       setRecording(false);
       const msg = getErrorMessage(err);
       Alert.alert(
@@ -510,23 +572,37 @@ export function NoteComposer({
   }
 
   async function stopRecording() {
+    stopTicks();
     try {
       await recorder.stop();
       const uri = recorder.uri;
       const elapsed = Math.max(
         1,
-        Math.round((Date.now() - recordStartedAt.current) / 1000)
+        Math.round((nowMs() - recordStartedAt.current) / 1000)
       );
       setRecording(false);
       setRecordSec(0);
       if (!uri) return;
       const { readings, maxDb } = meterStats.current;
       if (readings >= MIN_METER_READINGS && maxDb < SILENT_DB) {
+        let inputs = '';
+        try {
+          inputs = recorder
+            .getAvailableInputs()
+            .map((i) => i.type)
+            .join(', ');
+        } catch {
+          inputs = 'unavailable';
+        }
         Alert.alert(
           'No sound was recorded',
-          'The microphone only picked up silence. It may be in use by a call or another app (voice assistant, screen recorder), or turned off in your privacy settings. Unplug headphones without a mic and try again.'
+          'The microphone only picked up silence. It may be in use by a call or another app (voice assistant, screen recorder, call recorder), or turned off in your privacy settings.' +
+            `\n\nDetails: sources tried ${ANDROID_SOURCES.slice(0, sourceIndex.current + 1).join(', ')} · inputs ${inputs || 'none'} · peak ${Math.round(maxDb)} dB`
         );
         return;
+      }
+      if (Platform.OS === 'android') {
+        rememberWorkingSource(ANDROID_SOURCES[sourceIndex.current]);
       }
       onChangeClips((prev) => [
         ...prev,
