@@ -51,7 +51,7 @@
     "web": "expo start --web",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('no mobile unit tests yet')\"",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"src/**/*.test.mjs\"",
     "prebuild:android": "expo prebuild --platform android",
     "run:android": "expo run:android",
     "eas:init": "eas init --id 37dc35d5-a2b1-476e-bb6c-721668bc7473",

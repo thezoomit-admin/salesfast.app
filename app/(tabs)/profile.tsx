@@ -589,7 +589,6 @@ export default function ProfileScreen() {
           onRemove(account);
         }}
         onSignInAgain={onSignInAgain}
-        onSettings={() => setAccountsOpen(false)}
         onSignOut={() => {
           setAccountsOpen(false);
           setSignOutOpen(true);

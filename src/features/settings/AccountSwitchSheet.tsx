@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +18,8 @@ import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
 const MAX_VISIBLE_OTHERS = 2;
+const DISMISS_DISTANCE = 100;
+const DISMISS_VELOCITY = 0.9;
 
 const AVATAR_TONES = [
   '#A78BFA',
@@ -48,7 +52,6 @@ type Props = {
   onAddAccount: () => void;
   onRemove: (account: SavedMobileAccount) => void;
   onSignInAgain: (account: SavedMobileAccount) => void;
-  onSettings: () => void;
   onSignOut: () => void;
 };
 
@@ -106,7 +109,6 @@ export function AccountSwitchSheet({
   onAddAccount,
   onRemove,
   onSignInAgain,
-  onSettings,
   onSignOut,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -114,13 +116,10 @@ export function AccountSwitchSheet({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [showAll, setShowAll] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      setShowAll(false);
-      setSwitchingId(null);
-    }
-  }, [open]);
+  const dragY = useRef(new Animated.Value(0)).current;
+  const busyRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const currentEmailNorm = currentEmail.trim().toLowerCase();
   const displayName = shortName(currentName.trim() || 'User');
@@ -176,12 +175,66 @@ export function AccountSwitchSheet({
   }, [currentId, displayName, currentEmail, currentPhoto, visibleOthers]);
 
   const busy = switching || switchingId !== null;
+  busyRef.current = busy;
 
   const handleClose = () => {
-    if (busy) return;
+    if (busyRef.current) return;
     setShowAll(false);
-    onClose();
+    dragY.setValue(0);
+    onCloseRef.current();
   };
+
+  useEffect(() => {
+    if (!open) {
+      setShowAll(false);
+      setSwitchingId(null);
+      dragY.setValue(0);
+    }
+  }, [open, dragY]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !busyRef.current,
+        onMoveShouldSetPanResponder: (_, g) =>
+          !busyRef.current && g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderMove: (_, g) => {
+          if (g.dy > 0) dragY.setValue(g.dy);
+        },
+        onPanResponderRelease: (_, g) => {
+          const shouldDismiss =
+            g.dy > DISMISS_DISTANCE || g.vy > DISMISS_VELOCITY;
+          if (shouldDismiss) {
+            Animated.timing(dragY, {
+              toValue: 480,
+              duration: 180,
+              useNativeDriver: true,
+            }).start(({ finished }) => {
+              if (finished) {
+                setShowAll(false);
+                dragY.setValue(0);
+                onCloseRef.current();
+              }
+            });
+            return;
+          }
+          Animated.spring(dragY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 0,
+            speed: 18,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(dragY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 0,
+          }).start();
+        },
+      }),
+    [dragY]
+  );
 
   const handlePress = (item: ListItem) => {
     if (item.isCurrent) {
@@ -205,7 +258,8 @@ export function AccountSwitchSheet({
     <Modal
       visible={open}
       transparent
-      animationType="slide"
+      animationType="fade"
+      statusBarTranslucent
       onRequestClose={handleClose}
     >
       <View style={styles.root}>
@@ -213,18 +267,21 @@ export function AccountSwitchSheet({
           style={styles.backdrop}
           onPress={handleClose}
           accessibilityRole="button"
-          accessibilityLabel="Cancel"
+          accessibilityLabel="Close"
         />
-        <View
+        <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 12) },
+            {
+              paddingBottom: Math.max(insets.bottom, 12),
+              transform: [{ translateY: dragY }],
+            },
           ]}
         >
-          <View style={styles.handle} />
-
-          <Text style={styles.title}>Switch account</Text>
-
+          <View {...panResponder.panHandlers} style={styles.dragZone}>
+            <View style={styles.handle} />
+            <Text style={styles.title}>Switch account</Text>
+          </View>
           <ScrollView
             style={styles.listScroll}
             bounces={false}
@@ -346,25 +403,11 @@ export function AccountSwitchSheet({
             <Text style={styles.addLabel}>Add account</Text>
           </Pressable>
 
-          <View style={styles.footerRule} />
+          <Text style={styles.longPressHint}>
+            Long-press an account to remove it from this device
+          </Text>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Settings"
-            disabled={busy}
-            onPress={onSettings}
-            style={({ pressed }) => [
-              styles.footerRow,
-              pressed && !busy && styles.pressed,
-            ]}
-          >
-            <Ionicons
-              name="settings-outline"
-              size={20}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.footerLabel}>Settings</Text>
-          </Pressable>
+          <View style={styles.footerRule} />
 
           <Pressable
             accessibilityRole="button"
@@ -383,7 +426,7 @@ export function AccountSwitchSheet({
             />
             <Text style={styles.footerLabel}>Log out</Text>
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -393,11 +436,10 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       flex: 1,
-      justifyContent: 'flex-end',
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(17, 24, 39, 0.4)',
+      flex: 1,
+      backgroundColor: 'rgba(17, 24, 39, 0.45)',
     },
     sheet: {
       backgroundColor: colors.surface,
@@ -413,11 +455,15 @@ function createStyles(colors: ThemeColors) {
       shadowRadius: 16,
       elevation: 20,
     },
+    dragZone: {
+      paddingTop: 2,
+      paddingBottom: 4,
+    },
     handle: {
       alignSelf: 'center',
-      width: 40,
-      height: 4,
-      borderRadius: 2,
+      width: 44,
+      height: 5,
+      borderRadius: 3,
       marginBottom: 14,
       backgroundColor: colors.border,
     },
@@ -495,10 +541,20 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '700',
       color: colors.text,
     },
+    longPressHint: {
+      ...typography.caption,
+      fontSize: 12,
+      fontWeight: '400',
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: 14,
+      marginBottom: 2,
+      paddingHorizontal: 8,
+    },
     footerRule: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: colors.border,
-      marginTop: 16,
+      marginTop: 12,
       marginBottom: 4,
       marginHorizontal: -spacing.lg,
     },
