@@ -1,4 +1,5 @@
 import { format } from 'date-fns/format';
+import { useEffect, useState } from 'react';
 
 import type { LeadListItem } from '@/types/api';
 import { parseDate } from '@/utils/dates';
@@ -51,6 +52,18 @@ export function dayKey(d: Date) {
 }
 
 export type DayFollowUp = { lead: LeadListItem; due: Date };
+
+export const NO_FOLLOW_UPS: DayFollowUp[] = [];
+
+/** Current time, refreshed every minute (overdue labels, the "now" line). */
+export function useMinuteClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return now;
+}
 
 /** Follow-ups per calendar day (`yyyy-MM-dd`), each day sorted by due time. */
 export function groupByDay(leads: readonly LeadListItem[]) {
