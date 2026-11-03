@@ -9,7 +9,7 @@ const STEPS = [
   },
   {
     title: 'Open the APK and install',
-    body: 'Tap the downloaded file, review the app permissions, then Install. Use only the production build from this site.',
+    body: 'Tap the downloaded file, review the app permissions, then Install. Prefer a production build for live work; preview builds are for testing only.',
   },
   {
     title: 'Sign in with your agent account',
