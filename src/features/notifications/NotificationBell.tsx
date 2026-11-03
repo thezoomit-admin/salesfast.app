@@ -1,9 +1,10 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { Notification01Icon } from '@/components/icons/hugeicons';
 import { radii, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 import { fetchUnreadCount, UNREAD_COUNT_KEY } from './notificationsApi';
@@ -35,10 +36,11 @@ export function NotificationBell({
         pressed && styles.pressed,
       ]}
     >
-      <FontAwesome
-        name="bell"
-        size={plain ? 20 : 20}
+      <HugeiconsIcon
+        icon={Notification01Icon}
+        size={plain ? 22 : 20}
         color={plain ? colors.text : colors.brand}
+        strokeWidth={1.8}
       />
       {unread > 0 ? (
         <View style={[styles.badge, plain && styles.badgePlain]}>
