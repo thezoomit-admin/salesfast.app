@@ -299,9 +299,8 @@ export function HomeDashboard({
         ))}
       </ScrollView>
 
-      {/* Live monitoring — white panel root + horizontal cards */}
-      <View style={styles.liveSection}>
-      <View style={[styles.sectionHead, styles.liveSectionHead]}>
+      {/* Live monitoring — 2 horizontal cards */}
+      <View style={styles.sectionHead}>
         <Text style={styles.sectionTitle}>Live queue monitoring</Text>
         <Pressable
           onPress={() => go('/(tabs)/follow-ups')}
@@ -323,6 +322,7 @@ export function HomeDashboard({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.liveRow}
+        style={styles.liveSlider}
         decelerationRate="fast"
         snapToInterval={liveCardWidth + 12}
       >
@@ -458,7 +458,6 @@ export function HomeDashboard({
           </Pressable>
         ))}
       </ScrollView>
-      </View>
 
       {/* Insight cards */}
       <Pressable
@@ -799,21 +798,12 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
       justifyContent: 'center',
     },
 
-    liveSection: {
-      backgroundColor: colors.surface,
-      borderRadius: 18,
-      paddingTop: 14,
-      paddingBottom: 14,
-      gap: 12,
-      overflow: 'hidden',
-    },
-    liveSectionHead: {
-      marginTop: 0,
-      paddingHorizontal: 14,
+    liveSlider: {
+      marginHorizontal: -spacing.lg,
     },
     liveRow: {
       gap: 12,
-      paddingHorizontal: 14,
+      paddingHorizontal: spacing.lg,
     },
     liveCard: {
       borderRadius: 20,

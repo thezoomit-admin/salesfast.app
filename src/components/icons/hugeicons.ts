@@ -181,6 +181,10 @@ export const ArrowRight01Icon: IconSvgElement = [
   ['path', { d: "M9.00005 6C9.00005 6 15 10.4189 15 12C15 13.5812 9 18 9 18", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "1.5", key: '0' }],
 ];
 
+export const ArrowDown01Icon: IconSvgElement = [
+  ['path', { d: 'M18 9.00005C18 9.00005 13.5811 15 12 15C10.4188 15 6 9 6 9', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+];
+
 /** Header bell — Hisab / admin Notification01 outline. */
 export const Notification01Icon: IconSvgElement = [
   ['path', { d: 'M15.5 18C15.5 19.933 13.933 21.5 12 21.5C10.067 21.5 8.5 19.933 8.5 18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],

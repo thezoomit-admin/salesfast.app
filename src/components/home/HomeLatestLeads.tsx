@@ -4,22 +4,30 @@ import { format } from 'date-fns/format';
 import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
 import { isToday } from 'date-fns/isToday';
 import { isYesterday } from 'date-fns/isYesterday';
-import { useMemo } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
+  ArrowDown01Icon,
   ArrowRight01Icon,
   CallIcon,
 } from '@/components/icons/hugeicons';
+import { LeadHistorySheet } from '@/components/home/LeadHistorySheet';
 import { typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 import { formatRelative, parseDate } from '@/utils/dates';
-import { openPhoneDialer } from '@/utils/phone';
+import { openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 type RecentLead = MobileDashboard['recentLeads'][number];
 
 type Props = {
   leads: RecentLead[];
+};
+
+type HistoryTarget = {
+  leadId: number;
+  leadName: string;
 };
 
 const MAX = 5;
@@ -46,6 +54,7 @@ export function HomeLatestLeads({ leads }: Props) {
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const router = useRouter();
+  const [history, setHistory] = useState<HistoryTarget | null>(null);
 
   const items = useMemo(() => leads.slice(0, MAX), [leads]);
 
@@ -151,57 +160,97 @@ export function HomeLatestLeads({ leads }: Props) {
                     accessibilityRole="button"
                     accessibilityLabel="Open lead history"
                     hitSlop={6}
-                    onPress={() => router.push(`/leads/${lead.id}`)}
+                    onPress={() =>
+                      setHistory({
+                        leadId: lead.id,
+                        leadName: lead.name || 'Lead',
+                      })
+                    }
                     style={({ pressed }) => [
                       styles.historyBtn,
                       pressed && styles.pressed,
                     ]}
                   >
                     <Text style={styles.historyText}>History</Text>
-                    <Text style={styles.historyChevron}>▾</Text>
-                  </Pressable>
-
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Call lead"
-                    disabled={!lead.phone}
-                    hitSlop={4}
-                    onPress={async () => {
-                      const ok = await openPhoneDialer(lead.phone);
-                      if (!ok) {
-                        Alert.alert(
-                          'Unable to dial',
-                          'No phone number available.'
-                        );
-                      }
-                    }}
-                    style={({ pressed }) => [
-                      styles.callBtn,
-                      !lead.phone && styles.callDisabled,
-                      pressed && lead.phone && styles.pressed,
-                    ]}
-                  >
                     <HugeiconsIcon
-                      icon={CallIcon}
+                      icon={ArrowDown01Icon}
                       size={14}
-                      color={lead.phone ? '#12B76A' : colors.textMuted}
+                      color={colors.textMuted}
                       strokeWidth={2}
                     />
-                    <Text
-                      style={[
-                        styles.callText,
-                        !lead.phone && { color: colors.textMuted },
+                  </Pressable>
+
+                  <View style={styles.actionBtns}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Call lead"
+                      disabled={!lead.phone}
+                      hitSlop={8}
+                      onPress={async () => {
+                        const ok = await openPhoneDialer(lead.phone);
+                        if (!ok) {
+                          Alert.alert(
+                            'Unable to dial',
+                            'No phone number available.'
+                          );
+                        }
+                      }}
+                      style={({ pressed }) => [
+                        (!lead.phone || pressed) && styles.pressed,
                       ]}
                     >
-                      CALL
-                    </Text>
-                  </Pressable>
+                      <HugeiconsIcon
+                        icon={CallIcon}
+                        size={20}
+                        color={
+                          lead.phone ? colors.textSecondary : colors.textMuted
+                        }
+                        strokeWidth={2}
+                      />
+                    </Pressable>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="WhatsApp lead"
+                      disabled={!lead.phone}
+                      hitSlop={8}
+                      onPress={async () => {
+                        try {
+                          const ok = await openWhatsApp(lead.phone);
+                          if (!ok) {
+                            Alert.alert(
+                              'Unable to open WhatsApp',
+                              'No number available.'
+                            );
+                          }
+                        } catch {
+                          Alert.alert('Unable to open WhatsApp');
+                        }
+                      }}
+                      style={({ pressed }) => [
+                        (!lead.phone || pressed) && styles.pressed,
+                      ]}
+                    >
+                      <Ionicons
+                        name="logo-whatsapp"
+                        size={20}
+                        color={lead.phone ? '#25D366' : colors.textMuted}
+                      />
+                    </Pressable>
+                  </View>
                 </View>
               </Pressable>
             );
           })}
         </View>
       )}
+
+      <LeadHistorySheet
+        open={!!history}
+        leadId={history?.leadId ?? null}
+        leadName={history?.leadName ?? ''}
+        onClose={() => setHistory(null)}
+      />
     </View>
   );
 }
@@ -350,32 +399,11 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       fontWeight: '600',
       color: colors.textSecondary,
     },
-    historyChevron: {
-      fontSize: 11,
-      color: colors.textMuted,
-      marginTop: 1,
-    },
-    callBtn: {
+    actionBtns: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 8,
-      borderWidth: 1.5,
-      borderColor: '#12B76A',
-      backgroundColor: isDark ? 'rgba(18,183,106,0.08)' : '#F6FEF9',
-    },
-    callDisabled: {
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceMuted,
-    },
-    callText: {
-      ...typography.caption,
-      fontSize: 12,
-      fontWeight: '800',
-      letterSpacing: 0.4,
-      color: '#12B76A',
+      gap: 14,
+      flexShrink: 0,
     },
   });
 }
