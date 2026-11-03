@@ -224,9 +224,14 @@ export default function LeadDetailScreen() {
     />
   );
 
+  const screenBg = {
+    backgroundColor: isDark ? colors.background : '#F9FAFB', // gray-50
+  };
+
   if (!lead) {
     return (
       <Screen
+        style={screenBg}
         header={<ScreenHeader title="Lead" right={headerRight} />}
         footer={
           <LeadDetailTabBar active={activeTab} onChange={setActiveTab} />
@@ -280,6 +285,7 @@ export default function LeadDetailScreen() {
 
   return (
     <Screen
+      style={screenBg}
       header={<ScreenHeader title={headerTitle} right={headerRight} />}
       footer={
         <LeadDetailTabBar active={activeTab} onChange={setActiveTab} />
