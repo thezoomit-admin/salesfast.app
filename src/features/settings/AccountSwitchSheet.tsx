@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -219,7 +220,7 @@ export function AccountSwitchSheet({
   };
 
   const animateClose = () => {
-    if (busyRef.current || closingRef.current) return;
+    if (closingRef.current) return;
     runCloseAnimation(true);
   };
 
@@ -320,21 +321,20 @@ export function AccountSwitchSheet({
       visible={mounted || open}
       transparent
       animationType="none"
-      statusBarTranslucent
       onRequestClose={animateClose}
     >
-      <View style={styles.root}>
-        <Pressable
-          style={styles.backdropHit}
+      <View style={styles.root} collapsable={false}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.backdropFill, { opacity: backdropOp }]}
+        />
+        <TouchableWithoutFeedback
           onPress={animateClose}
           accessibilityRole="button"
           accessibilityLabel="Close"
         >
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.backdropFill, { opacity: backdropOp }]}
-          />
-        </Pressable>
+          <View style={styles.backdropHit} />
+        </TouchableWithoutFeedback>
         <Animated.View
           style={[
             styles.sheet,
@@ -502,18 +502,15 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       flex: 1,
-      justifyContent: 'flex-end',
-    },
-    backdropHit: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 0,
     },
     backdropFill: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(17, 24, 39, 0.45)',
     },
+    backdropHit: {
+      flex: 1,
+    },
     sheet: {
-      zIndex: 1,
       backgroundColor: colors.surface,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
