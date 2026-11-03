@@ -10,6 +10,7 @@ import {
   type KindTone,
 } from '@/components/followups/followUpCalendar';
 import {
+  CheckIcon,
   CircleCheckIcon,
   Clock01Icon,
   ClockAlertIcon,
@@ -82,18 +83,24 @@ export function FollowUpCard({
           {name}
         </Text>
         {closed ? (
-          <View accessibilityLabel="Done" style={styles.check}>
-            <HugeiconsIcon icon={CircleCheckIcon} size={26} color={stateInk} strokeWidth={2} />
+          <View
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: true }}
+            accessibilityLabel="Done"
+            style={[styles.checkbox, { backgroundColor: stateInk, borderColor: stateInk }]}
+          >
+            <HugeiconsIcon icon={CheckIcon} size={16} color="#FFFFFF" strokeWidth={3} />
           </View>
         ) : onComplete ? (
           <Pressable
-            accessibilityRole="button"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: false }}
             accessibilityLabel="Mark follow-up as done"
             hitSlop={10}
             onPress={onComplete}
-            style={({ pressed }) => [styles.check, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.checkbox, pressed && styles.pressed]}
           >
-            <View style={styles.checkCircle} />
+            <HugeiconsIcon icon={CheckIcon} size={16} color={colors.textMuted} strokeWidth={2.5} />
           </Pressable>
         ) : null}
         {onMore ? (
@@ -168,13 +175,14 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       letterSpacing: -0.3,
       color: ink,
     },
-    check: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
-    checkCircle: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+    checkbox: {
+      width: 26,
+      height: 26,
+      borderRadius: 7,
       borderWidth: 1.8,
       borderColor: colors.text,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     more: { marginLeft: -4, marginRight: -6, paddingTop: 2 },
     note: { fontSize: 14, lineHeight: 19, color: ink, opacity: 0.8, marginTop: 6 },

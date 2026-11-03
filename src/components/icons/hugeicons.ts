@@ -276,3 +276,8 @@ export const CircleCheckIcon: IconSvgElement = [
   ['path', { d: 'm9 12 2 2 4-4', ...lucide, key: '1' }],
 ];
 
+
+/** lucide Check — follow-up card checkbox. */
+export const CheckIcon: IconSvgElement = [
+  ['path', { d: 'M20 6 9 17l-5-5', ...lucide, key: '0' }],
+];
