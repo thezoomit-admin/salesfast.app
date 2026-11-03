@@ -8,6 +8,7 @@ import type { QueryClient } from '@tanstack/react-query';
  *   mounting one with no data (spinner/skeleton) is a miss.
  * - First content: ms from JS start until a screen first has data,
  *   and whether that data came from cache or the network.
+ * - Lead open: milestones from a lead row tap to fresh detail data.
  *
  * Call `logPerfSummary()` from the debugger console, or watch Metro logs.
  */
@@ -45,6 +46,26 @@ export function markFirstContent(screen: string, fromCache: boolean) {
   firstContent.add(screen);
   console.log(
     `[perf] ${screen} first content at +${Date.now() - jsStart}ms (${fromCache ? 'cache' : 'network'})`
+  );
+}
+
+/**
+ * Lead open trace, in ms after the row tap: `mount` (screen rendered),
+ * `content` (first lead data on screen, and whether it was the list row,
+ * the cache or the network), `details` (full detail on screen), `fresh`
+ * (this open's server response landed) or `refresh failed`.
+ */
+const leadTaps = new Map<number, number>();
+
+export function markLeadTap(leadId: number) {
+  if (enabled) leadTaps.set(leadId, Date.now());
+}
+
+export function markLeadOpen(leadId: number, stage: string) {
+  if (!enabled) return;
+  const tap = leadTaps.get(leadId);
+  console.log(
+    `[perf] lead ${leadId} ${stage}${tap ? ` +${Date.now() - tap}ms after tap` : ''}`
   );
 }
 

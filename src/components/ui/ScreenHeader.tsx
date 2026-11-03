@@ -135,9 +135,11 @@ export function ScreenHeader({
 export function HeaderAddButton({
   onPress,
   label = 'Add',
+  disabled = false,
 }: {
   onPress: () => void;
   label?: string;
+  disabled?: boolean;
 }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -145,8 +147,14 @@ export function HeaderAddButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.addBtn,
+        (pressed || disabled) && styles.pressed,
+        disabled && styles.disabled,
+      ]}
     >
       <Text style={styles.addBtnLabel} numberOfLines={1}>
         + {label}

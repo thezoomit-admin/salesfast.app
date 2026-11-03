@@ -13,6 +13,7 @@ import {
   followUpLeadsQuery,
   type FollowUpTab,
 } from '@/features/leads/leadsApi';
+import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
 import type { LeadListItem } from '@/types/api';
 import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 
@@ -37,6 +38,8 @@ const EMPTY_COPY: Record<
   },
 };
 
+const NO_LEADS: LeadListItem[] = [];
+
 export default function FollowUpsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -46,15 +49,18 @@ export default function FollowUpsScreen() {
   const query = useQuery(followUpLeadsQuery(tab));
   const empty = EMPTY_COPY[tab];
 
-  const openLead = useCallback(
-    (lead: LeadListItem) => router.push(`/leads/${lead.id}`),
-    [router]
+  const { openLead, prefetchLead } = useLeadRowHandlers(
+    query.data?.items ?? NO_LEADS
   );
   const renderLead = useCallback(
     ({ item }: { item: LeadListItem }) => (
-      <LeadListItemCard lead={item} onPress={openLead} />
+      <LeadListItemCard
+        lead={item}
+        onPress={openLead}
+        onPressIn={prefetchLead}
+      />
     ),
-    [openLead]
+    [openLead, prefetchLead]
   );
 
   const count = query.data?.items.length;

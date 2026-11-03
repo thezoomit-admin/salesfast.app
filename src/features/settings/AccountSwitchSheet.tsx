@@ -18,11 +18,11 @@ import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme'
 const MAX_VISIBLE_OTHERS = 2;
 
 const AVATAR_TONES = [
-  '#111827',
-  '#2563EB',
+  '#A78BFA',
+  '#60A5FA',
+  '#FBBF24',
+  '#34D399',
   '#F97316',
-  '#7C3AED',
-  '#059669',
 ];
 
 type ListItem = {
@@ -48,6 +48,8 @@ type Props = {
   onAddAccount: () => void;
   onRemove: (account: SavedMobileAccount) => void;
   onSignInAgain: (account: SavedMobileAccount) => void;
+  onSettings: () => void;
+  onSignOut: () => void;
 };
 
 function shortName(name: string) {
@@ -69,40 +71,28 @@ function initials(name: string) {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-function InitialsDot({
-  seed,
-  label,
-  size = 28,
-}: {
-  seed: string;
-  label: string;
-  size?: number;
-}) {
+const AVATAR_RADIUS = 10;
+
+function InitialsTile({ seed, label }: { seed: string; label: string }) {
   return (
     <View
       style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
+        width: 40,
+        height: 40,
+        borderRadius: AVATAR_RADIUS,
         backgroundColor: toneFor(seed),
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Text
-        style={{
-          color: '#fff',
-          fontSize: size <= 28 ? 10 : 12,
-          fontWeight: '700',
-        }}
-      >
+      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
         {initials(label)}
       </Text>
     </View>
   );
 }
 
-/** Bottom sheet — switch / add / remove saved accounts (web sidebar parity). */
+/** Bottom sheet — Google-style switch account. */
 export function AccountSwitchSheet({
   open,
   currentId,
@@ -116,6 +106,8 @@ export function AccountSwitchSheet({
   onAddAccount,
   onRemove,
   onSignInAgain,
+  onSettings,
+  onSignOut,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -226,156 +218,171 @@ export function AccountSwitchSheet({
         <View
           style={[
             styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, 16) },
+            { paddingBottom: Math.max(insets.bottom, 12) },
           ]}
         >
           <View style={styles.handle} />
 
-          <View style={styles.header}>
-            <Text style={styles.title}>Accounts</Text>
-            <Text style={styles.subtitle}>
-              Switch between accounts saved on this device
-            </Text>
-          </View>
+          <Text style={styles.title}>Switch account</Text>
 
-          <View style={styles.card}>
-            <ScrollView
-              style={styles.listScroll}
-              bounces={false}
-              showsVerticalScrollIndicator={false}
-            >
-              {listItems.map((item, index) => {
-                const isSwitching = switchingId === item.id;
-                return (
-                  <View key={item.id}>
-                    {index > 0 ? <View style={styles.divider} /> : null}
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        selected: item.isCurrent,
-                        disabled: busy && !item.isCurrent,
-                      }}
-                      accessibilityLabel={
-                        item.isCurrent
-                          ? `${item.name}, current account`
-                          : item.signedOut
-                            ? `${item.name}, signed out`
-                            : `Switch to ${item.name}`
-                      }
-                      disabled={busy && !item.isCurrent}
-                      onPress={() => handlePress(item)}
-                      onLongPress={
-                        item.account
-                          ? () => onRemove(item.account!)
-                          : undefined
-                      }
-                      delayLongPress={420}
-                      style={({ pressed }) => [
-                        styles.row,
-                        pressed && !busy && styles.pressed,
+          <ScrollView
+            style={styles.listScroll}
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+          >
+            {listItems.map((item) => {
+              const isSwitching = switchingId === item.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    selected: item.isCurrent,
+                    disabled: busy && !item.isCurrent,
+                  }}
+                  accessibilityLabel={
+                    item.isCurrent
+                      ? `${item.name}, current account`
+                      : item.signedOut
+                        ? `${item.name}, signed out`
+                        : `Switch to ${item.name}`
+                  }
+                  disabled={busy && !item.isCurrent}
+                  onPress={() => handlePress(item)}
+                  onLongPress={
+                    item.account ? () => onRemove(item.account!) : undefined
+                  }
+                  delayLongPress={420}
+                  style={({ pressed }) => [
+                    styles.accountRow,
+                    pressed && !busy && styles.pressed,
+                  ]}
+                >
+                  {item.isCurrent ? (
+                    <UserAvatar
+                      uri={item.photo}
+                      name={item.name}
+                      size={40}
+                      muted
+                      style={{ borderRadius: AVATAR_RADIUS }}
+                    />
+                  ) : (
+                    <InitialsTile
+                      seed={item.id || item.email}
+                      label={item.name}
+                    />
+                  )}
+                  <View style={styles.rowMeta}>
+                    <Text
+                      style={[
+                        styles.name,
+                        !item.isCurrent && styles.nameMuted,
                       ]}
+                      numberOfLines={1}
                     >
-                      {item.isCurrent ? (
-                        <UserAvatar
-                          uri={item.photo}
-                          name={item.name}
-                          size={28}
-                          muted
-                        />
-                      ) : (
-                        <InitialsDot
-                          seed={item.id || item.email}
-                          label={item.name}
-                        />
-                      )}
-                      <View style={styles.rowMeta}>
-                        <Text
-                          style={[
-                            styles.rowLabel,
-                            item.isCurrent && styles.rowLabelCurrent,
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {isSwitching ? 'Switching…' : item.name}
-                        </Text>
-                        {item.email ? (
-                          <Text style={styles.rowHint} numberOfLines={1}>
-                            {item.email}
-                          </Text>
-                        ) : null}
-                      </View>
-                      {isSwitching ? (
-                        <ActivityIndicator color={colors.brand} size="small" />
-                      ) : item.signedOut ? (
-                        <Text style={styles.signedOut}>Signed out</Text>
-                      ) : item.isCurrent ? (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={20}
-                          color={colors.brand}
-                        />
-                      ) : null}
-                    </Pressable>
+                      {isSwitching ? 'Switching…' : item.name}
+                    </Text>
+                    {item.email ? (
+                      <Text
+                        style={[
+                          styles.email,
+                          !item.isCurrent && styles.emailMuted,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {item.signedOut
+                          ? `${item.email} · Signed out`
+                          : item.email}
+                      </Text>
+                    ) : null}
                   </View>
-                );
-              })}
-            </ScrollView>
+                  {isSwitching ? (
+                    <ActivityIndicator color={colors.brand} size="small" />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
 
-            {!showAll && hiddenCount > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setShowAll(true)}
-                style={({ pressed }) => [
-                  styles.viewAll,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.viewAllText}>
-                  View all ({otherAccounts.length})
-                </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={14}
-                  color={colors.brand}
-                />
-              </Pressable>
-            ) : null}
-
-            {showAll && otherAccounts.length > MAX_VISIBLE_OTHERS ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setShowAll(false)}
-                style={({ pressed }) => [
-                  styles.showLess,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.showLessText}>Show less</Text>
-              </Pressable>
-            ) : null}
-
-            <View style={styles.addDivider} />
-
+          {!showAll && hiddenCount > 0 ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Add another account"
-              disabled={busy}
-              onPress={onAddAccount}
+              onPress={() => setShowAll(true)}
               style={({ pressed }) => [
-                styles.addRow,
-                pressed && !busy && styles.pressed,
+                styles.viewAll,
+                pressed && styles.pressed,
               ]}
             >
-              <View style={styles.addIcon}>
-                <Ionicons
-                  name="add"
-                  size={16}
-                  color={colors.textSecondary}
-                />
-              </View>
-              <Text style={styles.addLabel}>Add another account</Text>
+              <Text style={styles.viewAllText}>
+                View all ({otherAccounts.length})
+              </Text>
             </Pressable>
-          </View>
+          ) : null}
+
+          {showAll && otherAccounts.length > MAX_VISIBLE_OTHERS ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowAll(false)}
+              style={({ pressed }) => [
+                styles.viewAll,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.showLessText}>Show less</Text>
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add account"
+            disabled={busy}
+            onPress={onAddAccount}
+            style={({ pressed }) => [
+              styles.addBtn,
+              pressed && !busy && styles.pressed,
+            ]}
+          >
+            <Ionicons name="add" size={18} color={colors.text} />
+            <Text style={styles.addLabel}>Add account</Text>
+          </Pressable>
+
+          <View style={styles.footerRule} />
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            disabled={busy}
+            onPress={onSettings}
+            style={({ pressed }) => [
+              styles.footerRow,
+              pressed && !busy && styles.pressed,
+            ]}
+          >
+            <Ionicons
+              name="settings-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.footerLabel}>Settings</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Log out"
+            disabled={busy}
+            onPress={onSignOut}
+            style={({ pressed }) => [
+              styles.footerRow,
+              pressed && !busy && styles.pressed,
+            ]}
+          >
+            <Ionicons
+              name="exit-outline"
+              size={20}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.footerLabel}>Log out</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -414,121 +421,102 @@ function createStyles(colors: ThemeColors) {
       marginBottom: 14,
       backgroundColor: colors.border,
     },
-    header: {
-      marginBottom: spacing.md,
+    title: {
+      ...typography.caption,
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textMuted,
+      marginBottom: 10,
       paddingHorizontal: 2,
     },
-    title: {
-      ...typography.subtitle,
-      fontSize: 18,
-      color: colors.text,
-    },
-    subtitle: {
-      ...typography.caption,
-      marginTop: 4,
-      color: colors.textSecondary,
-    },
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: radii.md,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
     listScroll: {
-      maxHeight: 320,
+      maxHeight: 220,
     },
-    row: {
+    accountRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
+      gap: 14,
+      paddingVertical: 10,
+      paddingHorizontal: 2,
     },
     rowMeta: {
       flex: 1,
       minWidth: 0,
     },
-    rowLabel: {
+    name: {
       ...typography.subtitle,
-      fontSize: 14,
-      fontWeight: '500',
-      color: colors.textSecondary,
-    },
-    rowLabelCurrent: {
+      fontSize: 16,
       fontWeight: '700',
       color: colors.text,
     },
-    rowHint: {
+    nameMuted: {
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    email: {
       ...typography.caption,
       marginTop: 2,
-      color: colors.textMuted,
+      fontSize: 13,
+      fontWeight: '400',
+      color: colors.textSecondary,
     },
-    signedOut: {
-      ...typography.caption,
+    emailMuted: {
       color: colors.textMuted,
-      fontSize: 11,
-    },
-    divider: {
-      height: StyleSheet.hairlineWidth,
-      marginLeft: 54,
-      backgroundColor: colors.border,
     },
     viewAll: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
+      paddingVertical: 10,
+      paddingHorizontal: 2,
     },
     viewAllText: {
       ...typography.caption,
       fontWeight: '600',
       color: colors.brand,
     },
-    showLess: {
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-    },
     showLessText: {
       ...typography.caption,
       fontWeight: '500',
       color: colors.textSecondary,
     },
-    addDivider: {
-      height: StyleSheet.hairlineWidth,
-      marginHorizontal: 12,
-      backgroundColor: colors.border,
-    },
-    addRow: {
+    addBtn: {
+      marginTop: 8,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-    },
-    addIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 13,
+      borderRadius: radii.pill,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      borderStyle: 'dashed',
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: colors.surface,
     },
     addLabel: {
       ...typography.subtitle,
-      fontSize: 14,
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    footerRule: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginTop: 16,
+      marginBottom: 4,
+      marginHorizontal: -spacing.lg,
+    },
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 2,
+    },
+    footerLabel: {
+      ...typography.subtitle,
+      fontSize: 15,
       fontWeight: '500',
-      color: colors.textSecondary,
+      color: colors.text,
     },
     pressed: {
-      opacity: 0.88,
+      opacity: 0.72,
     },
   });
 }

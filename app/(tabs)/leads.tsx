@@ -4,7 +4,6 @@ import {
   useInfiniteQuery,
   useQuery,
 } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,6 +26,7 @@ import {
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { leadStatusesQuery, myLeadsQuery } from '@/features/leads/leadsApi';
+import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
 import type { LeadListItem } from '@/types/api';
 import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
@@ -42,7 +42,6 @@ function useDebounced<T>(value: T, delay = 350) {
 export default function LeadsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const router = useRouter();
   const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -68,15 +67,16 @@ export default function LeadsScreen() {
     ],
     [statuses.data]
   );
-  const openLead = useCallback(
-    (lead: LeadListItem) => router.push(`/leads/${lead.id}`),
-    [router]
-  );
+  const { openLead, prefetchLead } = useLeadRowHandlers(items);
   const renderLead = useCallback(
     ({ item }: { item: LeadListItem }) => (
-      <LeadListItemCard lead={item} onPress={openLead} />
+      <LeadListItemCard
+        lead={item}
+        onPress={openLead}
+        onPressIn={prefetchLead}
+      />
     ),
-    [openLead]
+    [openLead, prefetchLead]
   );
 
   const toggleSearch = () => {
