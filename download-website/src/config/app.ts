@@ -1,19 +1,19 @@
 /**
  * SalesFast CRM — download portal configuration
  *
- * Update this file when publishing a new production APK to GitHub Releases,
+ * Update this file when publishing a new APK to GitHub Releases,
  * OR rely on the live GitHub Releases API (preferred). This file is the
  * static fallback when the API is unavailable / no release exists yet.
  *
  * Do not invent release data. Leave `available: false` until a real
- * production APK is published to GitHub Releases.
+ * APK is published to GitHub Releases.
  */
 
 export const GITHUB_OWNER = 'thezoomit-admin';
 export const GITHUB_REPO = 'salesfast.app';
 
-/** Public API endpoint used to resolve the latest stable release. */
-export const GITHUB_RELEASES_API = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
+/** Public API endpoint — lists all releases (including prereleases). */
+export const GITHUB_RELEASES_API = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 
 export const GITHUB_RELEASES_PAGE = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 
@@ -28,7 +28,7 @@ export type AppReleaseConfig = {
   /** Android versionCode. Null when unavailable. */
   versionCode: number | null;
   /**
-   * HTTPS URL to the production APK on GitHub Releases.
+   * HTTPS URL to the primary APK on GitHub Releases.
    * Empty string when no release has been published yet.
    */
   apkDownloadUrl: string;
@@ -42,7 +42,7 @@ export type AppReleaseConfig = {
   releaseNotes: string[];
   /**
    * When false, the download CTA is disabled and an unavailable state is shown.
-   * Set to true only after a real production APK exists on GitHub Releases.
+   * Set to true after any APK exists on GitHub Releases.
    */
   available: boolean;
   supportEmail: string;

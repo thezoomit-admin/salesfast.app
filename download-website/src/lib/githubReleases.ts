@@ -25,6 +25,22 @@ type GitHubRelease = {
   assets: GitHubAsset[];
 };
 
+export type ReleaseChannel = 'production' | 'preview' | 'other';
+
+export type ReleaseApkItem = {
+  version: string;
+  tagName: string;
+  title: string;
+  channel: ReleaseChannel;
+  prerelease: boolean;
+  apkDownloadUrl: string;
+  apkFileName: string;
+  apkFileSize: string;
+  releaseDate: string;
+  releaseNotes: string[];
+  releasePageUrl: string;
+};
+
 export type ResolvedRelease = AppReleaseConfig & {
   /** Where the version metadata came from. */
   source: 'github' | 'fallback';
@@ -32,6 +48,10 @@ export type ResolvedRelease = AppReleaseConfig & {
   releasePageUrl?: string;
   /** Human-readable status when download is blocked. */
   unavailableReason?: string;
+  /** Channel of the primary (latest) APK. */
+  channel?: ReleaseChannel;
+  /** All published APKs from GitHub Releases (newest first). */
+  allReleases?: ReleaseApkItem[];
 };
 
 function formatBytes(bytes: number): string {
@@ -49,32 +69,34 @@ function formatIsoDate(iso: string | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
-/**
- * Reject non-production APKs: debug / preview / development / staging / internal.
- * Official download portal only serves stable production builds.
- */
-const NON_PRODUCTION_APK =
-  /debug|preview|dev(elopment)?|staging|internal|unsigned/i;
-
-function isProductionApkName(name: string): boolean {
-  return name.toLowerCase().endsWith('.apk') && !NON_PRODUCTION_APK.test(name);
-}
-
-function isNonProductionRelease(release: GitHubRelease): boolean {
-  if (release.draft || release.prerelease) return true;
-  const label = `${release.tag_name} ${release.name ?? ''}`;
-  return /preview|dev(elopment)?|staging|internal|beta|rc\b/i.test(label);
-}
-
-/** Prefer a production-looking APK asset; never pick preview/debug builds. */
-function pickApkAsset(assets: GitHubAsset[]): GitHubAsset | undefined {
-  const apks = assets.filter(
-    (a) => a.state === 'uploaded' && isProductionApkName(a.name),
+function isApkAsset(asset: GitHubAsset): boolean {
+  return (
+    asset.state === 'uploaded' &&
+    asset.name.toLowerCase().endsWith('.apk') &&
+    asset.browser_download_url.startsWith('https://')
   );
-  if (apks.length === 0) return undefined;
+}
 
-  const preferred = apks.find((a) => /SalesFast-CRM/i.test(a.name));
-  return preferred ?? apks[0];
+/** Prefer SalesFast-named APK; otherwise first uploaded APK. */
+function pickApkAsset(assets: GitHubAsset[]): GitHubAsset | undefined {
+  const apks = assets.filter(isApkAsset);
+  if (apks.length === 0) return undefined;
+  return apks.find((a) => /SalesFast-CRM/i.test(a.name)) ?? apks[0];
+}
+
+function detectChannel(
+  release: GitHubRelease,
+  apkName: string,
+): ReleaseChannel {
+  const label = `${release.tag_name} ${release.name ?? ''} ${apkName}`;
+  if (
+    release.prerelease ||
+    /preview|dev(elopment)?|staging|internal|beta|rc\b/i.test(label)
+  ) {
+    return 'preview';
+  }
+  if (/debug|unsigned/i.test(label)) return 'other';
+  return 'production';
 }
 
 function parseVersionFromTag(tag: string): string {
@@ -91,24 +113,44 @@ function parseReleaseNotes(body: string | null): string[] {
   return lines.slice(0, 8);
 }
 
+function toReleaseItem(release: GitHubRelease): ReleaseApkItem | null {
+  if (release.draft) return null;
+  const apk = pickApkAsset(release.assets ?? []);
+  if (!apk) return null;
+
+  const notes = parseReleaseNotes(release.body);
+  return {
+    version: parseVersionFromTag(release.tag_name) || release.tag_name,
+    tagName: release.tag_name,
+    title: release.name?.trim() || release.tag_name,
+    channel: detectChannel(release, apk.name),
+    prerelease: release.prerelease,
+    apkDownloadUrl: apk.browser_download_url,
+    apkFileName: apk.name,
+    apkFileSize: formatBytes(apk.size),
+    releaseDate: formatIsoDate(release.published_at),
+    releaseNotes: notes,
+    releasePageUrl: release.html_url,
+  };
+}
+
 function fallbackUnavailable(reason: string): ResolvedRelease {
   return {
     ...appConfig,
     source: 'fallback',
     available: false,
     unavailableReason: reason,
+    allReleases: [],
   };
 }
 
 /**
- * Resolve the latest stable release from GitHub's public API.
- * Falls back to static `appConfig` on any error or when no APK asset exists.
+ * Resolve APKs from GitHub Releases — production, preview, and prereleases.
+ * Falls back to static `appConfig` when the API fails.
  */
 export async function fetchLatestRelease(
   signal?: AbortSignal,
 ): Promise<ResolvedRelease> {
-  // If the static config already marks a release available with a URL,
-  // still try GitHub first so the site stays current.
   try {
     const res = await fetch(GITHUB_RELEASES_API, {
       signal,
@@ -120,59 +162,49 @@ export async function fetchLatestRelease(
 
     if (res.status === 404) {
       return fallbackUnavailable(
-        'No stable production release yet. Preview APKs are not shown on this site.',
+        'No GitHub Releases found yet. Publish an APK release to make downloads available.',
       );
     }
 
     if (!res.ok) {
       if (appConfig.available && appConfig.apkDownloadUrl) {
-        return { ...appConfig, source: 'fallback' };
+        return { ...appConfig, source: 'fallback', allReleases: [] };
       }
       return fallbackUnavailable(
         `Could not reach GitHub Releases (HTTP ${res.status}). Try again later.`,
       );
     }
 
-    const release = (await res.json()) as GitHubRelease;
+    const payload = (await res.json()) as GitHubRelease[] | GitHubRelease;
+    const releases = Array.isArray(payload) ? payload : [payload];
+    const allReleases = releases
+      .map(toReleaseItem)
+      .filter((item): item is ReleaseApkItem => item != null);
 
-    if (isNonProductionRelease(release)) {
+    if (allReleases.length === 0) {
       return fallbackUnavailable(
-        'Only stable production releases are listed here — preview / pre-release builds are hidden.',
+        'GitHub Releases exist, but no APK assets were found yet.',
       );
     }
 
-    const apk = pickApkAsset(release.assets ?? []);
-    if (!apk) {
-      return fallbackUnavailable(
-        'A GitHub Release exists, but no production APK was found (preview/debug APKs are ignored).',
-      );
-    }
-
-    if (!apk.browser_download_url.startsWith('https://')) {
-      return fallbackUnavailable(
-        'APK download URL must use HTTPS from GitHub Releases.',
-      );
-    }
-
-    const version =
-      parseVersionFromTag(release.tag_name) ||
-      appConfig.version ||
-      release.tag_name;
+    const latest = allReleases[0];
 
     return {
       ...appConfig,
       source: 'github',
       available: true,
-      version,
+      version: latest.version || appConfig.version,
       versionCode: appConfig.versionCode,
-      apkDownloadUrl: apk.browser_download_url,
-      apkFileSize: formatBytes(apk.size),
-      releaseDate: formatIsoDate(release.published_at),
+      apkDownloadUrl: latest.apkDownloadUrl,
+      apkFileSize: latest.apkFileSize,
+      releaseDate: latest.releaseDate,
       releaseNotes:
-        parseReleaseNotes(release.body).length > 0
-          ? parseReleaseNotes(release.body)
+        latest.releaseNotes.length > 0
+          ? latest.releaseNotes
           : appConfig.releaseNotes,
-      releasePageUrl: release.html_url,
+      releasePageUrl: latest.releasePageUrl,
+      channel: latest.channel,
+      allReleases,
     };
   } catch (err) {
     if (signal?.aborted) {
@@ -180,13 +212,13 @@ export async function fetchLatestRelease(
     }
 
     if (appConfig.available && appConfig.apkDownloadUrl.startsWith('https://')) {
-      return { ...appConfig, source: 'fallback' };
+      return { ...appConfig, source: 'fallback', allReleases: [] };
     }
 
     const message =
       err instanceof Error ? err.message : 'Unknown network error';
     return fallbackUnavailable(
-      `Unable to load the latest release from GitHub (${GITHUB_OWNER}/${GITHUB_REPO}): ${message}`,
+      `Unable to load releases from GitHub (${GITHUB_OWNER}/${GITHUB_REPO}): ${message}`,
     );
   }
 }

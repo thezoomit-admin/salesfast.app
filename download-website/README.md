@@ -39,25 +39,26 @@ npm run preview
 
 The workflow only builds `download-website/` and never runs Expo/EAS builds.
 
-## Publishing a future APK release
+## Publishing an APK release
 
-1. Build a **production** APK (not debug), e.g.:
+1. Build an APK, e.g.:
 
    ```bash
    # from the Expo app root (salesapp.app)
-   eas build --platform android --profile production-apk
+   eas build --platform android --profile production-apk   # live API
+   eas build --platform android --profile preview          # staging/dev API
    ```
 
-2. Download the APK artifact from EAS (named like `SalesFast-CRM-v1.0.0.apk`).
+2. Download the APK artifact (named like `SalesFast-CRM-v1.0.0.apk`).
 
 3. Create a GitHub Release on `thezoomit-admin/salesfast.app`:
-   - Tag: `v1.0.0` (match `app.config.ts` version)
+   - Tag: `v1.0.0` (or `v1.0.0-preview` for preview)
    - Title: `SalesFast CRM v1.0.0`
    - Body: release notes (shown on the website)
-   - Attach the production APK asset
-   - Publish as a **stable** release (not draft / not pre-release)
+   - Attach the APK asset
+   - Mark preview builds as **pre-release** if you want the Preview badge
 
-4. The website fetches `releases/latest` automatically. No website redeploy is required for a new APK unless you also change static copy in `src/config/app.ts`.
+4. The website fetches `/releases` and lists **all** APKs (production + preview). No website redeploy is required for a new APK unless you also change static copy in `src/config/app.ts`.
 
 5. Optional static fallback — edit `src/config/app.ts`:
 
@@ -82,6 +83,6 @@ The workflow only builds `download-website/` and never runs Expo/EAS builds.
 ## Security notes
 
 - Links must be HTTPS GitHub Release assets
-- Never distribute debug APKs
+- Label preview vs production clearly when publishing
 - Do not claim Google Play verification for this channel
 - Android unknown-source warnings are expected for sideloading

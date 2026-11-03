@@ -52,8 +52,8 @@ export function FAQ({ release }: Props) {
       a: `SalesFast CRM requires ${release.minAndroidVersion} or newer.`,
     },
     {
-      q: 'Are debug APKs used for production?',
-      a: 'No. Only production-signed APKs should be published to GitHub Releases and linked from this site. Debug builds must never be used for production distribution.',
+      q: 'What is the difference between production and preview?',
+      a: 'Production builds point at the live SalesFast API. Preview builds are for internal testing against the staging/dev API. Both can appear on this page when published to GitHub Releases — check the channel badge before installing.',
     },
     {
       q: 'How do I get a login?',
@@ -61,7 +61,7 @@ export function FAQ({ release }: Props) {
     },
     {
       q: 'How are updates delivered?',
-      a: 'When a new production APK is published to GitHub Releases, this site resolves the latest stable asset automatically. Download the new APK and install over the previous version (same package name).',
+      a: 'When a new APK is published to GitHub Releases, this site lists it automatically. Download the new APK and install over the previous version (same package name).',
     },
   ];
 
