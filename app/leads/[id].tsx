@@ -394,7 +394,7 @@ export default function LeadDetailScreen() {
               </View>
 
               <Text style={styles.assignLine} numberOfLines={1}>
-                Assign BY- {lead.assignedToName?.trim() || '—'}
+                Assign by - {lead.assignedToName?.trim() || '—'}
               </Text>
 
               {sm.occupation ? (

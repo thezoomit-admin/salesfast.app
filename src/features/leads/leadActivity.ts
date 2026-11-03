@@ -21,6 +21,60 @@ export function isSystemActor(name?: string | null) {
   return /^system$/i.test(n);
 }
 
+const FLOW_DONE_RE = /^\[Next (?:Flow|Follow-?up) · Completed\]\s*/i;
+const FLOW_SET_RE = /^\[Next (?:Flow|Follow-?up)\]\s*/i;
+const FOLLOWUP_RE = /^\[Follow-?up\]\s*/i;
+
+/** System Next Follow-up history rows — not a real agent touchpoint. */
+export function isSystemFlowNote(note?: string | null) {
+  const t = (note ?? '').trim();
+  return FLOW_DONE_RE.test(t) || FLOW_SET_RE.test(t) || FOLLOWUP_RE.test(t);
+}
+
+/**
+ * Newest real touchpoint (web FollowupCard parity): user note, past meeting,
+ * or user status change. Falls back to list `lastContactDate` when present.
+ */
+export function resolveLastContactAt(lead: LeadDetail): string | null {
+  const now = Date.now();
+  const stamps: string[] = [];
+
+  for (const n of lead.notes ?? []) {
+    if (!n.createdAt || isSystemFlowNote(n.note)) continue;
+    stamps.push(n.createdAt);
+  }
+
+  for (const raw of lead.meetings ?? []) {
+    const m = raw as {
+      status?: string | null;
+      startsAt?: string | null;
+    };
+    if (!m.startsAt || m.status === 'CANCELLED') continue;
+    const t = Date.parse(m.startsAt);
+    if (!Number.isFinite(t) || t > now) continue;
+    stamps.push(m.startsAt);
+  }
+
+  for (const h of lead.statusHistory ?? []) {
+    if (!h.changedAt || isSystemActor(h.changedByName)) continue;
+    stamps.push(h.changedAt);
+  }
+
+  if (lead.lastContactDate) stamps.push(lead.lastContactDate);
+
+  let latest: string | null = null;
+  let latestMs = -Infinity;
+  for (const at of stamps) {
+    const ms = Date.parse(at);
+    if (!Number.isFinite(ms)) continue;
+    if (ms > latestMs) {
+      latestMs = ms;
+      latest = at;
+    }
+  }
+  return latest;
+}
+
 export type HistoryEvent = {
   key: string;
   kind: 'status' | 'note';

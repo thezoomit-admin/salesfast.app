@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Calendar03Icon } from '@/components/icons/hugeicons';
+import { resolveLastContactAt } from '@/features/leads/leadActivity';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import type { LeadDetail } from '@/types/api';
 import { formatCalendarDate, formatDateTime, parseDate } from '@/utils/dates';
@@ -123,8 +124,9 @@ export function LeadFollowupCard({ lead, onPress }: Props) {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const info = useMemo(() => resolveFollowup(lead), [lead]);
   const tone = toneColors(info.tone, colors);
-  const lastContact = lead.lastContactDate
-    ? formatCalendarDate(lead.lastContactDate)
+  const lastContactAt = useMemo(() => resolveLastContactAt(lead), [lead]);
+  const lastContact = lastContactAt
+    ? formatCalendarDate(lastContactAt)
     : null;
 
   return (
