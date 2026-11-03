@@ -33,6 +33,7 @@ import {
   UserIcon,
 } from '@/components/icons/hugeicons';
 import { FollowupDateTimeField } from '@/components/leads/FollowupDateTimeField';
+import { SuccessSheet } from '@/components/ui/SuccessSheet';
 import {
   BOTH,
   NOTE_CHANNELS,
@@ -244,6 +245,7 @@ export function AddNoteSheet({
   const [rating, setRating] = useState<LeadPriority | null>(null);
   const [followupAt, setFollowupAt] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [clips, setClips] = useState<VoiceClip[]>([]);
   const [recording, setRecording] = useState(false);
@@ -294,6 +296,7 @@ export function AddNoteSheet({
 
   useEffect(() => {
     if (!visible) return;
+    setSuccessOpen(false);
     setNote('');
     setVisitPick(undefined);
     setChannelId(null);
@@ -698,9 +701,8 @@ export function AddNoteSheet({
 
       void queryClient.invalidateQueries({ queryKey: ['lead', lead.id] });
       void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
-      onClose();
       onSaved?.();
-      Alert.alert('Saved', 'Note added successfully.');
+      setSuccessOpen(true);
     } catch (err) {
       if (moved) {
         void queryClient.invalidateQueries({ queryKey: ['lead', lead.id] });
@@ -721,8 +723,9 @@ export function AddNoteSheet({
   const meter = recorderState.metering;
 
   return (
+    <>
     <Modal
-      visible={visible}
+      visible={visible && !successOpen}
       animationType="slide"
       transparent
       onRequestClose={onClose}
@@ -1119,6 +1122,18 @@ export function AddNoteSheet({
       </View>
 
     </Modal>
+
+    <SuccessSheet
+      open={successOpen}
+      title="Successful"
+      message="Your note has been added successfully."
+      buttonLabel="Back to lead"
+      onClose={() => {
+        setSuccessOpen(false);
+        onClose();
+      }}
+    />
+    </>
   );
 }
 
