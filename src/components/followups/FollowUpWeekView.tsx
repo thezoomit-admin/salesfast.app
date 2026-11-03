@@ -14,11 +14,11 @@ import {
 import {
   dayKey,
   followUpKind,
-  followUpLabel,
+  followUpState,
+  followUpTypeLabel,
+  followupTypeIcon,
   kindTones,
-  leadName,
   NO_FOLLOW_UPS,
-  statusTypeIcon,
   useMinuteClock,
   type DayFollowUp,
 } from '@/components/followups/followUpCalendar';
@@ -29,7 +29,7 @@ import {
 import { FollowUpCard } from '@/components/followups/FollowUpCard';
 import { WeekStrip } from '@/components/followups/WeekStrip';
 import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
-import type { LeadListItem } from '@/types/api';
+import type { MyFollowUp } from '@/types/api';
 import { useTheme, type ThemeColors } from '@/theme';
 
 /** The timeline always covers working hours; earlier/later slots appear when used. */
@@ -48,8 +48,10 @@ type Props = {
   onSelect: (day: Date) => void;
   onShiftWeek: (delta: number) => void;
   onPickDate: () => void;
-  onOpenLead: (lead: LeadListItem) => void;
-  onPressInLead: (lead: LeadListItem) => void;
+  onOpen: (item: MyFollowUp) => void;
+  onPressIn: (item: MyFollowUp) => void;
+  onMore: (item: MyFollowUp) => void;
+  onComplete: (item: MyFollowUp) => void;
 };
 
 function hourLabel(hour: number) {
@@ -66,8 +68,10 @@ function FollowUpWeekViewImpl({
   onSelect,
   onShiftWeek,
   onPickDate,
-  onOpenLead,
-  onPressInLead,
+  onOpen,
+  onPressIn,
+  onMore,
+  onComplete,
 }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
@@ -146,21 +150,26 @@ function FollowUpWeekViewImpl({
                 <Text style={styles.hourSuffix}>{label.suffix}</Text>
               </View>
               <View style={styles.slot}>
-                {slot.map(({ lead, due }) => (
-                  <FollowUpCard
-                    key={lead.id}
-                    name={leadName(lead)}
-                    label={followUpLabel(lead)}
-                    labelIcon={statusTypeIcon(followUpLabel(lead))}
-                    kind={followUpKind(lead)}
-                    due={due}
-                    overdue={due.getTime() < now.getTime()}
-                    tone={tones[followUpKind(lead)]}
-                    note={lead.lastNote}
-                    onPress={() => onOpenLead(lead)}
-                    onPressIn={() => onPressInLead(lead)}
-                  />
-                ))}
+                {slot.map(({ item, due }) => {
+                  const done = item.status === 'DONE';
+                  return (
+                    <FollowUpCard
+                      key={item.id}
+                      name={item.lead.name}
+                      label={followUpTypeLabel(item.type)}
+                      labelIcon={followupTypeIcon(item.type)}
+                      due={due}
+                      state={followUpState(item, due, now)}
+                      tone={tones[followUpKind(item.type)]}
+                      // Done: what happened; open: what it was scheduled for.
+                      note={done ? (item.outcomeNote ?? item.agenda) : item.agenda}
+                      onPress={() => onOpen(item)}
+                      onPressIn={() => onPressIn(item)}
+                      onMore={done ? undefined : () => onMore(item)}
+                      onComplete={done ? undefined : () => onComplete(item)}
+                    />
+                  );
+                })}
               </View>
             </View>
           );

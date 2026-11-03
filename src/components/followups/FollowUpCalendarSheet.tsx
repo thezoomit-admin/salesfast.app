@@ -235,7 +235,7 @@ export function FollowUpCalendarSheet({ open, selected, onSelect, onClose }: Pro
               if (!day) return <View key={`blank-${index}`} style={styles.cell} />;
               const active = isSameDay(day, selected);
               const today = isToday(day);
-              const dotColor = dayDotColor(byDay.get(dayKey(day)), now, tones, colors.danger);
+              const dotColor = dayDotColor(byDay.get(dayKey(day)), new Date(now), tones, colors);
               return (
                 <Pressable
                   key={dayKey(day)}

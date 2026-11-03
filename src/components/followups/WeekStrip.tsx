@@ -28,7 +28,7 @@ import {
   type FollowUpKind,
 } from '@/components/followups/followUpCalendar';
 import { followUpMonthKey, followUpMonthQuery } from '@/features/leads/leadsApi';
-import type { LeadListItem } from '@/types/api';
+import type { MyFollowUp } from '@/types/api';
 import { radii, useTheme, type ThemeColors } from '@/theme';
 
 /** Swipeable range either side of the current week (~5 years). */
@@ -43,7 +43,7 @@ type Props = {
 };
 
 /** Module-level so useQueries memoizes the merged rows between renders. */
-function combineItems(results: UseQueryResult<{ items: LeadListItem[] }>[]) {
+function combineItems(results: UseQueryResult<{ items: MyFollowUp[] }>[]) {
   return results.flatMap((r) => r.data?.items ?? []);
 }
 
@@ -85,7 +85,7 @@ function WeekStripImpl({ selected, onSelect }: Props) {
         width={width}
         now={now}
         tones={tones}
-        overdueColor={colors.danger}
+        dotColors={colors}
         styles={styles}
         onSelect={onSelect}
       />
@@ -123,7 +123,7 @@ const WeekPage = memo(function WeekPage({
   width,
   now,
   tones,
-  overdueColor,
+  dotColors,
   styles,
   onSelect,
 }: {
@@ -132,7 +132,7 @@ const WeekPage = memo(function WeekPage({
   width: number;
   now: number;
   tones: Record<FollowUpKind, KindTone>;
-  overdueColor: string;
+  dotColors: { danger: string; success: string };
   styles: Styles;
   onSelect: (day: Date) => void;
 }) {
@@ -149,7 +149,7 @@ const WeekPage = memo(function WeekPage({
         const day = addDays(start, i);
         const active = isSameDay(day, selected);
         const today = isToday(day);
-        const dotColor = dayDotColor(byDay.get(dayKey(day)), now, tones, overdueColor);
+        const dotColor = dayDotColor(byDay.get(dayKey(day)), new Date(now), tones, dotColors);
         return (
           <Pressable
             key={dayKey(day)}

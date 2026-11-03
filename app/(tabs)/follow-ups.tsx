@@ -4,17 +4,30 @@ import { startOfWeek } from 'date-fns/startOfWeek';
 import { memo, useCallback, useMemo, useState } from 'react';
 
 import { getErrorMessage } from '@/api/client';
+import { useFollowUpActions, type FollowUpTarget } from '@/components/followups/FollowUpActions';
 import { groupByDay } from '@/components/followups/followUpCalendar';
 import { FollowUpCalendarSheet } from '@/components/followups/FollowUpCalendarSheet';
 import { FollowUpWeekView } from '@/components/followups/FollowUpWeekView';
+import { leadRowOfFollowUp } from '@/features/leads/leadDetailCache';
 import {
   followUpMonthKey,
   followUpMonthQuery,
 } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
-import type { LeadListItem } from '@/types/api';
+import type { MyFollowUp } from '@/types/api';
 
-type MonthData = { items: LeadListItem[] };
+type MonthData = { items: MyFollowUp[] };
+
+function targetOf(f: MyFollowUp): FollowUpTarget {
+  return {
+    leadId: f.lead.id,
+    leadName: f.lead.name,
+    leadPhone: f.lead.phone,
+    type: f.type,
+    dueAt: f.dueAt,
+    open: f.status !== 'DONE',
+  };
+}
 
 /** Module-level so useQueries memoizes the merged result between renders. */
 function combineMonths(results: UseQueryResult<MonthData>[]) {
@@ -43,7 +56,18 @@ function FollowUpsScreen() {
   });
 
   const byDay = useMemo(() => groupByDay(data.items), [data.items]);
-  const { openLead, prefetchLead } = useLeadRowHandlers(data.items);
+  const leadRows = useMemo(() => data.items.map(leadRowOfFollowUp), [data.items]);
+  const { openLead, prefetchLead } = useLeadRowHandlers(leadRows);
+  const actions = useFollowUpActions();
+  const { openMenu, openComplete } = actions;
+
+  const onOpen = useCallback((f: MyFollowUp) => openLead(leadRowOfFollowUp(f)), [openLead]);
+  const onPressIn = useCallback(
+    (f: MyFollowUp) => prefetchLead(leadRowOfFollowUp(f)),
+    [prefetchLead]
+  );
+  const onMore = useCallback((f: MyFollowUp) => openMenu(targetOf(f)), [openMenu]);
+  const onComplete = useCallback((f: MyFollowUp) => openComplete(targetOf(f)), [openComplete]);
 
   const shiftWeek = useCallback(
     (delta: number) => setSelected((d) => addDays(d, delta * 7)),
@@ -64,9 +88,12 @@ function FollowUpsScreen() {
         onSelect={setSelected}
         onShiftWeek={shiftWeek}
         onPickDate={openPicker}
-        onOpenLead={openLead}
-        onPressInLead={prefetchLead}
+        onOpen={onOpen}
+        onPressIn={onPressIn}
+        onMore={onMore}
+        onComplete={onComplete}
       />
+      {actions.sheets}
       <FollowUpCalendarSheet
         open={pickerOpen}
         selected={selected}
