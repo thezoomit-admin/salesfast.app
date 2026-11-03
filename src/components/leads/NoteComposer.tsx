@@ -6,8 +6,6 @@ import {
   setAudioModeAsync,
   useAudioRecorder,
   type AudioPlayer,
-  type AudioStatus,
-  type RecordingSource,
 } from 'expo-audio';
 import * as DocumentPicker from 'expo-document-picker';
 import {
@@ -22,7 +20,6 @@ import {
   Alert,
   Animated,
   Easing,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -100,37 +97,21 @@ const PLAYBACK_BARS = [
 /** Live meter while recording: newest level on the right, older ones scroll left. */
 const METER_BARS = 36;
 const METER_TICK_MS = 80;
-/** Player status events — the scrub thumb glides between them. */
+/** Playback position polls — the scrub thumb glides between them. */
 const STATUS_INTERVAL_MS = 50;
 
 /**
- * Loudest reading below this is no sound at all: Android reports -160 dB
- * (amplitude 0) when the OS hands the app silence — mic in use by a call or
- * another app, or turned off in privacy settings. A quiet room is ~-50 dB.
+ * Some phones report no input level (metering stays at -160 dB) although the
+ * recording itself is fine. Readings below this are "no level", and the live
+ * meter then shows an activity pattern instead of real levels.
  */
-const SILENT_DB = -100;
-/**
- * Android capture sources, tried in order when one yields pure silence. Some
- * phones only feed the voice-communication path, and Android 10+ silences a
- * plain MIC capture while another app holds the mic, but lets a
- * voice-communication capture through.
- */
-const ANDROID_SOURCES: RecordingSource[] = [
-  'mic',
-  'voice_communication',
-  'voice_recognition',
-  'camcorder',
-];
-/** The source that last produced sound — tried first next time. */
-let workingSource: RecordingSource | null = null;
-const rememberWorkingSource = (source: RecordingSource) => {
-  workingSource = source;
-};
+const NO_LEVEL_DB = -100;
 
-/** `RecordingInput.type` of the phone's own microphone. */
-const BUILT_IN_MIC = 'MicrophoneBuiltIn';
-/** Readings needed before a recording can be judged silent (~1s). */
-const MIN_METER_READINGS = 12;
+/** Stand-in level for phones without metering: a steady, speech-like ripple. */
+function activityLevel(tick: number) {
+  const wave = Math.sin(tick * 0.9) * 0.5 + Math.sin(tick * 2.3 + 1) * 0.3;
+  return 0.25 + Math.abs(wave) * 0.45;
+}
 
 /** Recorder metering (dBFS, about -60…0) → 0…1, peaks emphasised like WhatsApp. */
 function meterLevel(db: number | undefined) {
@@ -316,11 +297,11 @@ export function NoteComposer({
   const [recordSec, setRecordSec] = useState(0);
   const [levels, setLevels] = useState<number[]>([]);
   const levelHistory = useRef<number[]>([]);
-  // Raw metering seen this recording — how a silent capture is detected.
-  const meterStats = useRef({ readings: 0, maxDb: -Infinity });
+  // Whether this phone reports real input levels during this recording.
+  const hasLevels = useRef(false);
+  const tickCount = useRef(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const sourceIndex = useRef(0);
-  const switchingSource = useRef(false);
+  const playTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [playProgress, setPlayProgress] = useState(0);
@@ -331,6 +312,7 @@ export function NoteComposer({
   useEffect(() => {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
+      if (playTickRef.current) clearInterval(playTickRef.current);
       try {
         playerRef.current?.pause();
         playerRef.current?.remove();
@@ -347,6 +329,7 @@ export function NoteComposer({
     } catch {
       /* ignore */
     }
+    stopPlayTicks();
     if (reset) {
       try {
         playerRef.current?.remove();
@@ -361,25 +344,37 @@ export function NoteComposer({
     }
   }
 
-  /** Player status events drive progress; play / pause state follows the user's taps. */
-  function onPlaybackStatus(status: AudioStatus) {
+  function stopPlayTicks() {
+    if (playTickRef.current) clearInterval(playTickRef.current);
+    playTickRef.current = null;
+  }
+
+  /**
+   * Poll the position while playing. Play / pause follow the user's taps only:
+   * right after play() the player can still report "not playing", which must
+   * not be read as a pause.
+   */
+  function playTick() {
+    const player = playerRef.current;
     const clip = activeClipRef.current;
-    if (!clip) return;
+    if (!player || !clip) return;
+    const meta = player.duration;
     const dur =
       clip.durationSec > 0
         ? clip.durationSec
-        : Number.isFinite(status.duration) && status.duration > 0
-          ? status.duration
+        : Number.isFinite(meta) && meta > 0
+          ? meta
           : 0;
-    if (status.didJustFinish) {
+    if (!dur) return;
+    const cur = Math.min(player.currentTime || 0, dur);
+    if (!player.playing && cur >= dur - 0.08) {
+      stopPlayTicks();
       setPlayingId(null);
       setPaused(false);
       setPlayProgress(0);
       setPlayDisplaySec(clip.durationSec);
       return;
     }
-    if (!dur) return;
-    const cur = Math.min(status.currentTime || 0, dur);
     setPlayProgress(cur / dur);
     setPlayDisplaySec(Math.max(0, dur - cur));
   }
@@ -388,15 +383,9 @@ export function NoteComposer({
     await setAudioModeAsync({
       allowsRecording: false,
       playsInSilentMode: true,
-      shouldRouteThroughEarpiece: false,
     });
     if (!playerRef.current) {
-      const player = createAudioPlayer(clip.uri, {
-        updateInterval: STATUS_INTERVAL_MS,
-      });
-      player.addListener('playbackStatusUpdate', onPlaybackStatus);
-      player.volume = 1;
-      playerRef.current = player;
+      playerRef.current = createAudioPlayer(clip.uri);
       setPlayProgress(0);
       setPlayDisplaySec(clip.durationSec);
     } else if (playingId !== clip.id) {
@@ -413,12 +402,15 @@ export function NoteComposer({
     try {
       if (playingId === clip.id && !paused) {
         playerRef.current?.pause();
+        stopPlayTicks();
         setPaused(true);
         return;
       }
       const player = await ensurePlayer(clip);
       player.play();
       setPaused(false);
+      stopPlayTicks();
+      playTickRef.current = setInterval(playTick, STATUS_INTERVAL_MS);
     } catch {
       Alert.alert('Could not play voice note');
       setPlayingId(null);
@@ -446,26 +438,13 @@ export function NoteComposer({
     }
   }
 
-  /** Pin the recorder to the phone's own mic (needs a prepared recorder). */
-  function preferBuiltInMic() {
-    try {
-      const builtIn = recorder
-        .getAvailableInputs()
-        .find((input) => input.type === BUILT_IN_MIC);
-      if (builtIn) recorder.setInput(builtIn.uid);
-    } catch {
-      /* Android 9 and older cannot pick an input — keep the default */
-    }
-  }
-
   function stopTicks() {
     if (tickRef.current) clearInterval(tickRef.current);
     tickRef.current = null;
   }
 
-  /** Timer, live waveform and the silence watchdog — every METER_TICK_MS. */
+  /** Timer and live waveform — every METER_TICK_MS. */
   function tick() {
-    if (switchingSource.current) return;
     setRecordSec(Math.floor((nowMs() - recordStartedAt.current) / 1000));
     let db: number | undefined;
     try {
@@ -473,64 +452,11 @@ export function NoteComposer({
     } catch {
       db = undefined;
     }
-    if (typeof db === 'number' && Number.isFinite(db)) {
-      meterStats.current.readings += 1;
-      meterStats.current.maxDb = Math.max(meterStats.current.maxDb, db);
-    }
-    const level = meterLevel(db);
-    levelHistory.current.push(level);
+    if (typeof db === 'number' && db > NO_LEVEL_DB) hasLevels.current = true;
+    tickCount.current += 1;
+    const level = hasLevels.current ? meterLevel(db) : activityLevel(tickCount.current);
+    if (hasLevels.current) levelHistory.current.push(level);
     setLevels((prev) => [...prev.slice(1 - METER_BARS), level]);
-
-    const { readings, maxDb } = meterStats.current;
-    const next = sourceIndex.current + 1;
-    if (
-      Platform.OS === 'android' &&
-      readings >= MIN_METER_READINGS &&
-      maxDb < SILENT_DB &&
-      next < ANDROID_SOURCES.length
-    ) {
-      // Pure silence on this source — restart on the next one.
-      switchingSource.current = true;
-      sourceIndex.current = next;
-      void beginCapture()
-        .catch(() => undefined)
-        .finally(() => {
-          switchingSource.current = false;
-        });
-    }
-  }
-
-  /** (Re)start capture on the current source with a fresh file and meter. */
-  async function beginCapture() {
-    // Native recorder throws if prepared twice — reset first.
-    try {
-      const status = recorder.getStatus();
-      if (status.canRecord || status.isRecording) {
-        await recorder.stop();
-      }
-    } catch {
-      /* ignore — nothing to stop */
-    }
-    await recorder.prepareToRecordAsync(
-      Platform.OS === 'android'
-        ? {
-            ...recordingOptions,
-            android: {
-              ...recordingOptions.android,
-              audioSource: ANDROID_SOURCES[sourceIndex.current],
-            },
-          }
-        : undefined
-    );
-    // Android otherwise records from a plugged-in / Bluetooth headset,
-    // which is silence when it has no mic or its mic is off.
-    if (Platform.OS === 'android') preferBuiltInMic();
-    recordStartedAt.current = nowMs();
-    levelHistory.current = [];
-    meterStats.current = { readings: 0, maxDb: -Infinity };
-    setLevels([]);
-    setRecordSec(0);
-    recorder.record();
   }
 
   async function startRecording() {
@@ -552,11 +478,24 @@ export function NoteComposer({
         interruptionMode: 'doNotMix',
       });
 
-      sourceIndex.current = Math.max(
-        0,
-        workingSource ? ANDROID_SOURCES.indexOf(workingSource) : 0
-      );
-      await beginCapture();
+      // Native recorder throws if prepared twice — reset first.
+      try {
+        const status = recorder.getStatus();
+        if (status.canRecord || status.isRecording) {
+          await recorder.stop();
+        }
+      } catch {
+        /* ignore — nothing to stop */
+      }
+
+      await recorder.prepareToRecordAsync();
+      recordStartedAt.current = nowMs();
+      levelHistory.current = [];
+      hasLevels.current = false;
+      tickCount.current = 0;
+      setLevels([]);
+      setRecordSec(0);
+      recorder.record();
       stopTicks();
       tickRef.current = setInterval(tick, METER_TICK_MS);
       setRecording(true);
@@ -583,27 +522,6 @@ export function NoteComposer({
       setRecording(false);
       setRecordSec(0);
       if (!uri) return;
-      const { readings, maxDb } = meterStats.current;
-      if (readings >= MIN_METER_READINGS && maxDb < SILENT_DB) {
-        let inputs = '';
-        try {
-          inputs = recorder
-            .getAvailableInputs()
-            .map((i) => i.type)
-            .join(', ');
-        } catch {
-          inputs = 'unavailable';
-        }
-        Alert.alert(
-          'No sound was recorded',
-          'The microphone only picked up silence. It may be in use by a call or another app (voice assistant, screen recorder, call recorder), or turned off in your privacy settings.' +
-            `\n\nDetails: sources tried ${ANDROID_SOURCES.slice(0, sourceIndex.current + 1).join(', ')} · inputs ${inputs || 'none'} · peak ${Math.round(maxDb)} dB`
-        );
-        return;
-      }
-      if (Platform.OS === 'android') {
-        rememberWorkingSource(ANDROID_SOURCES[sourceIndex.current]);
-      }
       onChangeClips((prev) => [
         ...prev,
         {
@@ -612,7 +530,8 @@ export function NoteComposer({
           name: `Voice note ${formatDuration(elapsed)}`,
           durationSec: elapsed,
           mimeType: 'audio/m4a',
-          waveform: waveformOf(levelHistory.current),
+          // Only a real level history is the clip's waveform.
+          waveform: hasLevels.current ? waveformOf(levelHistory.current) : undefined,
         },
       ]);
     } catch {
