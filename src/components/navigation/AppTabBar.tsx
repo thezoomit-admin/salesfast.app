@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import type { MaterialTopTabBarProps } from 'expo-router/js-top-tabs';
-import { useMemo, useState, type ComponentProps } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import {
   Animated,
   Platform,
@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   View,
-  type LayoutChangeEvent,
 } from 'react-native';
 
 import {
@@ -39,9 +38,6 @@ const TAB_ICONS: Record<string, HugeIconData> = {
   profile: AccountSetting02Icon,
 };
 
-const BAR_PADDING_X = 8;
-const PILL_WIDTH = 56;
-
 const TAB_LABELS: Record<string, string> = {
   leads: 'Leads',
   'follow-ups': 'Follow-ups',
@@ -70,40 +66,55 @@ export function AppTabBar({
     () => createStyles(colors, resolved === 'dark', bottomInset),
     [colors, resolved, bottomInset]
   );
-  const [barWidth, setBarWidth] = useState(0);
 
   const routesByName = Object.fromEntries(
     state.routes.map((route) => [route.name, route])
   );
 
-  // `position` is the pager's live page offset (native-driven), so the pill
-  // follows the finger during a swipe and animates the same way on tab press.
-  const pillTranslateX = useMemo(() => {
-    const itemWidth = (barWidth - BAR_PADDING_X * 2) / TAB_ORDER.length;
-    const slotX = state.routes.map((route) => {
-      const slot = TAB_ORDER.indexOf(route.name as (typeof TAB_ORDER)[number]);
-      return BAR_PADDING_X + Math.max(slot, 0) * itemWidth + (itemWidth - PILL_WIDTH) / 2;
-    });
-    if (slotX.length < 2) return slotX[0] ?? 0;
-    return position.interpolate({
-      inputRange: state.routes.map((_, i) => i),
-      outputRange: slotX,
-      extrapolate: 'clamp',
-    });
-  }, [barWidth, position, state.routes]);
+  // Highlight runs on the UI thread off the pager's live `position`, snapping
+  // to a tab the moment its page is more than half on screen. Waiting for
+  // `state.index` lags: it updates after the pager settles and the whole
+  // navigator re-renders on the JS thread.
+  const highlights = useMemo(
+    () =>
+      state.routes.map((_, i) => {
+        const inputRange = [i - 0.5, i - 0.499, i + 0.499, i + 0.5];
+        return {
+          on: position.interpolate({
+            inputRange,
+            outputRange: [0, 1, 1, 0],
+            extrapolate: 'clamp',
+          }),
+          off: position.interpolate({
+            inputRange,
+            outputRange: [1, 0, 0, 1],
+            extrapolate: 'clamp',
+          }),
+        };
+      }),
+    [position, state.routes]
+  );
 
-  const onBarLayout = (e: LayoutChangeEvent) =>
-    setBarWidth(e.nativeEvent.layout.width);
+  // A tapped tab lights up at once and holds while the pager scrolls past the
+  // pages in between, then hands back to the live highlight.
+  const [pressTarget, setPressTarget] = useState<number | null>(null);
+  const [seenIndex, setSeenIndex] = useState(state.index);
+  if (seenIndex !== state.index) {
+    setSeenIndex(state.index);
+    // Swiped elsewhere, back button or redirect before the tap finished.
+    if (pressTarget !== null && state.index !== pressTarget) setPressTarget(null);
+  }
+  useEffect(() => {
+    if (pressTarget === null) return;
+    const id = position.addListener(({ value }) => {
+      if (Math.round(value) === pressTarget) setPressTarget(null);
+    });
+    return () => position.removeListener(id);
+  }, [position, pressTarget]);
 
   return (
     <View style={styles.wrap} accessibilityRole="tablist">
-      <View style={styles.bar} onLayout={onBarLayout}>
-        {barWidth > 0 ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.pill, { transform: [{ translateX: pillTranslateX }] }]}
-          />
-        ) : null}
+      <View style={styles.bar}>
         {TAB_ORDER.map((name) => {
           const route = routesByName[name];
           if (!route) return null;
@@ -113,8 +124,13 @@ export function AppTabBar({
           const { options } = descriptors[route.key];
           const label = TAB_LABELS[name] ?? options.title ?? name;
           const icon = TAB_ICONS[name];
-          const color = focused ? colors.brand : colors.textMuted;
           const badge = badges?.[name] || undefined;
+          const highlight =
+            pressTarget === null
+              ? highlights[routeIndex]
+              : pressTarget === routeIndex
+                ? { on: 1, off: 0 }
+                : { on: 0, off: 1 };
 
           const onPress = () => {
             const event = emitter.emit({
@@ -123,7 +139,10 @@ export function AppTabBar({
               canPreventDefault: true,
             });
             if (!focused && !event.defaultPrevented) {
-              navigateToTab(route.key);
+              setPressTarget(routeIndex);
+              // Next frame, so the highlight paints before the navigator's
+              // re-render occupies the JS thread.
+              requestAnimationFrame(() => navigateToTab(route.key));
             }
           };
 
@@ -149,12 +168,24 @@ export function AppTabBar({
             >
               <View style={styles.iconWrap}>
                 {icon ? (
-                  <HugeiconsIcon
-                    icon={icon}
-                    size={24}
-                    color={color}
-                    strokeWidth={focused ? 2.1 : 1.7}
-                  />
+                  <>
+                    <Animated.View style={[styles.iconLayer, { opacity: highlight.off }]}>
+                      <HugeiconsIcon
+                        icon={icon}
+                        size={24}
+                        color={colors.textMuted}
+                        strokeWidth={1.7}
+                      />
+                    </Animated.View>
+                    <Animated.View style={[styles.iconLayer, { opacity: highlight.on }]}>
+                      <HugeiconsIcon
+                        icon={icon}
+                        size={24}
+                        color={colors.brand}
+                        strokeWidth={2.1}
+                      />
+                    </Animated.View>
+                  </>
                 ) : null}
                 {badge != null ? (
                   <View style={styles.badge}>
@@ -164,13 +195,12 @@ export function AppTabBar({
                   </View>
                 ) : null}
               </View>
-              {focused ? (
-                <Text style={styles.label} numberOfLines={1}>
-                  {label}
-                </Text>
-              ) : (
-                <View style={styles.labelSpacer} />
-              )}
+              <Animated.Text
+                style={[styles.label, { opacity: highlight.on }]}
+                numberOfLines={1}
+              >
+                {label}
+              </Animated.Text>
             </Pressable>
           );
         })}
@@ -193,7 +223,7 @@ function createStyles(colors: ThemeColors, isDark: boolean, bottomInset: number)
       borderTopRightRadius: 22,
       paddingTop: 12,
       paddingBottom: bottomInset,
-      paddingHorizontal: BAR_PADDING_X,
+      paddingHorizontal: 8,
       minHeight: 56 + bottomInset,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
@@ -209,15 +239,6 @@ function createStyles(colors: ThemeColors, isDark: boolean, bottomInset: number)
         },
         default: {},
       }),
-    },
-    pill: {
-      position: 'absolute',
-      left: 0,
-      top: 8,
-      width: PILL_WIDTH,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.brandSoft,
     },
     item: {
       flex: 1,
@@ -236,6 +257,11 @@ function createStyles(colors: ThemeColors, isDark: boolean, bottomInset: number)
       alignItems: 'center',
       justifyContent: 'center',
     },
+    iconLayer: {
+      ...StyleSheet.absoluteFill,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     label: {
       ...typography.caption,
       fontSize: 11,
@@ -243,9 +269,6 @@ function createStyles(colors: ThemeColors, isDark: boolean, bottomInset: number)
       fontWeight: '700',
       color: colors.brand,
       textAlign: 'center',
-    },
-    labelSpacer: {
-      height: 14,
     },
     badge: {
       position: 'absolute',

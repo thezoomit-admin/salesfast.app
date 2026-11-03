@@ -9,8 +9,6 @@ import { radii, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
   title: string;
-  /** Soft line under the title (tab roots). Ignored when centered. */
-  subtitle?: string;
   /** Center slot (e.g. filter pill). Stays truly centered. */
   center?: ReactNode;
   /** Right slot (e.g. actions). Always far-right. */
@@ -25,13 +23,12 @@ type Props = {
 };
 
 /**
- * Shared page header — Hisab ScreenHeader pattern, Salesfast brand tokens.
+ * Shared page header — mirrors Hisab ScreenHeader layout.
  * - Tab root (`showBack={false}`): left title + right actions
  * - Stack (`titleCentered`): back | centered title | right
  */
 export function ScreenHeader({
   title,
-  subtitle,
   center,
   right,
   onBack,
@@ -78,13 +75,7 @@ export function ScreenHeader({
   ) : null;
 
   return (
-    <View
-      style={[
-        styles.wrap,
-        !showBack && styles.wrapTabRoot,
-        { paddingTop: insets.top + 8 },
-      ]}
-    >
+    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
       {center || centered ? (
         <View
           style={[styles.centerSlot, { top: insets.top }]}
@@ -110,21 +101,14 @@ export function ScreenHeader({
           <>
             <View style={styles.leftWithTitle}>
               {backControl}
-              <View style={styles.titleBlock}>
-                <Text
-                  style={[styles.titleInline, !showBack && styles.titleRoot]}
-                  numberOfLines={1}
-                >
-                  {title}
-                </Text>
-                {subtitle && !centered ? (
-                  <Text style={styles.subtitle} numberOfLines={1}>
-                    {subtitle}
-                  </Text>
-                ) : null}
-              </View>
+              <Text
+                style={[styles.titleInline, !showBack && styles.titleRoot]}
+                numberOfLines={1}
+              >
+                {title}
+              </Text>
             </View>
-            <View style={styles.right}>{right ?? <View style={styles.iconBtn} />}</View>
+            <View style={styles.right}>{right}</View>
           </>
         )}
       </View>
@@ -197,13 +181,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
       backgroundColor: colors.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.brandSoft,
-      zIndex: 2,
-    },
-    /** Tab roots sit directly above chips/tabs — seam handled by chip/tab margins. */
-    wrapTabRoot: {
-      marginBottom: 0,
-      paddingBottom: 0,
+      borderBottomColor: colors.primary50,
     },
     centerSlot: {
       position: 'absolute',
@@ -234,7 +212,6 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      flexShrink: 0,
       gap: 2,
     },
     leftWithTitle: {
@@ -243,12 +220,7 @@ function createStyles(colors: ThemeColors) {
       flexShrink: 1,
       minWidth: 0,
       paddingRight: 8,
-      maxWidth: '72%',
-    },
-    titleBlock: {
-      flexShrink: 1,
-      minWidth: 0,
-      gap: 1,
+      maxWidth: '70%',
     },
     iconBtn: {
       width: 40,
@@ -257,28 +229,21 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
     },
     titleInline: {
-      ...typography.subtitle,
       fontSize: 17,
-      lineHeight: 24,
+      lineHeight: 26,
+      fontWeight: '700',
       color: colors.text,
       flexShrink: 1,
     },
     titleRoot: {
-      fontSize: 22,
+      fontSize: 20,
       lineHeight: 28,
-      letterSpacing: -0.3,
-      fontWeight: '700',
-    },
-    subtitle: {
-      ...typography.caption,
-      fontSize: 13,
-      lineHeight: 18,
-      color: colors.textSecondary,
+      letterSpacing: -0.2,
     },
     titleCentered: {
-      ...typography.subtitle,
       fontSize: 18,
       lineHeight: 26,
+      fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
     },
@@ -286,7 +251,6 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      flexShrink: 0,
       minHeight: 40,
       gap: 2,
     },

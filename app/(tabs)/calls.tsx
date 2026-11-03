@@ -192,19 +192,9 @@ function CallsScreen() {
         : callSync.message
   );
 
-  const headerSubtitle =
-    callSync.status === 'configured'
-      ? 'Syncing lead calls'
-      : callSync.status === 'paused'
-        ? 'Paused — tap to resume'
-        : callSync.status === 'not_configured'
-          ? 'Connect phone calls to CRM leads'
-          : callSync.label;
-
   const pageHeader = (
     <ScreenHeader
       title="Calls"
-      subtitle={headerSubtitle}
       showBack={false}
       right={
         <HeaderIconButton

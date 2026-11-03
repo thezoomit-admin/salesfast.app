@@ -67,19 +67,10 @@ function FollowUpsScreen() {
     [openLead, prefetchLead, openPriority, openHistory]
   );
 
-  const count = query.data?.items.length;
-  const headerSubtitle =
-    count == null
-      ? 'Today · Overdue · Upcoming'
-      : count === 0
-        ? EMPTY_COPY[tab].title
-        : `${count} in ${tab === 'today' ? 'Today' : tab === 'overdue' ? 'Overdue' : 'Upcoming'}`;
-
   return (
     <View style={styles.safe}>
       <ScreenHeader
         title="Follow-ups"
-        subtitle={headerSubtitle}
         showBack={false}
         right={<NotificationBell plain />}
       />
