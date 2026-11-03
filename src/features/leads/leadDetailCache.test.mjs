@@ -13,6 +13,7 @@ import {
   findListLead,
   leadDetailKey,
   markOutdatedLeadDetails,
+  patchLeadInLists,
 } from './leadDetailCache.ts';
 
 const row = (id, updatedAt, extra = {}) => ({
@@ -85,6 +86,30 @@ describe('findListLead', () => {
     seedLists(c);
     c.clear();
     assert.equal(findListLead(c, 1), undefined);
+  });
+});
+
+describe('patchLeadInLists', () => {
+  it('updates the lead row in infinite my-leads and flat follow-up lists', () => {
+    const c = newClient();
+    seedLists(c);
+    patchLeadInLists(c, 2, { priority: 'LOW' });
+    const myLeads = c.getQueryData(['my-leads', '', undefined]);
+    assert.equal(myLeads.pages[0].items[1].priority, 'LOW');
+    assert.equal(
+      c.getQueryData(['follow-up-leads', 'today']).items[0].priority,
+      'LOW'
+    );
+  });
+
+  it('leaves unrelated rows unchanged', () => {
+    const c = newClient();
+    seedLists(c);
+    patchLeadInLists(c, 1, { priority: 'HIGH' });
+    assert.equal(
+      c.getQueryData(['follow-up-leads', 'today']).items[0].priority,
+      'HIGH'
+    );
   });
 });
 

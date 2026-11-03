@@ -49,7 +49,10 @@ import {
   QueryPlaceholder,
 } from '@/components/ui/StateViews';
 import { useAuth } from '@/features/auth/AuthContext';
-import { findListLead } from '@/features/leads/leadDetailCache';
+import {
+  findListLead,
+  patchLeadInLists,
+} from '@/features/leads/leadDetailCache';
 import {
   leadStatusesQuery,
   updateLeadPriority,
@@ -118,19 +121,34 @@ export default function LeadDetailScreen() {
       ),
     onMutate: async (priority) => {
       await queryClient.cancelQueries({ queryKey: ['lead', leadId] });
-      const prev = leadQuery.data;
-      if (prev) {
-        queryClient.setQueryData(['lead', leadId], { ...prev, priority });
+      const prevDetail = leadQuery.data;
+      const prevLists = queryClient.getQueriesData({ queryKey: ['my-leads'] })
+        .concat(queryClient.getQueriesData({ queryKey: ['follow-up-leads'] }));
+      if (prevDetail) {
+        queryClient.setQueryData(['lead', leadId], { ...prevDetail, priority });
       }
+      patchLeadInLists(queryClient, leadId, { priority });
       setPriorityOpen(false);
-      return { prev };
+      return { prevDetail, prevLists };
     },
     onError: (_err, _p, ctx) => {
-      if (ctx?.prev) queryClient.setQueryData(['lead', leadId], ctx.prev);
+      if (ctx?.prevDetail) {
+        queryClient.setQueryData(['lead', leadId], ctx.prevDetail);
+      }
+      if (ctx?.prevLists) {
+        for (const [key, data] of ctx.prevLists) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       Alert.alert('Could not update priority');
     },
     onSuccess: (updated) => {
-      if (updated) queryClient.setQueryData(['lead', leadId], updated);
+      if (!updated) return;
+      queryClient.setQueryData(['lead', leadId], updated);
+      patchLeadInLists(queryClient, leadId, {
+        priority: updated.priority ?? null,
+        updatedAt: updated.updatedAt,
+      });
     },
   });
 
