@@ -21,6 +21,7 @@ import {
   ClockAlertIcon,
   UserIcon,
 } from '@/components/icons/hugeicons';
+import { UpcomingFollowupsTimeline } from '@/components/home/UpcomingFollowupsTimeline';
 import { radii, typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
@@ -595,64 +596,7 @@ export function HomeDashboard({
         </View>
       </Pressable>
 
-      {/* Upcoming queue */}
-      <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitle}>Upcoming follow-ups</Text>
-        <Pressable onPress={() => go('/(tabs)/follow-ups')} hitSlop={6}>
-          <Text style={styles.sectionLink}>Open queue</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.upcomingCard}>
-        {queue.length === 0 ? (
-          <Text style={styles.upcomingEmpty}>
-            No follow-ups lined up. Schedule the next touch from a lead.
-          </Text>
-        ) : (
-          queue.map((item, index) => {
-            const overdue = new Date(item.dueAt).getTime() < Date.now();
-            return (
-              <Pressable
-                key={item.id}
-                onPress={() => router.push(`/leads/${item.leadId}`)}
-                style={({ pressed }) => [
-                  styles.upcomingRow,
-                  index > 0 && styles.upcomingDivider,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <View style={styles.upcomingLeft}>
-                  <Text style={styles.upcomingName} numberOfLines={1}>
-                    {item.leadName}
-                  </Text>
-                  <Text style={styles.upcomingMeta} numberOfLines={1}>
-                    {item.type?.replace(/_/g, ' ') || 'Follow-up'}
-                    {item.leadPhone ? ` · ${item.leadPhone}` : ''}
-                  </Text>
-                </View>
-                <View style={styles.upcomingRight}>
-                  <Text
-                    style={[
-                      styles.upcomingTime,
-                      overdue && { color: colors.danger },
-                    ]}
-                  >
-                    {format(new Date(item.dueAt), 'h:mm a')}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.upcomingDay,
-                      overdue && { color: colors.danger },
-                    ]}
-                  >
-                    {overdue ? 'Overdue' : format(new Date(item.dueAt), 'dd MMM')}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })
-        )}
-      </View>
+      <UpcomingFollowupsTimeline queue={queue} />
     </View>
   );
 }
@@ -1056,52 +1000,5 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
       marginTop: 4,
     },
 
-    upcomingCard: {
-      ...card,
-      borderRadius: 18,
-      paddingHorizontal: 12,
-      paddingVertical: 4,
-      overflow: 'hidden',
-    },
-    upcomingEmpty: {
-      ...typography.caption,
-      color: colors.textMuted,
-      paddingVertical: 16,
-      paddingHorizontal: 4,
-      lineHeight: 18,
-    },
-    upcomingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingVertical: 12,
-    },
-    upcomingDivider: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-    },
-    upcomingLeft: { flex: 1, gap: 2, minWidth: 0 },
-    upcomingName: {
-      ...typography.subtitle,
-      fontSize: 14,
-      color: colors.text,
-    },
-    upcomingMeta: {
-      ...typography.caption,
-      fontSize: 12,
-      color: colors.textMuted,
-    },
-    upcomingRight: { alignItems: 'flex-end', gap: 2 },
-    upcomingTime: {
-      ...typography.caption,
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.text,
-    },
-    upcomingDay: {
-      ...typography.caption,
-      fontSize: 11,
-      color: colors.textMuted,
-    },
   });
 }
