@@ -1,11 +1,26 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter, type Href } from 'expo-router';
 import { format } from 'date-fns/format';
 import type { ComponentProps, ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
+import {
+  ArrowRight01Icon,
+  Calendar03Icon,
+  Clock01Icon,
+  ClockAlertIcon,
+  UserIcon,
+} from '@/components/icons/hugeicons';
 import { radii, typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
@@ -19,17 +34,21 @@ type Props = {
   recentLeads: RecentLead[];
   queue: QueueItem[];
   firstName: string;
+  showCallSyncSetup?: boolean;
+  onSetupCallSync?: () => void;
 };
 
-type KpiCard = {
+type KpiSlide = {
   key: string;
   label: string;
   value: number;
-  badge: string;
+  secondary: string;
   href: Href;
   icon: IoniconName;
   accent: string;
   soft: string;
+  live?: boolean;
+  trend?: string;
 };
 
 function greetingForHour(hour: number) {
@@ -91,11 +110,22 @@ function ProgressRing({
   );
 }
 
-export function HomeDashboard({ kpis, recentLeads, queue, firstName }: Props) {
+export function HomeDashboard({
+  kpis,
+  recentLeads: _recentLeads,
+  queue,
+  firstName,
+  showCallSyncSetup = false,
+  onSetupCallSync,
+}: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
+  const liveCardWidth = Math.min(300, windowWidth - 56);
+  // ~1.8 cards visible — wider tiles so the next card peeks, not a full second.
+  const kpiCardWidth = Math.round((windowWidth - 32) / 1.8);
 
   const focusTotal = kpis.todayFollowUps + kpis.overdueFollowUps;
   const completionTotal = kpis.pendingFollowUps + kpis.completedActivities;
@@ -113,46 +143,49 @@ export function HomeDashboard({ kpis, recentLeads, queue, firstName }: Props) {
   const todayLabel = format(new Date(), 'EEEE, d MMM yyyy');
   const greeting = `${greetingForHour(new Date().getHours())}, ${firstName}`;
 
-  const kpiCards: KpiCard[] = [
+  const kpiSlides: KpiSlide[] = [
     {
       key: 'due',
       label: 'Due today',
       value: kpis.todayFollowUps,
-      badge: focusTotal > 0 ? `${kpis.todayFollowUps} live` : 'Clear',
+      secondary: kpis.todayFollowUps > 0 ? 'Live now' : 'Clear',
+      live: kpis.todayFollowUps > 0,
       href: '/(tabs)/follow-ups',
-      icon: 'time-outline',
-      accent: colors.brand,
-      soft: isDark ? colors.brandSoft : colors.primary50,
+      icon: 'document-text-outline',
+      accent: colors.success,
+      soft: colors.successSoft,
     },
     {
       key: 'assigned',
       label: 'Assigned leads',
       value: kpis.totalAssigned,
-      badge: `${kpis.totalAssigned} total`,
+      secondary: 'Leads',
+      trend: kpis.newLeads > 0 ? `+${kpis.newLeads}` : undefined,
       href: '/(tabs)/leads',
       icon: 'people-outline',
-      accent: colors.success,
-      soft: colors.successSoft,
+      accent: colors.warning,
+      soft: colors.warningSoft,
     },
     {
       key: 'new',
       label: 'New this week',
       value: kpis.newLeads,
-      badge: 'Last 7 days',
+      secondary: 'New leads',
+      live: kpis.newLeads > 0,
       href: '/(tabs)/leads',
       icon: 'flash-outline',
-      accent: isDark ? '#60A5FA' : '#2563EB',
-      soft: isDark ? '#0B1F3A' : '#EFF6FF',
+      accent: colors.brand,
+      soft: isDark ? colors.brandSoft : colors.primary50,
     },
     {
       key: 'done',
       label: 'Activities done',
       value: kpis.completedActivities,
-      badge: 'Completed',
+      secondary: 'Completed',
       href: '/activities',
       icon: 'checkmark-done-outline',
-      accent: colors.warning,
-      soft: colors.warningSoft,
+      accent: isDark ? '#60A5FA' : '#2563EB',
+      soft: isDark ? '#0B1F3A' : '#EFF6FF',
     },
   ];
 
@@ -168,49 +201,101 @@ export function HomeDashboard({ kpis, recentLeads, queue, firstName }: Props) {
 
   return (
     <View style={styles.root}>
-      {/* Greeting + primary CTA */}
-      <View style={styles.greetingBlock}>
-        <Text style={styles.greeting}>{greeting}</Text>
-        <Text style={styles.dateLine}>{todayLabel}</Text>
+      {/* Welcome card — soft white panel on wash bg */}
+      <View style={styles.welcomeCard}>
+        <View style={styles.greetingBlock}>
+          <Text style={styles.greeting}>{greeting}</Text>
+          <Text style={styles.dateLine}>{todayLabel}</Text>
+        </View>
+
+        {showCallSyncSetup ? (
+          <Pressable
+            onPress={onSetupCallSync}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.syncWarn,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Set up call sync"
+          >
+            <Ionicons
+              name="cloud-offline-outline"
+              size={14}
+              color={colors.warning}
+            />
+            <Text style={styles.syncWarnText}>Set up call sync</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={14}
+              color={colors.warning}
+            />
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          onPress={() => go('/(tabs)/follow-ups')}
+          style={({ pressed }) => [styles.ctaBtn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Open follow-ups"
+        >
+          <Ionicons name="people-outline" size={16} color={colors.white} />
+          <Text style={styles.ctaText}>Open follow-ups</Text>
+        </Pressable>
       </View>
 
-      <Pressable
-        onPress={() => go('/(tabs)/follow-ups')}
-        style={({ pressed }) => [styles.ctaBtn, pressed && styles.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel="Open follow-ups"
+      {/* KPI slider — reference style, flat white cards */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.kpiRow}
+        decelerationRate="fast"
+        snapToInterval={kpiCardWidth + 12}
       >
-        <Text style={styles.ctaText}>Open follow-ups</Text>
-        <Ionicons name="arrow-forward" size={16} color={colors.white} />
-      </Pressable>
-
-      {/* 2×2 KPI strip */}
-      <View style={styles.kpiGrid}>
-        {kpiCards.map((card) => (
+        {kpiSlides.map((card) => (
           <Pressable
             key={card.key}
             onPress={() => go(card.href)}
-            style={({ pressed }) => [styles.kpiCard, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.kpiCard,
+              { width: kpiCardWidth },
+              pressed && styles.pressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={`${card.label}: ${card.value}`}
           >
             <View style={styles.kpiTop}>
+              <Text style={styles.kpiLabel} numberOfLines={1}>
+                {card.label}
+              </Text>
               <View style={[styles.kpiIcon, { backgroundColor: card.soft }]}>
                 <Ionicons name={card.icon} size={16} color={card.accent} />
               </View>
-              <View style={[styles.kpiBadge, { backgroundColor: card.soft }]}>
-                <Text style={[styles.kpiBadgeText, { color: card.accent }]}>
-                  {card.badge}
-                </Text>
-              </View>
             </View>
-            <Text style={styles.kpiValue}>{card.value}</Text>
-            <Text style={styles.kpiLabel}>{card.label}</Text>
+
+            <View style={styles.kpiBottom}>
+              <Text style={styles.kpiValue}>{card.value}</Text>
+              {card.live ? (
+                <View style={styles.kpiLive}>
+                  <View
+                    style={[styles.kpiLiveDot, { backgroundColor: card.accent }]}
+                  />
+                  <Text style={styles.kpiSecondary}>{card.secondary}</Text>
+                </View>
+              ) : (
+                <Text style={styles.kpiSecondary}>{card.secondary}</Text>
+              )}
+              {card.trend ? (
+                <Text style={[styles.kpiTrend, { color: colors.success }]}>
+                  {card.trend}
+                </Text>
+              ) : null}
+            </View>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
-      {/* Live monitoring */}
+      {/* Live monitoring — 2 horizontal cards, no border/shadow */}
       <View style={styles.sectionHead}>
         <Text style={styles.sectionTitle}>Live queue monitoring</Text>
         <Pressable onPress={() => go('/(tabs)/follow-ups')} hitSlop={6}>
@@ -218,61 +303,145 @@ export function HomeDashboard({ kpis, recentLeads, queue, firstName }: Props) {
         </Pressable>
       </View>
 
-      <Pressable
-        onPress={() => go('/(tabs)/follow-ups')}
-        style={({ pressed }) => [styles.liveCard, pressed && styles.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel={`Live queue, ${focusTotal} items`}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.liveRow}
+        decelerationRate="fast"
+        snapToInterval={liveCardWidth + 12}
       >
-        <ProgressRing
-          progress={clearRate}
-          size={92}
-          stroke={colors.white}
-          track="rgba(255,255,255,0.22)"
-        >
-          <Text style={styles.ringValue}>{focusTotal}</Text>
-          <Text style={styles.ringHint}>
-            {focusTotal === 0 ? 'clear' : 'active'}
-          </Text>
-        </ProgressRing>
+        {(
+          [
+            {
+              key: 'due',
+              title: 'Due today follow-ups',
+              status: kpis.todayFollowUps > 0 ? 'Live now' : 'All clear',
+              statusLive: kpis.todayFollowUps > 0,
+              line1: `${kpis.todayFollowUps} due today`,
+              line2: `${kpis.pendingFollowUps} pending in queue`,
+              ringValue: String(kpis.todayFollowUps),
+              ringLabel: 'due',
+              progress: clearRate,
+              href: '/(tabs)/follow-ups' as Href,
+              bg: colors.brand,
+              icon: Calendar03Icon,
+              // Soft peach on brand orange — matches card wash.
+              ringStroke: '#FFD4C4',
+              ringTrack: 'rgba(255,255,255,0.22)',
+              statusColor: '#FFD4C4',
+            },
+            {
+              key: 'overdue',
+              title: 'Overdue follow-ups',
+              status:
+                kpis.overdueFollowUps > 0 ? 'Needs attention' : 'Caught up',
+              statusLive: kpis.overdueFollowUps > 0,
+              line1: `${kpis.overdueFollowUps} overdue`,
+              line2: `${focusTotal} active in focus`,
+              ringValue: String(kpis.overdueFollowUps),
+              ringLabel: 'late',
+              progress:
+                focusTotal <= 0
+                  ? 100
+                  : Math.round(
+                      ((focusTotal - kpis.overdueFollowUps) /
+                        Math.max(focusTotal, 1)) *
+                        100
+                    ),
+              href: '/(tabs)/follow-ups' as Href,
+              bg: isDark ? '#1B2A2A' : '#1A4D4E',
+              icon: ClockAlertIcon,
+              // Mint on teal — matches card wash.
+              ringStroke: '#9BE7C4',
+              ringTrack: 'rgba(255,255,255,0.22)',
+              statusColor: '#9BE7C4',
+            },
+          ] as const
+        ).map((item) => (
+          <Pressable
+            key={item.key}
+            onPress={() => go(item.href)}
+            style={({ pressed }) => [
+              styles.liveCard,
+              { width: liveCardWidth, backgroundColor: item.bg },
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={item.title}
+          >
+            <View style={styles.liveTop}>
+              <View style={styles.liveIconDark}>
+                <HugeiconsIcon
+                  icon={item.icon}
+                  size={15}
+                  color={colors.white}
+                  strokeWidth={1.8}
+                />
+              </View>
+              <View style={styles.liveArrowBtn}>
+                <View style={styles.liveArrowIcon}>
+                  <HugeiconsIcon
+                    icon={ArrowRight01Icon}
+                    size={14}
+                    color={colors.text}
+                    strokeWidth={1.8}
+                  />
+                </View>
+              </View>
+            </View>
 
-        <View style={styles.liveCopy}>
-          <Text style={styles.liveEyebrow}>TODAY&apos;S FOCUS</Text>
-          <Text style={styles.liveTitle}>
-            {focusTotal === 0
-              ? 'You are all clear'
-              : `${kpis.todayFollowUps} due · ${kpis.overdueFollowUps} overdue`}
-          </Text>
-          <Text style={styles.liveMeta}>
-            {kpis.pendingFollowUps} pending follow-ups in your queue
-          </Text>
-          <View style={styles.liveAvatars}>
-            {recentLeads.slice(0, 3).map((lead, i) => (
+            <Text style={styles.liveTitle} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <View style={styles.liveStatusRow}>
               <View
-                key={lead.id}
                 style={[
-                  styles.liveAvatar,
+                  styles.liveDot,
                   {
-                    marginLeft: i === 0 ? 0 : -8,
-                    zIndex: 3 - i,
-                    backgroundColor:
-                      ['#0F766E', '#FFFFFF33', '#FDBA74'][i] ?? '#FFFFFF33',
+                    backgroundColor: item.statusLive
+                      ? item.statusColor
+                      : 'rgba(255,255,255,0.45)',
                   },
                 ]}
-              >
-                <Text style={styles.liveAvatarText}>
-                  {(lead.name || '?').charAt(0).toUpperCase()}
-                </Text>
+              />
+              <Text style={styles.liveStatusText}>{item.status}</Text>
+            </View>
+
+            <View style={styles.liveBottom}>
+              <View style={styles.liveMetaCol}>
+                <View style={styles.liveMetaRow}>
+                  <HugeiconsIcon
+                    icon={Clock01Icon}
+                    size={13}
+                    color="rgba(255,255,255,0.75)"
+                    strokeWidth={1.8}
+                  />
+                  <Text style={styles.liveMetaText}>{item.line1}</Text>
+                </View>
+                <View style={styles.liveMetaRow}>
+                  <HugeiconsIcon
+                    icon={UserIcon}
+                    size={13}
+                    color="rgba(255,255,255,0.75)"
+                    strokeWidth={1.8}
+                  />
+                  <Text style={styles.liveMetaText}>{item.line2}</Text>
+                </View>
               </View>
-            ))}
-            <Text style={styles.liveAvatarLabel}>
-              {recentLeads.length > 0
-                ? `${Math.min(recentLeads.length, 12)} recent`
-                : 'No recent leads'}
-            </Text>
-          </View>
-        </View>
-      </Pressable>
+
+              <ProgressRing
+                progress={item.progress}
+                size={72}
+                stroke={item.ringStroke}
+                track={item.ringTrack}
+              >
+                <Text style={styles.ringValue}>{item.ringValue}</Text>
+                <Text style={styles.ringHint}>{item.ringLabel}</Text>
+              </ProgressRing>
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
 
       {/* Insight cards */}
       <Pressable
@@ -488,16 +657,30 @@ export function HomeDashboard({ kpis, recentLeads, queue, firstName }: Props) {
   );
 }
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
+function createStyles(colors: ThemeColors, _isDark: boolean) {
+  const card = {
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    borderWidth: 0,
+    // No shadow / elevation on any home card.
+  } as const;
+
   return StyleSheet.create({
     root: { gap: 14 },
     pressed: { opacity: 0.88 },
 
-    greetingBlock: { gap: 4, paddingTop: 2 },
+    welcomeCard: {
+      ...card,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 16,
+      gap: 14,
+    },
+    greetingBlock: { gap: 4 },
     greeting: {
       ...typography.title,
-      fontSize: 24,
-      lineHeight: 30,
+      fontSize: 22,
+      lineHeight: 28,
       fontWeight: '700',
       color: colors.text,
       letterSpacing: -0.4,
@@ -506,6 +689,22 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       ...typography.caption,
       fontSize: 13,
       color: colors.textMuted,
+    },
+    syncWarn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      backgroundColor: colors.warningSoft,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: radii.pill,
+    },
+    syncWarnText: {
+      ...typography.caption,
+      fontSize: 13,
+      fontWeight: '700',
+      color: colors.warning,
     },
 
     ctaBtn: {
@@ -525,59 +724,78 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       color: colors.white,
     },
 
-    kpiGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      rowGap: 10,
+    kpiRow: {
+      gap: 12,
+      paddingRight: 4,
     },
     kpiCard: {
-      width: '48.5%',
-      backgroundColor: colors.surface,
+      ...card,
       borderRadius: 16,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      gap: 6,
-      minHeight: 96,
+      paddingHorizontal: 14,
+      paddingTop: 14,
+      paddingBottom: 14,
+      minHeight: 108,
+      justifyContent: 'space-between',
+      gap: 18,
     },
     kpiTop: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      gap: 6,
-    },
-    kpiIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    kpiBadge: {
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderRadius: radii.pill,
-      maxWidth: '62%',
-    },
-    kpiBadgeText: {
-      ...typography.caption,
-      fontSize: 10,
-      fontWeight: '700',
-    },
-    kpiValue: {
-      fontSize: 26,
-      lineHeight: 30,
-      fontWeight: '700',
-      letterSpacing: -0.5,
-      color: colors.text,
-      marginTop: 2,
+      gap: 8,
     },
     kpiLabel: {
       ...typography.caption,
-      fontSize: 12,
+      flex: 1,
+      fontSize: 13,
+      lineHeight: 18,
       color: colors.textMuted,
+      fontWeight: '500',
+      minWidth: 0,
+    },
+    kpiIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    kpiBottom: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    kpiValue: {
+      fontSize: 28,
+      lineHeight: 32,
+      fontWeight: '700',
+      letterSpacing: -0.6,
+      color: colors.text,
+    },
+    kpiLive: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    kpiLiveDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+    },
+    kpiSecondary: {
+      ...typography.caption,
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    kpiTrend: {
+      ...typography.caption,
+      fontSize: 12,
+      fontWeight: '700',
+      marginLeft: 2,
     },
 
     sectionHead: {
@@ -600,81 +818,104 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       color: colors.brand,
     },
 
+    liveRow: {
+      gap: 12,
+      paddingRight: 4,
+    },
     liveCard: {
-      backgroundColor: isDark ? colors.surface : colors.brand,
       borderRadius: 20,
-      padding: 16,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 12,
+      gap: 8,
+      borderWidth: 0,
+      overflow: 'hidden',
+      minHeight: 168,
+    },
+    liveTop: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
-      borderWidth: isDark ? StyleSheet.hairlineWidth : 0,
-      borderColor: colors.border,
-      overflow: 'hidden',
+      justifyContent: 'space-between',
     },
-    ringValue: {
-      fontSize: 22,
-      fontWeight: '700',
-      color: colors.white,
-      lineHeight: 26,
+    liveIconDark: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: 'rgba(0,0,0,0.22)',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    ringHint: {
-      ...typography.caption,
-      fontSize: 11,
-      color: 'rgba(255,255,255,0.8)',
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
+    liveArrowBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: colors.white,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    liveCopy: { flex: 1, gap: 4, minWidth: 0 },
-    liveEyebrow: {
-      ...typography.label,
-      fontSize: 10,
-      letterSpacing: 0.8,
-      color: 'rgba(255,255,255,0.72)',
+    liveArrowIcon: {
+      transform: [{ rotate: '-45deg' }],
     },
     liveTitle: {
       ...typography.subtitle,
-      fontSize: 16,
-      lineHeight: 21,
+      fontSize: 15,
+      lineHeight: 20,
       fontWeight: '700',
       color: colors.white,
-    },
-    liveMeta: {
-      ...typography.caption,
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.78)',
-      marginBottom: 4,
-    },
-    liveAvatars: {
-      flexDirection: 'row',
-      alignItems: 'center',
       marginTop: 2,
     },
-    liveAvatar: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+    liveStatusRow: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1.5,
-      borderColor: 'rgba(255,255,255,0.35)',
+      gap: 6,
     },
-    liveAvatarText: {
-      fontSize: 10,
-      fontWeight: '700',
+    liveDot: {
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+    },
+    liveStatusText: {
+      ...typography.caption,
+      fontSize: 12,
+      fontWeight: '600',
       color: colors.white,
     },
-    liveAvatarLabel: {
+    liveBottom: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginTop: 4,
+    },
+    liveMetaCol: { flex: 1, gap: 6, minWidth: 0, paddingBottom: 4 },
+    liveMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    liveMetaText: {
       ...typography.caption,
-      fontSize: 11,
+      flex: 1,
+      fontSize: 12,
       color: 'rgba(255,255,255,0.78)',
-      marginLeft: 8,
+      minWidth: 0,
+    },
+    ringValue: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.white,
+      lineHeight: 18,
+    },
+    ringHint: {
+      ...typography.caption,
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.8)',
+      textTransform: 'lowercase',
     },
 
     insightCard: {
-      backgroundColor: colors.surface,
+      ...card,
       borderRadius: 18,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
       paddingHorizontal: 14,
       paddingVertical: 14,
       gap: 12,
@@ -816,10 +1057,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
 
     upcomingCard: {
-      backgroundColor: colors.surface,
+      ...card,
       borderRadius: 18,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
       paddingHorizontal: 12,
       paddingVertical: 4,
       overflow: 'hidden',

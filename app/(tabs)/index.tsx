@@ -1,16 +1,16 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { HomeDashboard } from '@/components/home/HomeDashboard';
+import { Message01Icon } from '@/components/icons/hugeicons';
 import { Screen } from '@/components/ui/Screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
-import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
@@ -18,13 +18,20 @@ import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { markFirstContent } from '@/lib/perfMonitor';
 import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
+const FAVICON = require('../../assets/images/favicon.png');
+
 function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
 }
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const pageWash = isDark ? colors.background : '#EEF1F4';
+  const styles = useMemo(
+    () => createStyles(colors, pageWash),
+    [colors, pageWash]
+  );
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -55,27 +62,15 @@ export default function HomeScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <UserAvatar uri={user?.profilePhoto} name={user?.name} size={40} />
+            <Image
+              source={FAVICON}
+              style={styles.brandMarkImage}
+              resizeMode="contain"
+            />
             <Text style={styles.headerName} numberOfLines={1}>
               {displayName}
             </Text>
           </Pressable>
-          {!syncOk ? (
-            <Pressable
-              onPress={() => router.navigate('/call-sync/setup')}
-              hitSlop={6}
-              style={styles.syncWarn}
-              accessibilityRole="button"
-              accessibilityLabel="Set up call sync"
-            >
-              <Ionicons
-                name="cloud-offline-outline"
-                size={12}
-                color={colors.warning}
-              />
-              <Text style={styles.syncWarnText}>Set up call sync</Text>
-            </Pressable>
-          ) : null}
         </View>
 
         <View style={styles.headerActions}>
@@ -89,13 +84,14 @@ export default function HomeScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Ionicons
-              name="chatbubble-ellipses-outline"
-              size={22}
+            <HugeiconsIcon
+              icon={Message01Icon}
+              size={20}
               color={colors.text}
+              strokeWidth={1.8}
             />
           </Pressable>
-          <NotificationBell plain />
+          <NotificationBell circle />
         </View>
       </View>
     </View>
@@ -105,7 +101,11 @@ export default function HomeScreen() {
 
   if (!query.data) {
     return (
-      <Screen header={homeHeader} contentStyle={styles.screenContent}>
+      <Screen
+        header={homeHeader}
+        style={{ backgroundColor: pageWash }}
+        contentStyle={styles.screenContent}
+      >
         <QueryPlaceholder
           query={query}
           errorMessage={getErrorMessage(query.error)}
@@ -131,6 +131,7 @@ export default function HomeScreen() {
       scroll
       refreshing={query.isRefetching}
       onRefresh={() => query.refetch()}
+      style={{ backgroundColor: pageWash }}
       contentStyle={styles.screenContent}
     >
       <HomeDashboard
@@ -138,6 +139,8 @@ export default function HomeScreen() {
         recentLeads={data.recentLeads ?? []}
         queue={queue}
         firstName={firstName}
+        showCallSyncSetup={!syncOk}
+        onSetupCallSync={() => router.navigate('/call-sync/setup')}
       />
     </Screen>
   );
@@ -149,7 +152,7 @@ function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   }, [screen, hasData, fetched]);
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, pageWash: string) {
   return StyleSheet.create({
     screenContent: {
       gap: 16,
@@ -161,9 +164,7 @@ function createStyles(colors: ThemeColors) {
     header: {
       paddingHorizontal: 16,
       paddingBottom: 12,
-      backgroundColor: colors.background,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
+      backgroundColor: pageWash,
     },
     headerTop: {
       flexDirection: 'row',
@@ -179,42 +180,36 @@ function createStyles(colors: ThemeColors) {
     headerIdentityTap: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 4,
       minWidth: 0,
+    },
+    brandMarkImage: {
+      width: 36,
+      height: 36,
+      flexShrink: 0,
     },
     headerName: {
       ...typography.subtitle,
       flexShrink: 1,
       fontSize: 17,
       lineHeight: 22,
-      fontWeight: '600',
+      fontWeight: '700',
       color: colors.text,
       minWidth: 0,
     },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 2,
+      gap: 8,
     },
     headerIconBtn: {
       width: 40,
       height: 40,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    syncWarn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      marginTop: 2,
-      marginLeft: 50,
-      alignSelf: 'flex-start',
-    },
-    syncWarnText: {
-      ...typography.caption,
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.warning,
+      backgroundColor: colors.surface,
+      borderWidth: 0,
     },
   });
 }

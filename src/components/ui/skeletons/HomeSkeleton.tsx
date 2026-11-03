@@ -19,15 +19,17 @@ export function HomeSkeleton() {
 
       <SkeletonBone width="100%" height={48} radius={radii.pill} />
 
-      <View style={styles.kpiGrid}>
-        {[0, 1, 2, 3].map((i) => (
+      <View style={styles.kpiRow}>
+        {[0, 1].map((i) => (
           <View key={i} style={styles.kpiCard}>
             <View style={styles.kpiTop}>
-              <SkeletonBone width={28} height={28} radius={14} />
-              <SkeletonBone width={56} height={18} radius={999} />
+              <SkeletonBone width={72} height={12} />
+              <SkeletonBone width={34} height={34} radius={17} />
             </View>
-            <SkeletonBone width={40} height={22} />
-            <SkeletonBone width={72} height={12} />
+            <View style={styles.kpiBottom}>
+              <SkeletonBone width={36} height={24} />
+              <SkeletonBone width={56} height={12} />
+            </View>
           </View>
         ))}
       </View>
@@ -86,27 +88,29 @@ function createStyles(colors: ThemeColors) {
       paddingBottom: spacing.xxl,
     },
     greeting: { gap: 6 },
-    kpiGrid: {
+    kpiRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      rowGap: 10,
+      gap: 12,
     },
     kpiCard: {
-      width: '48.5%',
+      width: 168,
       backgroundColor: colors.surface,
       borderRadius: 16,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      gap: 8,
-      minHeight: 96,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      gap: 18,
+      minHeight: 108,
+      justifyContent: 'space-between',
     },
     kpiTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+    },
+    kpiBottom: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     sectionHead: {
       flexDirection: 'row',
