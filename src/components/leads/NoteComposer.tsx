@@ -22,7 +22,7 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { getErrorMessage } from '@/api/client';
 import { NOTE_CHANNELS } from '@/features/leads/addNoteLogic';
 import { uploadMediaFile } from '@/features/leads/mediaUpload';
-import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { radii, spacing, useTheme, type ThemeColors } from '@/theme';
 
 /**
  * The Add Note note field — text, voice notes / audio files and the channel
@@ -60,8 +60,7 @@ export async function appendClipLinks(
   let text = noteText;
   for (const clip of clips) {
     const uploaded = await uploadMediaFile(clip.uri, clip.name, clip.mimeType, options);
-    text = `${text}
-[${uploaded.name}](${uploaded.url})`.trim();
+    text = `${text}\n[${uploaded.name}](${uploaded.url})`.trim();
   }
   return text;
 }
