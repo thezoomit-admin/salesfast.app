@@ -10,6 +10,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
+import { HomeReports } from '@/components/home/HomeReports';
 import { Screen } from '@/components/ui/Screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
@@ -296,6 +297,8 @@ export default function HomeScreen() {
           </Pressable>
         ))}
       </View>
+
+      <HomeReports kpis={kpis} recentLeads={recentLeads} />
 
       {/* Today's queue — agenda cards */}
       <View>

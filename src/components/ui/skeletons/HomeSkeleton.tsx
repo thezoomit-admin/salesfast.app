@@ -5,7 +5,7 @@ import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 import { SkeletonBone, SkeletonPulse } from './primitives';
 
-/** Mirrors home: focus card → scoreboard → queue rows → pipeline rows. */
+/** Mirrors home: focus → scoreboard → reports → queue → pipeline. */
 export function HomeSkeleton() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -45,9 +45,52 @@ export function HomeSkeleton() {
         ))}
       </View>
 
+      <ReportsSectionSkeleton styles={styles} />
       <QueueSectionSkeleton styles={styles} rows={3} />
       <PipelineSectionSkeleton styles={styles} rows={4} />
     </SkeletonPulse>
+  );
+}
+
+function ReportsSectionSkeleton({
+  styles,
+}: {
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <View>
+      <View style={styles.sectionHeader}>
+        <SkeletonBone width={72} height={14} />
+      </View>
+      <View style={styles.reportList}>
+        <View style={styles.reportCard}>
+          <SkeletonBone width="45%" height={13} />
+          <SkeletonBone width={72} height={28} />
+          <SkeletonBone width="100%" height={10} radius={999} />
+          <SkeletonBone width="70%" height={10} />
+        </View>
+        <View style={styles.reportCard}>
+          <SkeletonBone width="40%" height={13} />
+          <SkeletonBone width="100%" height={12} radius={6} />
+          <SkeletonBone width="80%" height={14} />
+          <SkeletonBone width="75%" height={14} />
+        </View>
+        <View style={styles.reportCard}>
+          <SkeletonBone width="38%" height={13} />
+          <View style={styles.reportPulse}>
+            <View style={styles.reportPulseCopy}>
+              <SkeletonBone width={64} height={28} />
+              <SkeletonBone width="90%" height={10} />
+            </View>
+            <View style={styles.reportBars}>
+              {[18, 28, 22, 36].map((h, i) => (
+                <SkeletonBone key={i} width={14} height={h} radius={5} />
+              ))}
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -175,6 +218,29 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'space-between',
       marginBottom: 10,
+    },
+    reportList: { gap: 10 },
+    reportCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      gap: 12,
+    },
+    reportPulse: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 16,
+    },
+    reportPulseCopy: { flex: 1, gap: 8 },
+    reportBars: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+      height: 48,
     },
     queueList: { gap: 8 },
     queueCard: {
