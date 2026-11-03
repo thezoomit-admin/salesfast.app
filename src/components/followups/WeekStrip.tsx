@@ -1,3 +1,4 @@
+import { useQueries, type UseQueryResult } from '@tanstack/react-query';
 import { addDays } from 'date-fns/addDays';
 import { addWeeks } from 'date-fns/addWeeks';
 import { differenceInCalendarWeeks } from 'date-fns/differenceInCalendarWeeks';
@@ -17,22 +18,41 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
-import { dayKey } from '@/components/followups/followUpCalendar';
-import { radii, useThemeColors, type ThemeColors } from '@/theme';
+import {
+  dayDotColor,
+  dayKey,
+  groupByDay,
+  kindTones,
+  useMinuteClock,
+  type KindTone,
+  type FollowUpKind,
+} from '@/components/followups/followUpCalendar';
+import { followUpMonthKey, followUpMonthQuery } from '@/features/leads/leadsApi';
+import type { LeadListItem } from '@/types/api';
+import { radii, useTheme, type ThemeColors } from '@/theme';
 
 /** Swipeable range either side of the current week (~5 years). */
 const WEEKS_EACH_SIDE = 260;
 const WEEK_PAGES = Array.from({ length: WEEKS_EACH_SIDE * 2 + 1 }, (_, i) => i);
+
+type Styles = ReturnType<typeof createStyles>;
 
 type Props = {
   selected: Date;
   onSelect: (day: Date) => void;
 };
 
+/** Module-level so useQueries memoizes the merged rows between renders. */
+function combineItems(results: UseQueryResult<{ items: LeadListItem[] }>[]) {
+  return results.flatMap((r) => r.data?.items ?? []);
+}
+
 /** One week per page; swiping only browses — tapping a day selects it. */
 function WeekStripImpl({ selected, onSelect }: Props) {
-  const colors = useThemeColors();
+  const { colors, resolved } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const tones = useMemo(() => kindTones(resolved === 'dark'), [resolved]);
+  const now = useMinuteClock().getTime();
   const [anchor] = useState(() => startOfWeek(new Date()));
   const [width, setWidth] = useState(0);
   const listRef = useRef<FlatList<number>>(null);
@@ -58,45 +78,19 @@ function WeekStripImpl({ selected, onSelect }: Props) {
   };
 
   const renderWeek = useCallback(
-    ({ item: page }: { item: number }) => {
-      const start = addWeeks(anchor, page - WEEKS_EACH_SIDE);
-      return (
-        <View style={[styles.week, { width }]}>
-          {Array.from({ length: 7 }, (_, i) => {
-            const day = addDays(start, i);
-            const active = isSameDay(day, selected);
-            const today = isToday(day);
-            return (
-              <Pressable
-                key={dayKey(day)}
-                accessibilityRole="button"
-                accessibilityLabel={format(day, 'EEEE d MMMM')}
-                accessibilityState={{ selected: active }}
-                onPress={() => onSelect(day)}
-                style={styles.day}
-              >
-                <Text style={[styles.name, active && styles.nameActive]}>
-                  {format(day, 'EEE')}
-                </Text>
-                <View style={[styles.bar, active && styles.barActive]} />
-                <View style={[styles.date, active && styles.dateActive]}>
-                  <Text
-                    style={[
-                      styles.dateText,
-                      today && !active && styles.dateToday,
-                      active && styles.dateTextActive,
-                    ]}
-                  >
-                    {day.getDate()}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-      );
-    },
-    [anchor, onSelect, selected, styles, width]
+    ({ item: page }: { item: number }) => (
+      <WeekPage
+        start={addWeeks(anchor, page - WEEKS_EACH_SIDE)}
+        selected={selected}
+        width={width}
+        now={now}
+        tones={tones}
+        overdueColor={colors.danger}
+        styles={styles}
+        onSelect={onSelect}
+      />
+    ),
+    [anchor, colors.danger, now, onSelect, selected, styles, tones, width]
   );
 
   return (
@@ -107,7 +101,7 @@ function WeekStripImpl({ selected, onSelect }: Props) {
           data={WEEK_PAGES}
           keyExtractor={String}
           renderItem={renderWeek}
-          extraData={selected}
+          extraData={renderWeek}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -121,6 +115,78 @@ function WeekStripImpl({ selected, onSelect }: Props) {
     </View>
   );
 }
+
+/** One week; loads its own month(s) so swiped-to weeks get dots too. */
+const WeekPage = memo(function WeekPage({
+  start,
+  selected,
+  width,
+  now,
+  tones,
+  overdueColor,
+  styles,
+  onSelect,
+}: {
+  start: Date;
+  selected: Date;
+  width: number;
+  now: number;
+  tones: Record<FollowUpKind, KindTone>;
+  overdueColor: string;
+  styles: Styles;
+  onSelect: (day: Date) => void;
+}) {
+  const months = [...new Set([followUpMonthKey(start), followUpMonthKey(addDays(start, 6))])];
+  const items = useQueries({
+    queries: months.map(followUpMonthQuery),
+    combine: combineItems,
+  });
+  const byDay = useMemo(() => groupByDay(items), [items]);
+
+  return (
+    <View style={[styles.week, { width }]}>
+      {Array.from({ length: 7 }, (_, i) => {
+        const day = addDays(start, i);
+        const active = isSameDay(day, selected);
+        const today = isToday(day);
+        const dotColor = dayDotColor(byDay.get(dayKey(day)), now, tones, overdueColor);
+        return (
+          <Pressable
+            key={dayKey(day)}
+            accessibilityRole="button"
+            accessibilityLabel={
+              format(day, 'EEEE d MMMM') + (dotColor ? ', has follow-ups' : '')
+            }
+            accessibilityState={{ selected: active }}
+            onPress={() => onSelect(day)}
+            style={styles.day}
+          >
+            <Text style={[styles.name, active && styles.nameActive]}>
+              {format(day, 'EEE')}
+            </Text>
+            <View style={[styles.bar, active && styles.barActive]} />
+            <View style={[styles.date, active && styles.dateActive]}>
+              <Text
+                style={[
+                  styles.dateText,
+                  today && !active && styles.dateToday,
+                  active && styles.dateTextActive,
+                ]}
+              >
+                {day.getDate()}
+              </Text>
+              {dotColor ? (
+                <View
+                  style={[styles.dot, { backgroundColor: active ? '#FFFFFF' : dotColor }]}
+                />
+              ) : null}
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+});
 
 export const WeekStrip = memo(WeekStripImpl);
 
@@ -136,7 +202,7 @@ function createStyles(colors: ThemeColors) {
     date: {
       width: 40,
       height: 40,
-      borderRadius: radii.lg,
+      borderRadius: radii.md,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -144,5 +210,12 @@ function createStyles(colors: ThemeColors) {
     dateText: { fontSize: 18, color: colors.textMuted },
     dateToday: { color: colors.brand, fontWeight: '700' },
     dateTextActive: { color: colors.white, fontWeight: '600' },
+    dot: {
+      position: 'absolute',
+      bottom: 3,
+      width: 5,
+      height: 5,
+      borderRadius: 2.5,
+    },
   });
 }

@@ -104,6 +104,8 @@ export type LeadListItem = {
   updatedAt?: string;
   createdAt?: string;
   followUpCount?: number;
+  /** false → nobody has opened the lead yet (Unread). Missing on old servers. */
+  viewed?: boolean;
 };
 
 export type LeadNote = {

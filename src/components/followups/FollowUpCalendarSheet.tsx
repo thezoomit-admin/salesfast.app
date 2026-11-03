@@ -7,7 +7,7 @@ import { getDaysInMonth } from 'date-fns/getDaysInMonth';
 import { isSameDay } from 'date-fns/isSameDay';
 import { isToday } from 'date-fns/isToday';
 import { startOfMonth } from 'date-fns/startOfMonth';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -22,8 +22,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  dayDotColor,
   dayKey,
-  followUpKind,
   groupByDay,
   kindTones,
   useMinuteClock,
@@ -58,20 +58,16 @@ export function FollowUpCalendarSheet({ open, selected, onSelect, onClose }: Pro
   const [mounted, setMounted] = useState(false);
   const [translateY] = useState(() => new Animated.Value(SHEET_OFFSCREEN));
   const [backdropOp] = useState(() => new Animated.Value(0));
-  // Animation bookkeeping read only from callbacks, never during render.
-  const [anim] = useState(() => ({ closing: false, onClose }));
-  useEffect(() => {
-    anim.onClose = onClose;
-  }, [anim, onClose]);
+  const [closing, setClosing] = useState(false);
 
   // Every open mounts the sheet and starts on the selected day's month.
+  // Closing normally slides down first (runCloseAnimation unmounts, then
+  // calls onClose); a close forced by the parent just hides it.
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) {
-      setMounted(true);
-      setViewMonth(startOfMonth(selected));
-    }
+    setMounted(open);
+    if (open) setViewMonth(startOfMonth(selected));
   }
 
   const month = useQuery({
@@ -88,35 +84,35 @@ export function FollowUpCalendarSheet({ open, selected, onSelect, onClose }: Pro
     return out;
   }, [viewMonth]);
 
-  const runCloseAnimation = (notifyParent: boolean) => {
-    if (anim.closing) return;
-    anim.closing = true;
-    Animated.parallel([
-      Animated.timing(backdropOp, {
-        toValue: 0,
-        duration: CLOSE_MS,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateY, {
-        toValue: SHEET_OFFSCREEN,
-        duration: CLOSE_MS,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(({ finished }) => {
-      anim.closing = false;
-      if (!finished) return;
-      setMounted(false);
-      if (notifyParent) anim.onClose();
-    });
-  };
-
-  const animateClose = () => runCloseAnimation(true);
+  const animateClose = useCallback(
+    () => {
+      if (closing) return;
+      setClosing(true);
+      Animated.parallel([
+        Animated.timing(backdropOp, {
+          toValue: 0,
+          duration: CLOSE_MS,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: SHEET_OFFSCREEN,
+          duration: CLOSE_MS,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        setClosing(false);
+        if (!finished) return;
+        setMounted(false);
+        onClose();
+      });
+    },
+    [backdropOp, closing, onClose, translateY]
+  );
 
   useEffect(() => {
     if (open) {
-      anim.closing = false;
       translateY.setValue(SHEET_OFFSCREEN);
       backdropOp.setValue(0);
       const frame = requestAnimationFrame(() => {
@@ -137,24 +133,20 @@ export function FollowUpCalendarSheet({ open, selected, onSelect, onClose }: Pro
       });
       return () => cancelAnimationFrame(frame);
     }
-
-    // Parent flipped `open` off — slide down, don't notify again.
-    if (mounted) runCloseAnimation(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, translateY, backdropOp]);
 
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => !anim.closing,
+        onStartShouldSetPanResponder: () => !closing,
         onMoveShouldSetPanResponder: (_, g) =>
-          !anim.closing && g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+          !closing && g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
         onPanResponderMove: (_, g) => {
           if (g.dy > 0) translateY.setValue(g.dy);
         },
         onPanResponderRelease: (_, g) => {
           if (g.dy > DISMISS_DISTANCE || g.vy > DISMISS_VELOCITY) {
-            runCloseAnimation(true);
+            animateClose();
             return;
           }
           Animated.spring(translateY, {
@@ -172,9 +164,7 @@ export function FollowUpCalendarSheet({ open, selected, onSelect, onClose }: Pro
           }).start();
         },
       }),
-    // runCloseAnimation only touches stable values (anim, Animated values).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [anim, translateY, backdropOp]
+    [animateClose, closing, translateY]
   );
 
   if (!mounted && !open) return null;
@@ -245,17 +235,14 @@ export function FollowUpCalendarSheet({ open, selected, onSelect, onClose }: Pro
               if (!day) return <View key={`blank-${index}`} style={styles.cell} />;
               const active = isSameDay(day, selected);
               const today = isToday(day);
-              const first = byDay.get(dayKey(day))?.[0];
-              const dotColor = first
-                ? first.due.getTime() < now
-                  ? colors.danger
-                  : tones[followUpKind(first.lead)].accent
-                : null;
+              const dotColor = dayDotColor(byDay.get(dayKey(day)), now, tones, colors.danger);
               return (
                 <Pressable
                   key={dayKey(day)}
                   accessibilityRole="button"
-                  accessibilityLabel={format(day, 'EEEE d MMMM')}
+                  accessibilityLabel={
+                    format(day, 'EEEE d MMMM') + (dotColor ? ', has follow-ups' : '')
+                  }
                   accessibilityState={{ selected: active }}
                   onPress={() => {
                     onSelect(day);
@@ -273,10 +260,12 @@ export function FollowUpCalendarSheet({ open, selected, onSelect, onClose }: Pro
                     >
                       {day.getDate()}
                     </Text>
+                    {dotColor ? (
+                      <View
+                        style={[styles.dot, { backgroundColor: active ? '#FFFFFF' : dotColor }]}
+                      />
+                    ) : null}
                   </View>
-                  {dotColor && !active ? (
-                    <View style={[styles.dot, { backgroundColor: dotColor }]} />
-                  ) : null}
                 </Pressable>
               );
             })}
@@ -359,7 +348,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     day: {
       width: 40,
       height: 40,
-      borderRadius: radii.lg,
+      borderRadius: radii.md,
       alignItems: 'center',
       justifyContent: 'center',
     },

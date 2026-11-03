@@ -62,6 +62,18 @@ export function useMinuteClock() {
   return now;
 }
 
+/** Dot under a calendar day: red if its first follow-up is overdue, else that card's accent. */
+export function dayDotColor(
+  list: DayFollowUp[] | undefined,
+  now: number,
+  tones: Record<FollowUpKind, KindTone>,
+  overdueColor: string
+) {
+  const first = list?.[0];
+  if (!first) return null;
+  return first.due.getTime() < now ? overdueColor : tones[followUpKind(first.lead)].accent;
+}
+
 /** Follow-ups per calendar day (`yyyy-MM-dd`), each day sorted by due time. */
 export function groupByDay(leads: readonly LeadListItem[]) {
   const byDay = new Map<string, DayFollowUp[]>();

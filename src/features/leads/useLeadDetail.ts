@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import {
   findListLead,
   markOutdatedLeadDetails,
+  patchLeadInLists,
 } from '@/features/leads/leadDetailCache';
 import {
   leadDetailQuery,
@@ -37,6 +38,8 @@ export function useLeadDetail(leadId: number) {
     void startLeadView(leadId)
       .then(() => {
         void queryClient.invalidateQueries({ queryKey: ['lead-views', leadId] });
+        // Row loses its unread look as soon as the user goes back.
+        patchLeadInLists(queryClient, leadId, { viewed: true });
         // The lead is no longer unread — refresh that tab and the badges.
         void queryClient.invalidateQueries({ queryKey: ['my-leads', 'unread'] });
         void queryClient.invalidateQueries({ queryKey: ['my-leads', 'counts'] });
