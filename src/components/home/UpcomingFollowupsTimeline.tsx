@@ -2,14 +2,18 @@ import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
+import { isTomorrow } from 'date-fns/isTomorrow';
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FollowUpCard } from '@/components/followups/FollowUpCard';
 import {
-  ArrowRight01Icon,
-  Bookmark02Icon,
-  MoreVerticalIcon,
-} from '@/components/icons/hugeicons';
+  dayKey,
+  kindTones,
+  useMinuteClock,
+  type FollowUpKind,
+} from '@/components/followups/followUpCalendar';
+import { ArrowRight01Icon } from '@/components/icons/hugeicons';
 import { FollowUpActionsSheet } from '@/components/home/FollowUpActionsSheet';
 import { RescheduleFollowUpSheet } from '@/components/home/RescheduleFollowUpSheet';
 import { typography, useTheme, type ThemeColors } from '@/theme';
@@ -29,24 +33,59 @@ type RescheduleTarget = {
   followUpType: string | null;
 };
 
-/** Brand-forward card fills (reference used multi-color blocks). */
-const CARD_TONES = [
-  { bg: '#F2461C', soft: 'rgba(255,255,255,0.72)' },
-  { bg: '#15202C', soft: 'rgba(255,255,255,0.72)' },
-  { bg: '#E36A4A', soft: 'rgba(255,255,255,0.78)' },
-  { bg: '#1A4D4E', soft: 'rgba(255,255,255,0.72)' },
-] as const;
+type HourSlot = { hour: number; items: { item: QueueItem; due: Date }[] };
+type DaySection = { key: string; day: Date; hours: HourSlot[] };
+
+const NOW_DASHES = 60;
+
+const TYPE_LABEL: Record<string, string> = {
+  FOLLOWUP: 'Follow-up',
+  FOLLOW_UP: 'Follow-up',
+  OFFICE_VISIT: 'Office visit',
+  SITE_VISIT: 'Site visit',
+  CALL: 'Call',
+  WHATSAPP: 'WhatsApp',
+};
 
 function typeLabel(type: string | null) {
   if (!type?.trim()) return 'Follow-up';
-  return type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return TYPE_LABEL[type] ?? type.replace(/_/g, ' ');
 }
 
-function toneFor(item: QueueItem, index: number, now: number) {
-  if (new Date(item.dueAt).getTime() < now) {
-    return { bg: '#F04438', soft: 'rgba(255,255,255,0.75)' };
+/** The dashboard has no lead status, so the card style comes from the follow-up type. */
+function kindFor(type: string | null): FollowUpKind {
+  return type && /VISIT/.test(type) ? 'event' : 'reminder';
+}
+
+function dayTitle(day: Date) {
+  if (isToday(day)) return 'Today';
+  if (isTomorrow(day)) return 'Tomorrow';
+  return format(day, 'EEE, d MMM');
+}
+
+function hourLabel(hour: number) {
+  return { value: hour % 12 === 0 ? 12 : hour % 12, suffix: hour < 12 ? 'AM' : 'PM' };
+}
+
+/** Sorted follow-ups grouped by day, then by hour — same slots as the Follow-ups tab. */
+function groupQueue(queue: QueueItem[]) {
+  const sorted = queue
+    .map((item) => ({ item, due: new Date(item.dueAt) }))
+    .sort((a, b) => a.due.getTime() - b.due.getTime());
+  const days: DaySection[] = [];
+  for (const entry of sorted) {
+    const key = dayKey(entry.due);
+    let section = days[days.length - 1];
+    if (section?.key !== key) {
+      section = { key, day: entry.due, hours: [] };
+      days.push(section);
+    }
+    const hour = entry.due.getHours();
+    const slot = section.hours[section.hours.length - 1];
+    if (slot?.hour === hour) slot.items.push(entry);
+    else section.hours.push({ hour, items: [entry] });
   }
-  return CARD_TONES[index % CARD_TONES.length];
+  return days;
 }
 
 function dialablePhone(raw: string | null | undefined) {
@@ -58,36 +97,14 @@ function dialablePhone(raw: string | null | undefined) {
 export function UpcomingFollowupsTimeline({ queue }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const tones = useMemo(() => kindTones(isDark), [isDark]);
   const router = useRouter();
-  const now = Date.now();
+  const now = useMinuteClock();
   const [menu, setMenu] = useState<MenuTarget | null>(null);
   const [reschedule, setReschedule] = useState<RescheduleTarget | null>(null);
 
-  const items = useMemo(
-    () =>
-      [...queue].sort(
-        (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
-      ),
-    [queue]
-  );
-
-  const nowMarkerIndex = useMemo(() => {
-    if (items.length === 0) return -1;
-    for (let i = 0; i < items.length; i++) {
-      if (new Date(items[i].dueAt).getTime() > now) return i;
-    }
-    return -1;
-  }, [items, now]);
-
-  const openReschedule = (item: QueueItem) => {
-    setMenu(null);
-    setReschedule({
-      leadId: item.leadId,
-      leadName: item.leadName,
-      followUpType: item.type,
-    });
-  };
+  const days = useMemo(() => groupQueue(queue), [queue]);
 
   return (
     <View style={styles.root}>
@@ -112,123 +129,59 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
         </Pressable>
       </View>
 
-      {items.length === 0 ? (
+      {days.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
             No follow-ups lined up. Schedule the next touch from a lead.
           </Text>
         </View>
       ) : (
-        <View style={styles.timeline}>
-          {items.map((item, index) => {
-            const due = new Date(item.dueAt);
-            const overdue = due.getTime() < now;
-            const tone = toneFor(item, index, now);
-            const showNowBefore =
-              nowMarkerIndex === index &&
-              isToday(due) &&
-              due.getTime() > now;
-
-            return (
-              <View key={item.id}>
-                {showNowBefore ? (
-                  <NowMarker styles={styles} colors={colors} />
-                ) : null}
-
-                <Pressable
-                  onPress={() => router.push(`/leads/${item.leadId}`)}
-                  style={({ pressed }) => [
-                    styles.slotRow,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.timeCol}>
-                    <Text style={styles.timeText}>{format(due, 'HH:mm')}</Text>
-                    {!isToday(due) ? (
-                      <Text style={styles.dayText}>{format(due, 'dd MMM')}</Text>
-                    ) : null}
-                  </View>
-
-                  <View style={styles.rail}>
+        days.map((section) => (
+          <View key={section.key}>
+            <Text style={styles.dayTitle}>{dayTitle(section.day)}</Text>
+            {section.hours.map(({ hour, items }) => {
+              const label = hourLabel(hour);
+              const nowHere = isToday(section.day) && now.getHours() === hour;
+              return (
+                <View key={hour} style={styles.hourRow}>
+                  {nowHere ? (
                     <View
-                      style={[styles.railDot, { borderColor: tone.bg }]}
-                    />
-                    {index < items.length - 1 ? (
-                      <View style={styles.railLine} />
-                    ) : null}
-                  </View>
-
-                  <View style={[styles.eventCard, { backgroundColor: tone.bg }]}>
-                    <View style={styles.eventTop}>
-                      <View style={styles.eventCopy}>
-                        <Text
-                          style={[styles.eventCategory, { color: tone.soft }]}
-                          numberOfLines={1}
-                        >
-                          {typeLabel(item.type)}
-                          {overdue ? ' · Overdue' : ''}
-                        </Text>
-                        <Text style={styles.eventTitle} numberOfLines={2}>
-                          {item.leadName}
-                        </Text>
-                      </View>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Follow-up options"
-                        hitSlop={10}
-                        onPress={() => setMenu(item)}
-                        style={({ pressed }) => [
-                          styles.moreBtn,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <HugeiconsIcon
-                          icon={MoreVerticalIcon}
-                          size={16}
-                          color="rgba(255,255,255,0.85)"
-                          strokeWidth={1.8}
-                        />
-                      </Pressable>
+                      pointerEvents="none"
+                      style={[styles.nowLine, { top: `${(now.getMinutes() / 60) * 100}%` }]}
+                    >
+                      {Array.from({ length: NOW_DASHES }, (_, i) => (
+                        <View key={i} style={styles.nowDash} />
+                      ))}
                     </View>
-
-                    <View style={styles.eventBottom}>
-                      <Text style={[styles.followTime, { color: tone.soft }]}>
-                        {format(due, 'h:mm a')}
-                        {!isToday(due) ? ` · ${format(due, 'dd MMM')}` : ''}
-                      </Text>
-                      {overdue ? (
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Reschedule follow-up"
-                          hitSlop={6}
-                          onPress={() => openReschedule(item)}
-                          style={({ pressed }) => [
-                            styles.rescheduleBtn,
-                            pressed && styles.pressed,
-                          ]}
-                        >
-                          <Text style={styles.rescheduleText}>Reschedule</Text>
-                        </Pressable>
-                      ) : (
-                        <HugeiconsIcon
-                          icon={Bookmark02Icon}
-                          size={16}
-                          color="rgba(255,255,255,0.85)"
-                          strokeWidth={1.8}
-                        />
-                      )}
-                    </View>
+                  ) : null}
+                  <View style={styles.hourLabel}>
+                    <Text style={styles.hourValue}>{label.value}</Text>
+                    <Text style={styles.hourSuffix}>{label.suffix}</Text>
                   </View>
-                </Pressable>
-              </View>
-            );
-          })}
-
-          {nowMarkerIndex < 0 &&
-          items.some((item) => isToday(new Date(item.dueAt))) ? (
-            <NowMarker styles={styles} colors={colors} />
-          ) : null}
-        </View>
+                  <View style={styles.slot}>
+                    {items.map(({ item, due }) => {
+                      const kind = kindFor(item.type);
+                      return (
+                        <FollowUpCard
+                          key={item.id}
+                          name={item.leadName}
+                          label={typeLabel(item.type)}
+                          kind={kind}
+                          due={due}
+                          overdue={due.getTime() < now.getTime()}
+                          tone={tones[kind]}
+                          note={item.note}
+                          onPress={() => router.push(`/leads/${item.leadId}`)}
+                          onMore={() => setMenu(item)}
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ))
       )}
 
       <FollowUpActionsSheet
@@ -272,39 +225,19 @@ export function UpcomingFollowupsTimeline({ queue }: Props) {
   );
 }
 
-function NowMarker({
-  styles,
-  colors,
-}: {
-  styles: ReturnType<typeof createStyles>;
-  colors: ThemeColors;
-}) {
-  return (
-    <View style={styles.nowRow} pointerEvents="none">
-      <Text style={styles.timeCol} />
-      <View style={styles.nowRail}>
-        <View style={[styles.nowDot, { backgroundColor: colors.brand }]} />
-      </View>
-      <View style={[styles.nowLine, { backgroundColor: colors.brand }]} />
-    </View>
-  );
-}
-
-function createStyles(colors: ThemeColors, _isDark: boolean) {
+function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       backgroundColor: colors.surface,
-      borderRadius: 18,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-      gap: 12,
+      gap: 4,
     },
-    pressed: { opacity: 0.9 },
+    pressed: { opacity: 0.6 },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingRight: 2,
+      paddingLeft: 14,
+      paddingRight: 16,
     },
     title: {
       ...typography.subtitle,
@@ -320,8 +253,7 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
       justifyContent: 'center',
     },
     emptyCard: {
-      borderRadius: 18,
-      paddingHorizontal: 2,
+      paddingHorizontal: 16,
       paddingVertical: 8,
     },
     emptyText: {
@@ -329,135 +261,33 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
       color: colors.textMuted,
       lineHeight: 18,
     },
-    timeline: {
-      gap: 0,
-    },
-    slotRow: {
-      flexDirection: 'row',
-      alignItems: 'stretch',
-      gap: 10,
-      minHeight: 96,
-      paddingBottom: 12,
-    },
-    timeCol: {
-      width: 44,
-      paddingTop: 10,
-      alignItems: 'flex-end',
-    },
-    timeText: {
+    dayTitle: {
       ...typography.caption,
-      fontSize: 12,
       fontWeight: '600',
       color: colors.textMuted,
-    },
-    dayText: {
-      ...typography.caption,
-      fontSize: 10,
-      color: colors.textMuted,
-      marginTop: 2,
-    },
-    rail: {
-      width: 14,
-      alignItems: 'center',
-      paddingTop: 14,
-    },
-    railDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: colors.surface,
-      borderWidth: 2.5,
-      zIndex: 1,
-    },
-    railLine: {
-      flex: 1,
-      width: StyleSheet.hairlineWidth * 2,
-      backgroundColor: colors.border,
-      marginTop: 4,
-      minHeight: 24,
-    },
-    eventCard: {
-      flex: 1,
-      borderRadius: 18,
       paddingHorizontal: 14,
-      paddingTop: 12,
-      paddingBottom: 12,
-      gap: 14,
-      minHeight: 88,
+      paddingTop: 10,
+      paddingBottom: 6,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
-    eventTop: {
+    hourRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
-    eventCopy: {
-      flex: 1,
-      gap: 4,
-      minWidth: 0,
-    },
-    eventCategory: {
-      ...typography.caption,
-      fontSize: 11,
-      fontWeight: '500',
-    },
-    eventTitle: {
-      ...typography.subtitle,
-      fontSize: 16,
-      lineHeight: 20,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
-    moreBtn: {
-      padding: 2,
-      marginTop: -2,
-      marginRight: -2,
-    },
-    eventBottom: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-    },
-    followTime: {
-      ...typography.caption,
-      fontSize: 12,
-      fontWeight: '600',
-      flexShrink: 1,
-    },
-    rescheduleBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 999,
-      backgroundColor: 'rgba(255,255,255,0.22)',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.55)',
-    },
-    rescheduleText: {
-      ...typography.caption,
-      fontSize: 12,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
-    nowRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      marginBottom: 8,
-      marginTop: -4,
-    },
-    nowRail: {
-      width: 14,
-      alignItems: 'center',
-    },
-    nowDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-    },
+    hourLabel: { width: 56, alignItems: 'center', paddingTop: 16 },
+    hourValue: { fontSize: 19, color: colors.textMuted },
+    hourSuffix: { fontSize: 13, color: colors.textMuted, marginTop: -2 },
+    slot: { flex: 1, gap: 6, paddingVertical: 6, paddingRight: 12 },
     nowLine: {
-      flex: 1,
-      height: 2,
-      borderRadius: 1,
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      gap: 4,
+      overflow: 'hidden',
     },
+    nowDash: { width: 6, height: 1.5, backgroundColor: colors.brand },
   });
 }

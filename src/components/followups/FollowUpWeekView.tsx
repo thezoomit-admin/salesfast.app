@@ -4,7 +4,6 @@ import { isToday } from 'date-fns/isToday';
 import { memo, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -16,21 +15,17 @@ import {
   dayKey,
   followUpKind,
   followUpLabel,
-  initials,
   kindTones,
   leadName,
   NO_FOLLOW_UPS,
   useMinuteClock,
   type DayFollowUp,
-  type KindTone,
 } from '@/components/followups/followUpCalendar';
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  Calendar03Icon,
-  Clock01Icon,
-  Notification01Icon,
 } from '@/components/icons/hugeicons';
+import { FollowUpCard } from '@/components/followups/FollowUpCard';
 import { WeekStrip } from '@/components/followups/WeekStrip';
 import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
 import type { LeadListItem } from '@/types/api';
@@ -75,7 +70,7 @@ function FollowUpWeekViewImpl({
 }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const tones = useMemo(() => kindTones(isDark), [isDark]);
   const now = useMinuteClock();
 
@@ -153,14 +148,14 @@ function FollowUpWeekViewImpl({
                 {slot.map(({ lead, due }) => (
                   <FollowUpCard
                     key={lead.id}
-                    lead={lead}
+                    name={leadName(lead)}
+                    label={followUpLabel(lead)}
+                    kind={followUpKind(lead)}
                     due={due}
                     overdue={due.getTime() < now.getTime()}
                     tone={tones[followUpKind(lead)]}
-                    styles={styles}
-                    colors={colors}
-                    onPress={onOpenLead}
-                    onPressIn={onPressInLead}
+                    onPress={() => onOpenLead(lead)}
+                    onPressIn={() => onPressInLead(lead)}
                   />
                 ))}
               </View>
@@ -172,91 +167,11 @@ function FollowUpWeekViewImpl({
   );
 }
 
-function FollowUpCard({
-  lead,
-  due,
-  overdue,
-  tone,
-  styles,
-  colors,
-  onPress,
-  onPressIn,
-}: {
-  lead: LeadListItem;
-  due: Date;
-  overdue: boolean;
-  tone: KindTone;
-  styles: ReturnType<typeof createStyles>;
-  colors: ThemeColors;
-  onPress: (lead: LeadListItem) => void;
-  onPressIn: (lead: LeadListItem) => void;
-}) {
-  const kind = followUpKind(lead);
-  const name = leadName(lead);
-  const time = (
-    <View style={styles.cardTime}>
-      <HugeiconsIcon icon={Clock01Icon} size={20} color={colors.text} strokeWidth={1.5} />
-      <Text style={styles.cardTimeText}>
-        {format(due, 'h:mm a')}
-        {overdue ? <Text style={styles.overdue}> · Overdue</Text> : null}
-      </Text>
-    </View>
-  );
-
-  return (
-    <Pressable
-      onPress={() => onPress(lead)}
-      onPressIn={() => onPressIn(lead)}
-      style={({ pressed }) => [styles.card, { backgroundColor: tone.bg }, pressed && styles.pressed]}
-    >
-      <View style={styles.cardTop}>
-        <Text style={styles.cardTitle} numberOfLines={2}>
-          {name}
-        </Text>
-        {kind === 'todo' ? (
-          <View style={styles.checkbox} />
-        ) : (
-          <HugeiconsIcon
-            icon={kind === 'event' ? Calendar03Icon : Notification01Icon}
-            size={24}
-            color={colors.text}
-            strokeWidth={1.5}
-          />
-        )}
-      </View>
-
-      {kind === 'reminder' ? (
-        <View style={[styles.cardInline, styles.cardInlineReminder]}>
-          <Text style={[styles.cardKind, styles.cardKindInline]} numberOfLines={1}>
-            {followUpLabel(lead)}
-          </Text>
-          {time}
-        </View>
-      ) : (
-        <>
-          <Text style={styles.cardKind} numberOfLines={1}>
-            {followUpLabel(lead)}
-          </Text>
-          <View style={styles.cardDivider} />
-          <View style={styles.cardInline}>
-            {time}
-            <View style={[styles.avatar, { backgroundColor: tone.accent }]}>
-              <Text style={styles.avatarText}>{initials(name)}</Text>
-            </View>
-          </View>
-        </>
-      )}
-    </Pressable>
-  );
-}
-
 export const FollowUpWeekView = memo(FollowUpWeekViewImpl);
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
-  const ink = isDark ? '#FFFFFF' : '#111111';
+function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.surface },
-    pressed: { opacity: 0.6 },
     weekStrip: {
       paddingHorizontal: 16,
       paddingTop: 4,
@@ -292,54 +207,5 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       overflow: 'hidden',
     },
     nowDash: { width: 6, height: 1.5, backgroundColor: colors.brand },
-    card: { borderRadius: 14, paddingHorizontal: 18, paddingVertical: 16 },
-    cardTop: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    cardTitle: {
-      flex: 1,
-      fontSize: 19,
-      lineHeight: 24,
-      fontWeight: '700',
-      letterSpacing: -0.3,
-      color: ink,
-    },
-    checkbox: {
-      width: 24,
-      height: 24,
-      borderRadius: 7,
-      borderWidth: 1.6,
-      borderColor: colors.text,
-    },
-    cardKind: { fontSize: 14, color: colors.textSecondary, marginTop: 10 },
-    cardDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-      marginVertical: 14,
-    },
-    cardInline: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-    },
-    cardInlineReminder: { marginTop: 12 },
-    cardKindInline: { marginTop: 0, flexShrink: 1 },
-    cardTime: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    cardTimeText: { fontSize: 15, color: ink },
-    overdue: { color: colors.danger, fontWeight: '600' },
-    avatar: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      borderWidth: 2,
-      borderColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
   });
 }

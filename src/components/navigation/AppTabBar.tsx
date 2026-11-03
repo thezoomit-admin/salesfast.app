@@ -26,7 +26,7 @@ import {
 } from '@/components/icons/hugeicons';
 import { typography, useTheme, type ThemeColors } from '@/theme';
 
-/** Visual tab order — Home centered. Also the swipe order of the pager. */
+/** Visual tab order — Home centered. Also the page order of the pager. */
 export const TAB_ORDER = [
   'leads',
   'follow-ups',

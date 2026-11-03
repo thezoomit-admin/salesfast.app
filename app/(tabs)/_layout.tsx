@@ -22,7 +22,7 @@ type TabNavigation = {
   dispatch: (action: ReturnType<typeof CommonActions.preload>) => void;
 };
 
-/** Mount the pages either side of `name`, so a swipe never reveals a blank page. */
+/** Mount the pages either side of `name`, so a tab switch never reveals a blank page. */
 function preloadNeighbours(navigation: TabNavigation, name: string) {
   const index = TAB_ORDER.indexOf(name as (typeof TAB_ORDER)[number]);
   const loaded = navigation.getState().routes;
@@ -59,7 +59,7 @@ export default function TabLayout() {
 
   return (
     <TopTabs
-      // Native pager (react-native-pager-view): pages track the finger 1:1.
+      // Native pager (react-native-pager-view).
       tabBarPosition="bottom"
       backBehavior="initialRoute"
       tabBar={(props) => (
@@ -69,9 +69,10 @@ export default function TabLayout() {
         />
       )}
       screenOptions={{
-        swipeEnabled: true,
+        // Tabs switch only from the tab bar, never by swiping the page.
+        swipeEnabled: false,
         animationEnabled: true,
-        // Pages mount on first visit or when they become a swipe neighbour,
+        // Pages mount on first visit or when they become a neighbour,
         // then stay mounted.
         lazy: true,
       }}
@@ -79,7 +80,7 @@ export default function TabLayout() {
         focus: () => preloadNeighbours(navigation, route.name),
       })}
     >
-      {/* Declaration order is the swipe order — keep it equal to TAB_ORDER. */}
+      {/* Declaration order is the pager order — keep it equal to TAB_ORDER. */}
       <TopTabs.Screen name="leads" options={{ title: 'Leads' }} />
       <TopTabs.Screen name="follow-ups" options={{ title: 'Follow-ups' }} />
       <TopTabs.Screen name="index" options={{ title: 'Home' }} />
