@@ -134,6 +134,7 @@ function HomeScreen() {
     >
       <HomeDashboard
         kpis={data.kpis}
+        followUpStats={data.followUpStats}
         recentLeads={data.recentLeads ?? []}
         queue={queue}
         firstName={firstName}

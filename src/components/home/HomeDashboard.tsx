@@ -23,7 +23,7 @@ import {
 import { HomeLatestLeads } from '@/components/home/HomeLatestLeads';
 import { UpcomingFollowupsTimeline } from '@/components/home/UpcomingFollowupsTimeline';
 import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
-import type { MobileDashboard } from '@/types/api';
+import type { FollowUpStats, MobileDashboard } from '@/types/api';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 type Kpis = MobileDashboard['kpis'];
@@ -32,6 +32,8 @@ type QueueItem = MobileDashboard['upcomingFollowUps'][number];
 
 type Props = {
   kpis: Kpis;
+  /** Missing on old servers — the tile is then hidden. */
+  followUpStats?: FollowUpStats;
   recentLeads: RecentLead[];
   queue: QueueItem[];
   firstName: string;
@@ -40,7 +42,7 @@ type Props = {
 type KpiSlide = {
   key: string;
   label: string;
-  value: number;
+  value: number | string;
   secondary: string;
   href: Href;
   icon: IoniconName;
@@ -111,6 +113,7 @@ function ProgressRing({
 
 export function HomeDashboard({
   kpis,
+  followUpStats,
   recentLeads,
   queue,
   firstName,
@@ -139,6 +142,31 @@ export function HomeDashboard({
 
   const greeting = `${greetingForHour(new Date().getHours())}, ${firstName}`;
 
+  const onTimePercent = followUpStats?.onTimePercent ?? null;
+  // Green at 80%+, amber at 50%+, else red — the follow-up discipline signal.
+  const onTimeAccent =
+    onTimePercent == null || onTimePercent >= 80
+      ? { accent: colors.success, soft: colors.successSoft }
+      : onTimePercent >= 50
+        ? { accent: colors.warning, soft: colors.warningSoft }
+        : { accent: colors.danger, soft: colors.dangerSoft };
+  const onTimeSlide: KpiSlide[] = followUpStats
+    ? [
+        {
+          key: 'on-time',
+          label: 'On-time follow-ups',
+          value: onTimePercent == null ? '—' : `${onTimePercent}%`,
+          secondary:
+            followUpStats.due > 0
+              ? `${followUpStats.onTime}/${followUpStats.due} · ${followUpStats.windowDays} days`
+              : 'No follow-ups due yet',
+          href: '/(tabs)/follow-ups',
+          icon: 'timer-outline',
+          ...onTimeAccent,
+        },
+      ]
+    : [];
+
   const kpiSlides: KpiSlide[] = [
     {
       key: 'due',
@@ -151,6 +179,7 @@ export function HomeDashboard({
       accent: colors.success,
       soft: colors.successSoft,
     },
+    ...onTimeSlide,
     {
       key: 'assigned',
       label: 'Assigned leads',

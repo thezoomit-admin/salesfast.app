@@ -99,11 +99,8 @@ export function CompleteFollowUpSheet({
     return [...list].sort((a, b) => rank(a.name) - rank(b.name));
   }, [channels.data]);
 
-  // Default to Call once channels load.
-  useEffect(() => {
-    if (!open || channelId != null || !channelOptions.length) return;
-    setChannelId(channelOptions[0].id);
-  }, [open, channelId, channelOptions]);
+  // Call (first touch channel) until the agent picks one.
+  const selectedChannelId = channelId ?? channelOptions[0]?.id ?? null;
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -121,7 +118,7 @@ export function CompleteFollowUpSheet({
         : '';
       await addLeadNote(leadId, {
         note: flow ? `${text}\n\n${flow}` : text,
-        channelId: channelId ?? undefined,
+        channelId: selectedChannelId ?? undefined,
         outcome,
         completeFollowup: true,
         ...(next
@@ -325,7 +322,7 @@ export function CompleteFollowUpSheet({
                     <Pill
                       key={c.id}
                       label={c.name}
-                      active={channelId === c.id}
+                      active={selectedChannelId === c.id}
                       onPress={() => setChannelId(c.id)}
                       styles={styles}
                     />
