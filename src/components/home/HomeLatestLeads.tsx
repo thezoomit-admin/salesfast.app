@@ -7,14 +7,7 @@ import { isToday } from 'date-fns/isToday';
 import { isYesterday } from 'date-fns/isYesterday';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState } from 'react';
-import {
-  Alert,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   ArrowDownDoubleIcon,
@@ -24,10 +17,10 @@ import {
   MinusSignIcon,
 } from '@/components/icons/hugeicons';
 import { LeadHistorySheet } from '@/components/home/LeadHistorySheet';
+import { PriorityPickerSheet } from '@/components/home/PriorityPickerSheet';
 import { useAuth } from '@/features/auth/AuthContext';
 import { patchLeadInLists } from '@/features/leads/leadDetailCache';
 import {
-  PRIORITIES,
   PRIORITY_META,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
@@ -126,7 +119,6 @@ export function HomeLatestLeads({ leads }: Props) {
         patchDashboardPriority(cur, leadId, priority)
       );
       patchLeadInLists(queryClient, leadId, { priority });
-      setPriorityLeadId(null);
       return { prev };
     },
     onError: (_e, _v, ctx) => {
@@ -136,18 +128,21 @@ export function HomeLatestLeads({ leads }: Props) {
       Alert.alert('Could not update priority');
     },
     onSuccess: (updated, { leadId }) => {
-      if (!updated) return;
-      queryClient.setQueryData(['lead', leadId], updated);
-      const next = (updated.priority as LeadPriority | null) ?? null;
-      if (next) {
-        queryClient.setQueryData<MobileDashboard>(['mobile-dashboard'], (cur) =>
-          patchDashboardPriority(cur, leadId, next)
-        );
-        patchLeadInLists(queryClient, leadId, {
-          priority: next,
-          updatedAt: updated.updatedAt,
-        });
+      if (updated) {
+        queryClient.setQueryData(['lead', leadId], updated);
+        const next = (updated.priority as LeadPriority | null) ?? null;
+        if (next) {
+          queryClient.setQueryData<MobileDashboard>(
+            ['mobile-dashboard'],
+            (cur) => patchDashboardPriority(cur, leadId, next)
+          );
+          patchLeadInLists(queryClient, leadId, {
+            priority: next,
+            updatedAt: updated.updatedAt,
+          });
+        }
       }
+      setPriorityLeadId(null);
     },
   });
 
@@ -398,67 +393,17 @@ export function HomeLatestLeads({ leads }: Props) {
         </View>
       )}
 
-      <Modal
-        visible={!!openLead}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPriorityLeadId(null)}
-      >
-        <View style={styles.priorityBackdrop}>
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setPriorityLeadId(null)}
-          />
-          <View style={styles.prioritySheet}>
-            <Text style={styles.prioritySheetTitle}>Set priority</Text>
-            {PRIORITIES.map((p) => {
-              const opt = priorityBadgeColors(p, isDark);
-              const selected = openLead?.priority === p;
-              return (
-                <Pressable
-                  key={p}
-                  disabled={priorityMutation.isPending}
-                  onPress={() => {
-                    if (!openLead || selected) {
-                      setPriorityLeadId(null);
-                      return;
-                    }
-                    priorityMutation.mutate({
-                      leadId: openLead.id,
-                      priority: p,
-                    });
-                  }}
-                  style={({ pressed }) => [
-                    styles.priorityOption,
-                    selected && {
-                      backgroundColor: opt.backgroundColor,
-                      borderColor: opt.borderColor,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <HugeiconsIcon
-                    icon={PRIORITY_ICON[p]}
-                    size={16}
-                    color={opt.color}
-                    strokeWidth={1.5}
-                  />
-                  <Text
-                    style={[styles.priorityOptionText, { color: opt.color }]}
-                  >
-                    {PRIORITY_META[p].label}
-                  </Text>
-                  {selected ? (
-                    <Ionicons name="checkmark" size={18} color={opt.color} />
-                  ) : (
-                    <View style={{ width: 18 }} />
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      </Modal>
+      <PriorityPickerSheet
+        open={!!openLead}
+        leadName={openLead?.name || 'Lead'}
+        value={(openLead?.priority as LeadPriority | null) ?? null}
+        saving={priorityMutation.isPending}
+        onClose={() => setPriorityLeadId(null)}
+        onSelect={(priority) => {
+          if (!openLead) return;
+          priorityMutation.mutate({ leadId: openLead.id, priority });
+        }}
+      />
 
       <LeadHistorySheet
         open={!!history}
@@ -551,46 +496,6 @@ function createStyles(colors: ThemeColors) {
     priorityText: {
       ...typography.caption,
       fontSize: 11,
-      fontWeight: '700',
-    },
-    priorityBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      justifyContent: 'flex-end',
-      padding: 16,
-    },
-    prioritySheet: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      padding: 12,
-      gap: 4,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-    },
-    prioritySheetTitle: {
-      ...typography.caption,
-      fontSize: 12,
-      fontWeight: '700',
-      color: colors.textMuted,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-    },
-    priorityOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 10,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: 'transparent',
-    },
-    priorityOptionText: {
-      ...typography.subtitle,
-      flex: 1,
-      fontSize: 15,
       fontWeight: '700',
     },
     subtitle: {
