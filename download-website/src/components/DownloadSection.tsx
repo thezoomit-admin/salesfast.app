@@ -57,8 +57,8 @@ export function DownloadSection({ release, loading }: Props) {
             Get the official APK
           </h2>
           <p className="mt-3 text-base text-ink/60">
-            Distributed via GitHub Releases over HTTPS. This is not a Google Play
-            listing — you install the signed production build directly.
+            Distributed via GitHub Releases over HTTPS. Only stable production
+            APKs are listed — preview / debug builds are never shown here.
           </p>
         </div>
 

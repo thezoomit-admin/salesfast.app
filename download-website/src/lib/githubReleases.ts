@@ -49,19 +49,31 @@ function formatIsoDate(iso: string | null | undefined): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Prefer a production-looking APK asset; never pick debug builds. */
+/**
+ * Reject non-production APKs: debug / preview / development / staging / internal.
+ * Official download portal only serves stable production builds.
+ */
+const NON_PRODUCTION_APK =
+  /debug|preview|dev(elopment)?|staging|internal|unsigned/i;
+
+function isProductionApkName(name: string): boolean {
+  return name.toLowerCase().endsWith('.apk') && !NON_PRODUCTION_APK.test(name);
+}
+
+function isNonProductionRelease(release: GitHubRelease): boolean {
+  if (release.draft || release.prerelease) return true;
+  const label = `${release.tag_name} ${release.name ?? ''}`;
+  return /preview|dev(elopment)?|staging|internal|beta|rc\b/i.test(label);
+}
+
+/** Prefer a production-looking APK asset; never pick preview/debug builds. */
 function pickApkAsset(assets: GitHubAsset[]): GitHubAsset | undefined {
   const apks = assets.filter(
-    (a) =>
-      a.state === 'uploaded' &&
-      a.name.toLowerCase().endsWith('.apk') &&
-      !/debug/i.test(a.name),
+    (a) => a.state === 'uploaded' && isProductionApkName(a.name),
   );
   if (apks.length === 0) return undefined;
 
-  const preferred = apks.find((a) =>
-    /SalesFast-CRM/i.test(a.name),
-  );
+  const preferred = apks.find((a) => /SalesFast-CRM/i.test(a.name));
   return preferred ?? apks[0];
 }
 
@@ -108,7 +120,7 @@ export async function fetchLatestRelease(
 
     if (res.status === 404) {
       return fallbackUnavailable(
-        'No public GitHub Release has been published yet. Check back soon.',
+        'No stable production release yet. Preview APKs are not shown on this site.',
       );
     }
 
@@ -123,16 +135,16 @@ export async function fetchLatestRelease(
 
     const release = (await res.json()) as GitHubRelease;
 
-    if (release.draft || release.prerelease) {
+    if (isNonProductionRelease(release)) {
       return fallbackUnavailable(
-        'The latest GitHub Release is marked as draft or pre-release.',
+        'Only stable production releases are listed here — preview / pre-release builds are hidden.',
       );
     }
 
     const apk = pickApkAsset(release.assets ?? []);
     if (!apk) {
       return fallbackUnavailable(
-        'A GitHub Release exists, but no production APK asset was found.',
+        'A GitHub Release exists, but no production APK was found (preview/debug APKs are ignored).',
       );
     }
 
