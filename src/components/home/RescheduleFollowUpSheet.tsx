@@ -257,44 +257,43 @@ export function RescheduleFollowUpSheet({
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={!canSave}
-            onPress={() => {
-              if (!when) return;
-              if (when.getTime() <= Date.now()) {
-                setError('Pick a time in the future.');
-                return;
-              }
-              setError(null);
-              mutation.mutate(when);
-            }}
-            style={({ pressed }) => [
-              styles.saveBtn,
-              pressed && canSave && styles.pressed,
-              !canSave && styles.disabled,
-            ]}
-          >
-            {mutation.isPending ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveLabel}>Save</Text>
-            )}
-          </Pressable>
-
-          <View style={styles.footerRule} />
-
-          <Pressable
-            accessibilityRole="button"
-            disabled={mutation.isPending}
-            onPress={animateClose}
-            style={({ pressed }) => [
-              styles.footerRow,
-              pressed && !mutation.isPending && styles.pressed,
-            ]}
-          >
-            <Text style={styles.footerLabel}>Cancel</Text>
-          </Pressable>
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={mutation.isPending}
+              onPress={animateClose}
+              style={({ pressed }) => [
+                styles.cancelBtn,
+                pressed && !mutation.isPending && styles.pressed,
+              ]}
+            >
+              <Text style={styles.cancelLabel}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={!canSave}
+              onPress={() => {
+                if (!when) return;
+                if (when.getTime() <= Date.now()) {
+                  setError('Pick a time in the future.');
+                  return;
+                }
+                setError(null);
+                mutation.mutate(when);
+              }}
+              style={({ pressed }) => [
+                styles.saveBtn,
+                pressed && canSave && styles.pressed,
+                !canSave && styles.disabled,
+              ]}
+            >
+              {mutation.isPending ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.saveLabel}>Save</Text>
+              )}
+            </Pressable>
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -359,8 +358,29 @@ function createStyles(colors: ThemeColors) {
       ...typography.caption,
       color: colors.danger,
     },
-    saveBtn: {
+    actions: {
+      flexDirection: 'row',
+      gap: 10,
       marginTop: 4,
+    },
+    cancelBtn: {
+      flex: 1,
+      minHeight: 48,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    cancelLabel: {
+      ...typography.subtitle,
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    saveBtn: {
+      flex: 1,
       minHeight: 48,
       borderRadius: radii.pill,
       alignItems: 'center',
@@ -372,26 +392,6 @@ function createStyles(colors: ThemeColors) {
       fontSize: 15,
       fontWeight: '700',
       color: '#FFFFFF',
-    },
-    footerRule: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.border,
-      marginTop: 4,
-      marginBottom: 0,
-      marginHorizontal: -spacing.lg,
-    },
-    footerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 2,
-    },
-    footerLabel: {
-      ...typography.subtitle,
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.text,
     },
     pressed: { opacity: 0.72 },
     disabled: { opacity: 0.5 },
