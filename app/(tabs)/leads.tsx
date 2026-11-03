@@ -18,6 +18,7 @@ import {
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
 import { ChipScroll } from '@/components/ui/ChipScroll';
 import { FilterChip } from '@/components/ui/FilterChip';
 import {
@@ -78,15 +79,18 @@ export default function LeadsScreen() {
     [statuses.data]
   );
   const { openLead, prefetchLead } = useLeadRowHandlers(items);
+  const { openPriority, openHistory, sheets } = useLeadCardSheets();
   const renderLead = useCallback(
     ({ item }: { item: LeadListItem }) => (
       <LeadListItemCard
         lead={item}
         onPress={openLead}
         onPressIn={prefetchLead}
+        onPriorityPress={openPriority}
+        onHistoryPress={openHistory}
       />
     ),
-    [openLead, prefetchLead]
+    [openLead, prefetchLead, openPriority, openHistory]
   );
 
   const toggleSearch = () => {
@@ -201,6 +205,8 @@ export default function LeadsScreen() {
           removeClippedSubviews
         />
       )}
+
+      {sheets}
     </View>
   );
 }

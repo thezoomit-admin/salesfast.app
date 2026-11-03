@@ -1,5 +1,6 @@
 // Per-function entry points: the package root re-exports all ~250 helpers,
 // and Metro bundles every one of them.
+import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
 import { isYesterday } from 'date-fns/isYesterday';
@@ -58,6 +59,24 @@ export function formatRelative(value?: string | Date | null) {
 
   if (label === 'Just now') return label;
   return future ? label.replace(' ago', ' from now') : label;
+}
+
+/** Lead card label — "Overdue by 2 days", today's time, or last update. */
+export function followupWhenLabel(
+  nextFollowupDate?: string | null,
+  updatedAt?: string | null
+) {
+  const due = parseDate(nextFollowupDate);
+  if (due) {
+    const dayDiff = differenceInCalendarDays(new Date(), due);
+    if (dayDiff > 0) {
+      return dayDiff === 1 ? 'Overdue by 1 day' : `Overdue by ${dayDiff} days`;
+    }
+    if (isToday(due)) return format(due, 'h:mm a');
+    if (isYesterday(due)) return 'Yesterday';
+    return format(due, 'dd MMM');
+  }
+  return formatRelative(updatedAt);
 }
 
 export function startOfLocalDayIso(d = new Date()) {

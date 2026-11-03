@@ -14,21 +14,22 @@ export function LeadListSkeleton({ rows = 6 }: { rows?: number }) {
     <SkeletonPulse style={styles.root}>
       {Array.from({ length: rows }, (_, i) => (
         <View key={i} style={styles.card}>
-          <View style={styles.topRow}>
-            <View style={styles.main}>
-              <SkeletonBone width="62%" height={15} />
-              <SkeletonBone width="42%" height={12} />
+          <View style={styles.body}>
+            <View style={styles.topRow}>
+              <SkeletonBone width="55%" height={16} />
+              <SkeletonBone width={64} height={22} radius={6} />
             </View>
-            <SkeletonBone width={72} height={24} radius={radii.pill} />
+            <SkeletonBone width="42%" height={12} />
+            <View style={styles.topRow}>
+              <SkeletonBone width={92} height={24} radius={4} />
+              <SkeletonBone width={60} height={11} />
+            </View>
           </View>
           <View style={styles.footer}>
-            <View style={styles.footerMeta}>
-              <SkeletonBone width={48} height={22} radius={radii.pill} />
-              <SkeletonBone width="45%" height={11} />
-            </View>
+            <SkeletonBone width={64} height={13} />
             <View style={styles.actions}>
-              <SkeletonBone width={34} height={34} radius={radii.pill} />
-              <SkeletonBone width={34} height={34} radius={radii.pill} />
+              <SkeletonBone width={20} height={20} radius={radii.pill} />
+              <SkeletonBone width={20} height={20} radius={radii.pill} />
             </View>
           </View>
         </View>
@@ -47,31 +48,32 @@ function createStyles(colors: ThemeColors) {
     },
     card: {
       backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      borderWidth: 1,
+      borderRadius: 16,
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      padding: spacing.md,
-      gap: spacing.md,
+    },
+    body: {
+      paddingHorizontal: 14,
+      paddingTop: 14,
+      paddingBottom: 12,
+      gap: 8,
     },
     topRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: spacing.sm,
-    },
-    main: { flex: 1, gap: 8, minWidth: 0 },
-    footer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: spacing.sm,
     },
-    footerMeta: {
-      flex: 1,
+    footer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.sm,
-      minWidth: 0,
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
     },
-    actions: { flexDirection: 'row', gap: spacing.sm },
+    actions: { flexDirection: 'row', gap: 14 },
   });
 }

@@ -5,6 +5,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
@@ -52,15 +53,18 @@ export default function FollowUpsScreen() {
   const { openLead, prefetchLead } = useLeadRowHandlers(
     query.data?.items ?? NO_LEADS
   );
+  const { openPriority, openHistory, sheets } = useLeadCardSheets();
   const renderLead = useCallback(
     ({ item }: { item: LeadListItem }) => (
       <LeadListItemCard
         lead={item}
         onPress={openLead}
         onPressIn={prefetchLead}
+        onPriorityPress={openPriority}
+        onHistoryPress={openHistory}
       />
     ),
-    [openLead, prefetchLead]
+    [openLead, prefetchLead, openPriority, openHistory]
   );
 
   const count = query.data?.items.length;
@@ -128,6 +132,8 @@ export default function FollowUpsScreen() {
           removeClippedSubviews
         />
       )}
+
+      {sheets}
     </View>
   );
 }
