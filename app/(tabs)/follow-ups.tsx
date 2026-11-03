@@ -20,6 +20,7 @@ type MonthData = { items: MyFollowUp[] };
 
 function targetOf(f: MyFollowUp): FollowUpTarget {
   return {
+    followUpId: f.id,
     leadId: f.lead.id,
     leadName: f.lead.name,
     leadPhone: f.lead.phone,

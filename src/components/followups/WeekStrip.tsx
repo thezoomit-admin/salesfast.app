@@ -90,7 +90,7 @@ function WeekStripImpl({ selected, onSelect }: Props) {
         onSelect={onSelect}
       />
     ),
-    [anchor, colors.danger, now, onSelect, selected, styles, tones, width]
+    [anchor, colors, now, onSelect, selected, styles, tones, width]
   );
 
   return (

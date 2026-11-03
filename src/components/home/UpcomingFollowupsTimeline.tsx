@@ -65,6 +65,7 @@ function groupQueue(queue: QueueItem[]) {
 
 function targetOf(item: QueueItem): FollowUpTarget {
   return {
+    followUpId: item.id,
     leadId: item.leadId,
     leadName: item.leadName,
     leadPhone: item.leadPhone,

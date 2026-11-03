@@ -8,6 +8,7 @@ import { RescheduleFollowUpSheet } from '@/components/home/RescheduleFollowUpShe
 
 /** The follow-up a card's ⋮ menu or check acts on. */
 export type FollowUpTarget = {
+  followUpId: number;
   leadId: number;
   leadName: string;
   leadPhone: string | null | undefined;
@@ -56,6 +57,8 @@ export function useFollowUpActions() {
 
       <CompleteFollowUpSheet
         open={!!complete}
+        followUpId={complete?.followUpId ?? 0}
+        dueAt={complete?.dueAt ?? ''}
         leadId={complete?.leadId ?? 0}
         leadName={complete?.leadName ?? ''}
         followUpType={complete?.type ?? null}

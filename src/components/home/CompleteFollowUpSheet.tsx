@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
+  Alert,
   Animated,
   Easing,
   KeyboardAvoidingView,
@@ -12,7 +12,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
@@ -21,6 +20,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getErrorMessage } from '@/api/client';
 import { followUpTypeLabel } from '@/components/followups/followUpCalendar';
 import { FollowupDateTimeField } from '@/components/leads/FollowupDateTimeField';
+import {
+  appendClipLinks,
+  composerChannels,
+  NoteComposer,
+  type VoiceClip,
+} from '@/components/leads/NoteComposer';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
   formatFollowupDateOnly,
@@ -29,7 +34,7 @@ import {
 } from '@/features/leads/addNoteLogic';
 import { addLeadNote, noteChannelsQuery } from '@/features/leads/leadsApi';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
-import type { FollowUpOutcome } from '@/types/api';
+import type { FollowUpOutcome, MobileDashboard, MyFollowUp } from '@/types/api';
 
 const DISMISS_DISTANCE = 100;
 const DISMISS_VELOCITY = 0.9;
@@ -37,8 +42,8 @@ const SHEET_OFFSCREEN = 720;
 const OPEN_MS = 280;
 const CLOSE_MS = 240;
 
-/** Channels that are a real touch with the lead — offered first. */
-const TOUCH_CHANNELS = ['call', 'whatsapp', 'email', 'sms', 'in-person'];
+/** Done within this long after due counts as on time (same rule as the server). */
+const ON_TIME_GRACE_MS = 24 * 60 * 60 * 1000;
 
 const OUTCOMES: { value: FollowUpOutcome; label: string }[] = [
   { value: 'REACHED', label: 'Reached' },
@@ -50,6 +55,9 @@ const OUTCOMES: { value: FollowUpOutcome; label: string }[] = [
 
 type Props = {
   open: boolean;
+  /** The follow-up row, patched in the caches the moment Mark done is tapped. */
+  followUpId: number;
+  dueAt: string;
   leadId: number;
   leadName: string;
   followUpType: string | null;
@@ -61,8 +69,60 @@ type Props = {
  * the next follow-up (the CRM rule: an open lead always has a next step).
  * Bottom sheet — same motion/chrome as RescheduleFollowUpSheet.
  */
+type CompleteVars = {
+  leadId: number;
+  followUpId: number;
+  dueAt: string;
+  text: string;
+  clips: VoiceClip[];
+  payload: Omit<Parameters<typeof addLeadNote>[1], 'note'> & { flow: string };
+};
+
+/** Show the follow-up as done everywhere it is cached; returns the old data to roll back. */
+function markDoneInCaches(
+  client: ReturnType<typeof useQueryClient>,
+  vars: CompleteVars
+) {
+  const now = new Date();
+  const onTime = now.getTime() - new Date(vars.dueAt).getTime() <= ON_TIME_GRACE_MS;
+  const prev = [
+    ...client.getQueriesData({ queryKey: ['my-follow-ups'] }),
+    ...client.getQueriesData({ queryKey: dashboardQuery.queryKey }),
+  ];
+  client.setQueriesData<{ items: MyFollowUp[] }>({ queryKey: ['my-follow-ups'] }, (data) =>
+    data?.items
+      ? {
+          ...data,
+          items: data.items.map((f) =>
+            f.id === vars.followUpId
+              ? {
+                  ...f,
+                  status: 'DONE' as const,
+                  doneAt: now.toISOString(),
+                  onTime,
+                  outcome: vars.payload.outcome ?? null,
+                  outcomeNote: vars.text,
+                }
+              : f
+          ),
+        }
+      : data
+  );
+  client.setQueryData<MobileDashboard>(dashboardQuery.queryKey, (data) =>
+    data
+      ? {
+          ...data,
+          upcomingFollowUps: data.upcomingFollowUps.filter((f) => f.id !== vars.followUpId),
+        }
+      : data
+  );
+  return prev;
+}
+
 export function CompleteFollowUpSheet({
   open,
+  followUpId,
+  dueAt,
   leadId,
   leadName,
   followUpType,
@@ -78,6 +138,8 @@ export function CompleteFollowUpSheet({
   const [channelId, setChannelId] = useState<number | null>(null);
   const [outcome, setOutcome] = useState<FollowUpOutcome>('REACHED');
   const [note, setNote] = useState('');
+  const [clips, setClips] = useState<VoiceClip[]>([]);
+  const [recording, setRecording] = useState(false);
   const [next, setNext] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -86,64 +148,40 @@ export function CompleteFollowUpSheet({
   const backdropOp = useRef(new Animated.Value(0)).current;
   const closingRef = useRef(false);
   const mountedRef = useRef(false);
-  const busyRef = useRef(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  const channelOptions = useMemo(() => {
-    const list = channels.data ?? [];
-    const rank = (name: string) => {
-      const i = TOUCH_CHANNELS.indexOf(name.trim().toLowerCase());
-      return i < 0 ? TOUCH_CHANNELS.length : i;
-    };
-    return [...list].sort((a, b) => rank(a.name) - rank(b.name));
-  }, [channels.data]);
+  const channelOptions = useMemo(() => composerChannels(channels.data), [channels.data]);
 
-  // Call (first touch channel) until the agent picks one.
+  // Call until the agent picks another channel.
   const selectedChannelId = channelId ?? channelOptions[0]?.id ?? null;
 
+  // Optimistic: the card turns Done and the sheet closes at once; the note
+  // (and any voice clips) upload in the background. A failure rolls back.
   const mutation = useMutation({
-    mutationFn: async () => {
-      const outcomeLabel = OUTCOMES.find((o) => o.value === outcome)?.label ?? 'Done';
-      const text = note.trim() || `Follow-up done · ${outcomeLabel}.`;
-      const type = followUpType || 'FOLLOWUP';
-      const flow = next
-        ? serializeActivityFlow([
-            {
-              title: 'Next Follow-up',
-              detail: followUpTypeLabel(type),
-              lines: [`Scheduled for: ${formatFollowupDisplay(next)}`],
-            },
-          ])
-        : '';
-      await addLeadNote(leadId, {
-        note: flow ? `${text}\n\n${flow}` : text,
-        channelId: selectedChannelId ?? undefined,
-        outcome,
-        completeFollowup: true,
-        ...(next
-          ? {
-              followupAt: next.toISOString(),
-              followupDate: formatFollowupDateOnly(next),
-              followupType: type,
-            }
-          : {}),
-      });
+    mutationFn: async ({ leadId: id, text, clips: toUpload, payload }: CompleteVars) => {
+      const { flow, ...rest } = payload;
+      const body = await appendClipLinks(text, toUpload);
+      await addLeadNote(id, { ...rest, note: flow ? `${body}\n\n${flow}` : body });
     },
-    onSuccess: async () => {
+    onMutate: async (vars) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: dashboardQuery.queryKey }),
-        queryClient.invalidateQueries({ queryKey: ['my-follow-ups'] }),
-        queryClient.invalidateQueries({ queryKey: ['my-leads'] }),
-        queryClient.invalidateQueries({ queryKey: ['lead', leadId] }),
+        queryClient.cancelQueries({ queryKey: ['my-follow-ups'] }),
+        queryClient.cancelQueries({ queryKey: dashboardQuery.queryKey }),
       ]);
-      busyRef.current = false;
-      runCloseAnimation(true);
+      return { prev: markDoneInCaches(queryClient, vars) };
     },
-    onError: (err) => setError(getErrorMessage(err)),
+    onError: (err, _vars, ctx) => {
+      for (const [key, data] of ctx?.prev ?? []) queryClient.setQueryData(key, data);
+      Alert.alert('Could not mark as done', getErrorMessage(err));
+    },
+    onSettled: (_data, _err, vars) => {
+      void queryClient.invalidateQueries({ queryKey: dashboardQuery.queryKey });
+      void queryClient.invalidateQueries({ queryKey: ['my-follow-ups'] });
+      void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
+      void queryClient.invalidateQueries({ queryKey: ['lead', vars.leadId] });
+    },
   });
-
-  busyRef.current = mutation.isPending;
 
   const finishClose = (notifyParent: boolean) => {
     mountedRef.current = false;
@@ -151,6 +189,8 @@ export function CompleteFollowUpSheet({
     setChannelId(null);
     setOutcome('REACHED');
     setNote('');
+    setClips([]);
+    setRecording(false);
     setNext(null);
     setError(null);
     translateY.setValue(SHEET_OFFSCREEN);
@@ -182,7 +222,7 @@ export function CompleteFollowUpSheet({
   };
 
   const animateClose = () => {
-    if (closingRef.current || busyRef.current) return;
+    if (closingRef.current) return;
     runCloseAnimation(true);
   };
 
@@ -221,10 +261,8 @@ export function CompleteFollowUpSheet({
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () =>
-          !busyRef.current && !closingRef.current,
+        onStartShouldSetPanResponder: () => !closingRef.current,
         onMoveShouldSetPanResponder: (_, g) =>
-          !busyRef.current &&
           !closingRef.current &&
           g.dy > 4 &&
           Math.abs(g.dy) > Math.abs(g.dx),
@@ -256,12 +294,42 @@ export function CompleteFollowUpSheet({
   );
 
   const save = () => {
+    if (recording) return;
     if (next && next.getTime() <= Date.now()) {
       setError('Pick a future time for the next follow-up.');
       return;
     }
-    setError(null);
-    mutation.mutate();
+    const outcomeLabel = OUTCOMES.find((o) => o.value === outcome)?.label ?? 'Done';
+    const type = followUpType || 'FOLLOWUP';
+    mutation.mutate({
+      leadId,
+      followUpId,
+      dueAt,
+      text: note.trim() || `Follow-up done · ${outcomeLabel}.`,
+      clips,
+      payload: {
+        channelId: selectedChannelId ?? undefined,
+        outcome,
+        completeFollowup: true,
+        flow: next
+          ? serializeActivityFlow([
+              {
+                title: 'Next Follow-up',
+                detail: followUpTypeLabel(type),
+                lines: [`Scheduled for: ${formatFollowupDisplay(next)}`],
+              },
+            ])
+          : '',
+        ...(next
+          ? {
+              followupAt: next.toISOString(),
+              followupDate: formatFollowupDateOnly(next),
+              followupType: type,
+            }
+          : {}),
+      },
+    });
+    runCloseAnimation(true);
   };
 
   if (!mounted && !open) return null;
@@ -271,7 +339,7 @@ export function CompleteFollowUpSheet({
       visible={mounted || open}
       transparent
       animationType="none"
-      onRequestClose={mutation.isPending ? undefined : animateClose}
+      onRequestClose={animateClose}
     >
       <KeyboardAvoidingView
         style={styles.root}
@@ -282,7 +350,7 @@ export function CompleteFollowUpSheet({
           style={[styles.backdropFill, { opacity: backdropOp }]}
         />
         <TouchableWithoutFeedback
-          onPress={mutation.isPending ? undefined : animateClose}
+          onPress={animateClose}
           accessibilityRole="button"
           accessibilityLabel="Close"
         >
@@ -313,25 +381,6 @@ export function CompleteFollowUpSheet({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>How did you reach them?</Text>
-              {channels.isPending ? (
-                <ActivityIndicator color={colors.textMuted} style={styles.loading} />
-              ) : (
-                <View style={styles.pillRow}>
-                  {channelOptions.map((c) => (
-                    <Pill
-                      key={c.id}
-                      label={c.name}
-                      active={selectedChannelId === c.id}
-                      onPress={() => setChannelId(c.id)}
-                      styles={styles}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-
-            <View style={styles.section}>
               <Text style={styles.sectionLabel}>Outcome</Text>
               <View style={styles.pillRow}>
                 {OUTCOMES.map((o) => (
@@ -346,21 +395,17 @@ export function CompleteFollowUpSheet({
               </View>
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Note</Text>
-              <TextInput
-                style={styles.noteInput}
-                placeholder="What happened? (optional)"
-                placeholderTextColor={colors.textMuted}
-                multiline
-                value={note}
-                onChangeText={setNote}
-                maxLength={5000}
-                textAlignVertical="top"
-                keyboardAppearance={isDark ? 'dark' : 'light'}
-                selectionColor={colors.brand}
-              />
-            </View>
+            <NoteComposer
+              note={note}
+              onChangeNote={setNote}
+              clips={clips}
+              onChangeClips={setClips}
+              channels={channelOptions}
+              channelId={selectedChannelId}
+              onChangeChannel={setChannelId}
+              onRecordingChange={setRecording}
+              placeholder="What happened? (optional)"
+            />
 
             <View style={styles.section}>
               <FollowupDateTimeField
@@ -382,29 +427,23 @@ export function CompleteFollowUpSheet({
           <View style={styles.actions}>
             <Pressable
               accessibilityRole="button"
-              disabled={mutation.isPending}
               onPress={animateClose}
-              style={({ pressed }) => [
-                styles.cancelBtn,
-                pressed && !mutation.isPending && styles.pressed,
-              ]}
+              style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}
             >
               <Text style={styles.cancelLabel}>Cancel</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              disabled={mutation.isPending}
+              // Saving waits for a voice note being recorded to finish.
+              disabled={recording}
               onPress={save}
               style={({ pressed }) => [
                 styles.saveBtn,
-                pressed && !mutation.isPending && styles.pressed,
+                pressed && styles.pressed,
+                recording && styles.disabled,
               ]}
             >
-              {mutation.isPending ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.saveLabel}>Mark done</Text>
-              )}
+              <Text style={styles.saveLabel}>Mark done</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -556,5 +595,6 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       color: '#FFFFFF',
     },
     pressed: { opacity: 0.72 },
+    disabled: { opacity: 0.5 },
   });
 }
