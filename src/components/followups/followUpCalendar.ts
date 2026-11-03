@@ -30,9 +30,6 @@ export function kindTones(isDark: boolean): Record<FollowUpKind, KindTone> {
       };
 }
 
-/** Line-icon blue used by the task list (ring / calendar / bell). */
-export const TASK_ICON_BLUE = '#4B8DF8';
-
 export function followUpLabel(lead: LeadListItem) {
   return lead.leadStatus?.name?.trim() || 'Follow-up';
 }

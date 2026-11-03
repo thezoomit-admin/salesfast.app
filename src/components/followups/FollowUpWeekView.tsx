@@ -2,10 +2,8 @@ import { HugeiconsIcon } from '@hugeicons/react-native';
 import { addDays } from 'date-fns/addDays';
 import { format } from 'date-fns/format';
 import { isSameDay } from 'date-fns/isSameDay';
-import { isSameWeek } from 'date-fns/isSameWeek';
 import { isToday } from 'date-fns/isToday';
 import { startOfWeek } from 'date-fns/startOfWeek';
-import { LinearGradient } from 'expo-linear-gradient';
 import { memo, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -16,7 +14,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   dayKey,
@@ -31,15 +28,15 @@ import {
   type KindTone,
 } from '@/components/followups/followUpCalendar';
 import {
-  Add01Icon,
-  ArrowDown01Icon,
-  ArrowLeft02Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
   Calendar03Icon,
   Clock01Icon,
   Notification01Icon,
 } from '@/components/icons/hugeicons';
+import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
 import type { LeadListItem } from '@/types/api';
-import { useTheme, type ThemeColors } from '@/theme';
+import { radii, useTheme, type ThemeColors } from '@/theme';
 
 /** The timeline always covers working hours; earlier/later slots appear when used. */
 const DAY_START_HOUR = 8;
@@ -55,8 +52,8 @@ type Props = {
   refreshing: boolean;
   onRefresh: () => void;
   onSelect: (day: Date) => void;
-  onBack: () => void;
-  onAdd: () => void;
+  onShiftWeek: (delta: number) => void;
+  onPickDate: () => void;
   onOpenLead: (lead: LeadListItem) => void;
   onPressInLead: (lead: LeadListItem) => void;
 };
@@ -73,8 +70,8 @@ function FollowUpWeekViewImpl({
   refreshing,
   onRefresh,
   onSelect,
-  onBack,
-  onAdd,
+  onShiftWeek,
+  onPickDate,
   onOpenLead,
   onPressInLead,
 }: Props) {
@@ -82,7 +79,6 @@ function FollowUpWeekViewImpl({
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const tones = useMemo(() => kindTones(isDark), [isDark]);
-  const insets = useSafeAreaInsets();
   const now = useMinuteClock();
 
   const week = useMemo(() => {
@@ -105,48 +101,23 @@ function FollowUpWeekViewImpl({
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={[colors.primary50, colors.surface]}
-        start={{ x: 0.8, y: 0 }}
-        end={{ x: 0.3, y: 1 }}
-        style={[styles.top, { paddingTop: insets.top + 20 }]}
-      >
-        <View style={styles.header}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back to month"
-            onPress={onBack}
-            style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
-          >
-            <HugeiconsIcon icon={ArrowLeft02Icon} size={22} color={colors.text} strokeWidth={1.6} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Pick a date"
-            onPress={onBack}
-            style={({ pressed }) => [styles.headerCopy, pressed && styles.pressed]}
-          >
-            <Text style={styles.headerCaption}>
-              {isSameWeek(selected, now) ? 'This week' : `Week of ${format(week[0], 'd MMM')}`}
-            </Text>
-            <View style={styles.headerDateRow}>
-              <Text style={styles.headerDate} numberOfLines={1}>
-                {format(selected, 'd MMM, yy')}{' '}
-                <Text style={styles.headerWeekday}>{format(selected, 'EEEE')}</Text>
-              </Text>
-              <HugeiconsIcon icon={ArrowDown01Icon} size={22} color={colors.text} strokeWidth={1.8} />
-            </View>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Schedule a follow-up"
-            onPress={onAdd}
-            style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-          >
-            <HugeiconsIcon icon={Add01Icon} size={22} color={colors.white} strokeWidth={2} />
-          </Pressable>
-        </View>
+      <ScreenHeader
+        title={format(selected, 'd MMM, yy EEEE')}
+        showBack={false}
+        onTitlePress={onPickDate}
+        right={
+          <>
+            <HeaderIconButton label="Previous week" onPress={() => onShiftWeek(-1)}>
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={colors.text} />
+            </HeaderIconButton>
+            <HeaderIconButton label="Next week" onPress={() => onShiftWeek(1)}>
+              <HugeiconsIcon icon={ArrowRight01Icon} size={22} color={colors.text} />
+            </HeaderIconButton>
+          </>
+        }
+      />
 
+      <View style={styles.stripCard}>
         <View style={styles.strip}>
           {week.map((day) => {
             const active = isSameDay(day, selected);
@@ -179,7 +150,7 @@ function FollowUpWeekViewImpl({
             );
           })}
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         style={styles.timeline}
@@ -196,44 +167,46 @@ function FollowUpWeekViewImpl({
           <Text style={styles.error}>{errorMessage}</Text>
         ) : null}
 
-        {hours.map((hour) => {
-          const label = hourLabel(hour);
-          const slot = items.filter(({ due }) => due.getHours() === hour);
-          const nowHere = showNow && now.getHours() === hour;
-          return (
-            <View key={hour} style={styles.hourRow}>
-              {nowHere ? (
-                <View
-                  pointerEvents="none"
-                  style={[styles.nowLine, { top: `${(now.getMinutes() / 60) * 100}%` }]}
-                >
-                  {Array.from({ length: NOW_DASHES }, (_, i) => (
-                    <View key={i} style={styles.nowDash} />
+        <View style={styles.timelineCard}>
+          {hours.map((hour) => {
+            const label = hourLabel(hour);
+            const slot = items.filter(({ due }) => due.getHours() === hour);
+            const nowHere = showNow && now.getHours() === hour;
+            return (
+              <View key={hour} style={styles.hourRow}>
+                {nowHere ? (
+                  <View
+                    pointerEvents="none"
+                    style={[styles.nowLine, { top: `${(now.getMinutes() / 60) * 100}%` }]}
+                  >
+                    {Array.from({ length: NOW_DASHES }, (_, i) => (
+                      <View key={i} style={styles.nowDash} />
+                    ))}
+                  </View>
+                ) : null}
+                <View style={styles.hourLabel}>
+                  <Text style={styles.hourValue}>{label.value}</Text>
+                  <Text style={styles.hourSuffix}>{label.suffix}</Text>
+                </View>
+                <View style={styles.slot}>
+                  {slot.map(({ lead, due }) => (
+                    <FollowUpCard
+                      key={lead.id}
+                      lead={lead}
+                      due={due}
+                      overdue={due.getTime() < now.getTime()}
+                      tone={tones[followUpKind(lead)]}
+                      styles={styles}
+                      colors={colors}
+                      onPress={onOpenLead}
+                      onPressIn={onPressInLead}
+                    />
                   ))}
                 </View>
-              ) : null}
-              <View style={styles.hourLabel}>
-                <Text style={styles.hourValue}>{label.value}</Text>
-                <Text style={styles.hourSuffix}>{label.suffix}</Text>
               </View>
-              <View style={styles.slot}>
-                {slot.map(({ lead, due }) => (
-                  <FollowUpCard
-                    key={lead.id}
-                    lead={lead}
-                    due={due}
-                    overdue={due.getTime() < now.getTime()}
-                    tone={tones[followUpKind(lead)]}
-                    styles={styles}
-                    colors={colors}
-                    onPress={onOpenLead}
-                    onPressIn={onPressInLead}
-                  />
-                ))}
-              </View>
-            </View>
-          );
-        })}
+            );
+          })}
+        </View>
       </ScrollView>
     </View>
   );
@@ -321,58 +294,44 @@ export const FollowUpWeekView = memo(FollowUpWeekViewImpl);
 
 function createStyles(colors: ThemeColors, isDark: boolean) {
   const ink = isDark ? '#FFFFFF' : '#111111';
+  const pageWash = isDark ? colors.background : '#EEF1F4';
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: colors.surface },
+    root: { flex: 1, backgroundColor: pageWash },
     pressed: { opacity: 0.6 },
-    top: {
-      paddingHorizontal: 16,
-      paddingBottom: 18,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    header: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 22 },
-    backBtn: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      borderWidth: 1,
-      borderColor: colors.border,
+    // White section cards on the Home page wash.
+    stripCard: {
+      marginHorizontal: 16,
+      marginBottom: 12,
+      paddingHorizontal: 6,
+      paddingTop: 14,
+      paddingBottom: 12,
+      borderRadius: 22,
       backgroundColor: colors.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    headerCopy: { flex: 1, minWidth: 0 },
-    headerCaption: { fontSize: 13, color: colors.textSecondary, marginBottom: 2 },
-    headerDateRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    headerDate: { flexShrink: 1, fontSize: 19, fontWeight: '500', color: ink },
-    headerWeekday: { fontWeight: '400', color: colors.textSecondary },
-    addBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
-      backgroundColor: colors.brand,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     strip: { flexDirection: 'row' },
     stripDay: { flex: 1, alignItems: 'center' },
     stripName: { fontSize: 15, color: colors.textMuted },
     stripNameActive: { color: ink, fontWeight: '600' },
     stripBar: { width: 44, height: 2, borderRadius: 1, marginTop: 6, marginBottom: 10 },
-    stripBarActive: { backgroundColor: ink },
+    stripBarActive: { backgroundColor: colors.brand },
     stripDate: {
-      width: 44,
-      height: 38,
-      borderRadius: 10,
+      width: 40,
+      height: 40,
+      borderRadius: radii.lg,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    stripDateActive: { backgroundColor: ink },
+    stripDateActive: { backgroundColor: colors.brand },
     stripDateText: { fontSize: 18, color: colors.textMuted },
     stripDateToday: { color: colors.brand, fontWeight: '700' },
-    stripDateTextActive: { color: isDark ? '#111111' : '#FFFFFF', fontWeight: '500' },
+    stripDateTextActive: { color: colors.white, fontWeight: '600' },
     timeline: { flex: 1 },
-    timelineContent: { paddingBottom: 24 },
+    timelineContent: { paddingHorizontal: 16, paddingBottom: 24 },
+    timelineCard: {
+      borderRadius: 22,
+      overflow: 'hidden',
+      backgroundColor: colors.surface,
+    },
     loading: { paddingVertical: 16 },
     error: {
       paddingVertical: 16,

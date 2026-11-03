@@ -1,13 +1,11 @@
 import { useQueries, type UseQueryResult } from '@tanstack/react-query';
 import { addDays } from 'date-fns/addDays';
-import { addMonths } from 'date-fns/addMonths';
 import { startOfWeek } from 'date-fns/startOfWeek';
-import { useRouter } from 'expo-router';
 import { memo, useCallback, useMemo, useState } from 'react';
 
 import { getErrorMessage } from '@/api/client';
 import { groupByDay } from '@/components/followups/followUpCalendar';
-import { FollowUpMonthView } from '@/components/followups/FollowUpMonthView';
+import { FollowUpCalendarModal } from '@/components/followups/FollowUpCalendarModal';
 import { FollowUpWeekView } from '@/components/followups/FollowUpWeekView';
 import {
   followUpMonthKey,
@@ -30,16 +28,14 @@ function combineMonths(results: UseQueryResult<MonthData>[]) {
 }
 
 function FollowUpsScreen() {
-  const router = useRouter();
   const [selected, setSelected] = useState(() => new Date());
-  const [mode, setMode] = useState<'month' | 'week'>('month');
+  const [pickerOpen, setPickerOpen] = useState(false);
 
-  // Month mode needs the visible month; a week can straddle two.
+  // A week can straddle two months.
   const months = useMemo(() => {
-    if (mode === 'month') return [followUpMonthKey(selected)];
     const start = startOfWeek(selected);
     return [...new Set([followUpMonthKey(start), followUpMonthKey(addDays(start, 6))])];
-  }, [mode, selected]);
+  }, [selected]);
 
   const data = useQueries({
     queries: months.map(followUpMonthQuery),
@@ -49,48 +45,35 @@ function FollowUpsScreen() {
   const byDay = useMemo(() => groupByDay(data.items), [data.items]);
   const { openLead, prefetchLead } = useLeadRowHandlers(data.items);
 
-  const shiftMonth = useCallback(
-    (delta: number) => setSelected((d) => addMonths(d, delta)),
+  const shiftWeek = useCallback(
+    (delta: number) => setSelected((d) => addDays(d, delta * 7)),
     []
   );
-  // A follow-up is scheduled from a lead, so "+" starts at the lead list.
-  const addFollowUp = useCallback(() => router.navigate('/(tabs)/leads'), [router]);
+  const openPicker = useCallback(() => setPickerOpen(true), []);
   const refresh = useCallback(() => void data.refetch(), [data]);
-  const errorMessage = data.error ? getErrorMessage(data.error) : null;
 
-  if (mode === 'week') {
-    return (
+  return (
+    <>
       <FollowUpWeekView
         selected={selected}
         byDay={byDay}
         loading={data.loading}
-        errorMessage={errorMessage}
+        errorMessage={data.error ? getErrorMessage(data.error) : null}
         refreshing={data.refreshing}
         onRefresh={refresh}
         onSelect={setSelected}
-        onBack={() => setMode('month')}
-        onAdd={addFollowUp}
+        onShiftWeek={shiftWeek}
+        onPickDate={openPicker}
         onOpenLead={openLead}
         onPressInLead={prefetchLead}
       />
-    );
-  }
-
-  return (
-    <FollowUpMonthView
-      selected={selected}
-      byDay={byDay}
-      loading={data.loading}
-      errorMessage={errorMessage}
-      refreshing={data.refreshing}
-      onRefresh={refresh}
-      onSelect={setSelected}
-      onShiftMonth={shiftMonth}
-      onOpenWeek={() => setMode('week')}
-      onAdd={addFollowUp}
-      onOpenLead={openLead}
-      onPressInLead={prefetchLead}
-    />
+      <FollowUpCalendarModal
+        open={pickerOpen}
+        selected={selected}
+        onSelect={setSelected}
+        onClose={() => setPickerOpen(false)}
+      />
+    </>
   );
 }
 

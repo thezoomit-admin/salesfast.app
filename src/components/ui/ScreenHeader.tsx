@@ -15,6 +15,8 @@ type Props = {
   right?: ReactNode;
   onBack?: () => void;
   showBack?: boolean;
+  /** Makes the inline title a button (with a chevron), e.g. a date picker. */
+  onTitlePress?: () => void;
   /**
    * Wallet-style: back left, title dead-center, actions right.
    * Defaults on when `showBack` and no `center` slot.
@@ -33,6 +35,7 @@ export function ScreenHeader({
   right,
   onBack,
   showBack = true,
+  onTitlePress,
   titleCentered,
 }: Props) {
   const router = useRouter();
@@ -101,12 +104,32 @@ export function ScreenHeader({
           <>
             <View style={styles.leftWithTitle}>
               {backControl}
-              <Text
-                style={[styles.titleInline, !showBack && styles.titleRoot]}
-                numberOfLines={1}
-              >
-                {title}
-              </Text>
+              {onTitlePress ? (
+                <Pressable
+                  onPress={onTitlePress}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.titleBtn,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text
+                    style={[styles.titleInline, !showBack && styles.titleRoot]}
+                    numberOfLines={1}
+                  >
+                    {title}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.text} />
+                </Pressable>
+              ) : (
+                <Text
+                  style={[styles.titleInline, !showBack && styles.titleRoot]}
+                  numberOfLines={1}
+                >
+                  {title}
+                </Text>
+              )}
             </View>
             <View style={styles.right}>{right}</View>
           </>
@@ -227,6 +250,13 @@ function createStyles(colors: ThemeColors) {
       height: 40,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    titleBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexShrink: 1,
+      minWidth: 0,
     },
     titleInline: {
       fontSize: 17,
