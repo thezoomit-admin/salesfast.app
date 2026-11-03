@@ -127,7 +127,7 @@ export default function AboutScreen() {
         <View style={styles.hero}>
           <View style={styles.logoWrap}>
             <Image
-              source={require('../../assets/images/salesfast-favicon.png')}
+              source={require('../../assets/images/favicon.png')}
               style={styles.logo}
             />
           </View>

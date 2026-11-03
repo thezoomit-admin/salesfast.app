@@ -52,6 +52,7 @@ function createStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
+      // Invert page ink so the pill stays high-contrast in light and dark.
       backgroundColor: colors.text,
       borderRadius: radii.pill,
       paddingHorizontal: spacing.md,
@@ -63,6 +64,6 @@ function createStyles(colors: ThemeColors) {
       borderRadius: radii.pill,
       backgroundColor: colors.warning,
     },
-    text: { ...typography.caption, color: colors.white },
+    text: { ...typography.caption, color: colors.background },
   });
 }
