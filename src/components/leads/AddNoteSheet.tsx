@@ -1131,6 +1131,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     sheet: {
       backgroundColor: colors.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
       borderTopLeftRadius: radii.lg,
       borderTopRightRadius: radii.lg,
       maxHeight: '92%',

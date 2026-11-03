@@ -64,7 +64,8 @@ export function ThemeModeSheet({ open, onClose }: Props) {
           style={[
             styles.sheet,
             {
-              backgroundColor: colors.background,
+              backgroundColor: colors.surface,
+              borderTopColor: colors.border,
               paddingBottom: Math.max(insets.bottom, 16),
               shadowColor: colors.black,
             },
@@ -189,6 +190,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17, 24, 39, 0.4)',
   },
   sheet: {
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 10,

@@ -1,3 +1,4 @@
+export { AccountSwitchSheet } from './AccountSwitchSheet';
 export { PhotoChangeSheet } from './PhotoChangeSheet';
 export {
   SettingsSearchSheet,
