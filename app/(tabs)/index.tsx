@@ -1,5 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns/format';
+import { isToday } from 'date-fns/isToday';
+import { isTomorrow } from 'date-fns/isTomorrow';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useMemo } from 'react';
@@ -17,7 +20,7 @@ import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { markFirstContent } from '@/lib/perfMonitor';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
-import { formatDate, formatRelative } from '@/utils/dates';
+import { formatRelative, parseDate } from '@/utils/dates';
 
 function greetingForHour(hour: number) {
   if (hour < 5) return 'Good night';
@@ -33,6 +36,61 @@ function isOverdue(dueAt: string) {
 }
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
+type QueueTone = 'overdue' | 'dueToday' | 'upcoming';
+
+const FOLLOWUP_TYPE_LABEL: Record<string, string> = {
+  OFFICE_VISIT: 'Office visit',
+  SITE_VISIT: 'Site visit',
+  FOLLOW_UP: 'Follow-up',
+  CALL: 'Call',
+  WHATSAPP: 'WhatsApp',
+};
+
+const FOLLOWUP_TYPE_ICON: Record<string, IoniconName> = {
+  OFFICE_VISIT: 'business-outline',
+  SITE_VISIT: 'location-outline',
+  FOLLOW_UP: 'calendar-outline',
+  CALL: 'call-outline',
+  WHATSAPP: 'logo-whatsapp',
+};
+
+function followupTypeLabel(type?: string | null) {
+  if (!type) return 'Follow-up';
+  return FOLLOWUP_TYPE_LABEL[type] ?? type.replace(/_/g, ' ');
+}
+
+function followupTypeIcon(type?: string | null): IoniconName {
+  if (!type) return 'calendar-outline';
+  return FOLLOWUP_TYPE_ICON[type] ?? 'calendar-outline';
+}
+
+function queueTone(dueAt: string) {
+  const due = parseDate(dueAt);
+  if (!due) return 'upcoming' as const;
+  if (due.getTime() < Date.now()) return 'overdue' as const;
+  if (isToday(due)) return 'dueToday' as const;
+  return 'upcoming' as const;
+}
+
+function queueDayLabel(dueAt: string) {
+  const due = parseDate(dueAt);
+  if (!due) return '—';
+  if (isToday(due)) return 'Today';
+  if (isTomorrow(due)) return 'Tomorrow';
+  return format(due, 'dd MMM');
+}
+
+function queueTimeLabel(dueAt: string) {
+  const due = parseDate(dueAt);
+  if (!due) return '—';
+  return format(due, 'h:mm a');
+}
+
+function queueStatusLabel(tone: QueueTone) {
+  if (tone === 'overdue') return 'Overdue';
+  if (tone === 'dueToday') return 'Due today';
+  return 'Upcoming';
+}
 
 type ScoreMetric = {
   key: string;
@@ -239,7 +297,7 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      {/* Today's queue — single agenda */}
+      {/* Today's queue — agenda cards */}
       <View>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{"Today's queue"}</Text>
@@ -252,8 +310,8 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={14} color={colors.brand} />
           </Pressable>
         </View>
-        <View style={styles.panel}>
-          {queue.length === 0 ? (
+        {queue.length === 0 ? (
+          <View style={styles.panel}>
             <EmptyState
               icon="checkmark-circle-outline"
               title="Queue is clear"
@@ -261,58 +319,126 @@ export default function HomeScreen() {
               actionLabel="Browse leads"
               onAction={() => router.navigate('/(tabs)/leads')}
             />
-          ) : (
-            queue.map((item, index) => {
-              const overdue = isOverdue(item.dueAt);
+          </View>
+        ) : (
+          <View style={styles.queueList}>
+            {queue.map((item) => {
+              const tone = queueTone(item.dueAt);
+              const toneStyle =
+                tone === 'overdue'
+                  ? {
+                      accent: colors.danger,
+                      chipBg: colors.dangerSoft,
+                      chipFg: colors.danger,
+                      timeBg: colors.dangerSoft,
+                      timeFg: colors.danger,
+                    }
+                  : tone === 'dueToday'
+                    ? {
+                        accent: colors.warning,
+                        chipBg: colors.warningSoft,
+                        chipFg: colors.warning,
+                        timeBg: colors.warningSoft,
+                        timeFg: colors.warning,
+                      }
+                    : {
+                        accent: colors.brand,
+                        chipBg: colors.primary50,
+                        chipFg: colors.brand,
+                        timeBg: colors.surfaceMuted,
+                        timeFg: colors.textSecondary,
+                      };
+
               return (
                 <Pressable
                   key={item.id}
                   style={({ pressed }) => [
-                    styles.queueRow,
-                    index > 0 && styles.rowDivider,
+                    styles.queueCard,
                     pressed && styles.pressed,
                   ]}
                   onPress={() => router.push(`/leads/${item.leadId}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.leadName}, ${queueStatusLabel(tone)}, ${queueTimeLabel(item.dueAt)}`}
                 >
                   <View
                     style={[
-                      styles.timeCol,
-                      overdue ? styles.timeColWarn : styles.timeColDefault,
+                      styles.queueAccent,
+                      { backgroundColor: toneStyle.accent },
                     ]}
-                  >
-                    <Text
-                      style={[
-                        styles.timeColText,
-                        overdue && styles.timeColTextWarn,
-                      ]}
-                      numberOfLines={2}
-                    >
-                      {formatDate(item.dueAt)}
-                    </Text>
+                  />
+                  <View style={styles.queueCardBody}>
+                    <View style={styles.queueCardTop}>
+                      <View
+                        style={[
+                          styles.queueTimeBlock,
+                          { backgroundColor: toneStyle.timeBg },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.queueTime,
+                            { color: toneStyle.timeFg },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {queueTimeLabel(item.dueAt)}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.queueDay,
+                            { color: toneStyle.timeFg },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {queueDayLabel(item.dueAt)}
+                        </Text>
+                      </View>
+                      <View style={styles.queueMain}>
+                        <View style={styles.queueTitleRow}>
+                          <Text style={styles.queueLeadName} numberOfLines={1}>
+                            {item.leadName}
+                          </Text>
+                          <View
+                            style={[
+                              styles.queueStatusChip,
+                              { backgroundColor: toneStyle.chipBg },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.queueStatusText,
+                                { color: toneStyle.chipFg },
+                              ]}
+                            >
+                              {queueStatusLabel(tone)}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.queueMetaRow}>
+                          <Ionicons
+                            name={followupTypeIcon(item.type)}
+                            size={13}
+                            color={colors.textMuted}
+                          />
+                          <Text style={styles.queueMeta} numberOfLines={1}>
+                            {followupTypeLabel(item.type)}
+                            {item.leadPhone ? ` · ${item.leadPhone}` : ''}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
                   </View>
-                  <View style={styles.rowCopy}>
-                    <Text style={styles.rowTitle} numberOfLines={1}>
-                      {item.leadName}
-                    </Text>
-                    <Text style={styles.rowMeta} numberOfLines={1}>
-                      {item.type || 'Follow-up'}
-                      {item.leadPhone ? ` · ${item.leadPhone}` : ''}
-                    </Text>
-                  </View>
-                  {overdue ? (
-                    <Text style={styles.overdueMark}>Overdue</Text>
-                  ) : (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={14}
-                      color={colors.textMuted}
-                    />
-                  )}
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={colors.textMuted}
+                    style={styles.queueChevron}
+                  />
                 </Pressable>
               );
-            })
-          )}
-        </View>
+            })}
+          </View>
+        )}
       </View>
 
       {/* Pipeline updates */}
@@ -619,37 +745,100 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     rowTitle: { ...typography.subtitle, color: colors.text, fontSize: 15 },
     rowMeta: { ...typography.caption, color: colors.textMuted },
 
-    queueRow: {
+    queueList: { gap: 8 },
+    queueCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingVertical: 12,
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      minHeight: 72,
     },
-    timeCol: {
-      width: 68,
-      minHeight: 40,
-      borderRadius: 6,
-      paddingHorizontal: 6,
-      paddingVertical: 6,
+    queueAccent: {
+      width: 3,
+      alignSelf: 'stretch',
+    },
+    queueCardBody: {
+      flex: 1,
+      paddingVertical: 12,
+      paddingLeft: 12,
+      paddingRight: 4,
+      minWidth: 0,
+    },
+    queueCardTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    queueTimeBlock: {
+      width: 72,
+      borderRadius: radii.sm,
+      paddingHorizontal: 8,
+      paddingVertical: 8,
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 2,
     },
-    timeColDefault: { backgroundColor: colors.surfaceMuted },
-    timeColWarn: { backgroundColor: colors.warningSoft },
-    timeColText: {
-      ...typography.caption,
-      color: colors.textSecondary,
-      fontSize: 11,
-      textAlign: 'center',
-      lineHeight: 14,
-    },
-    timeColTextWarn: { color: colors.warning, fontWeight: '700' },
-    overdueMark: {
-      ...typography.caption,
-      fontSize: 11,
+    queueTime: {
+      ...typography.subtitle,
+      fontSize: 13,
+      lineHeight: 16,
       fontWeight: '700',
-      color: colors.danger,
+      letterSpacing: -0.2,
     },
+    queueDay: {
+      ...typography.caption,
+      fontSize: 10,
+      lineHeight: 12,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.3,
+      opacity: 0.9,
+    },
+    queueMain: { flex: 1, minWidth: 0, gap: 4 },
+    queueTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    queueLeadName: {
+      ...typography.subtitle,
+      flex: 1,
+      fontSize: 15,
+      lineHeight: 20,
+      color: colors.text,
+      minWidth: 0,
+    },
+    queueStatusChip: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: radii.sm,
+      flexShrink: 0,
+    },
+    queueStatusText: {
+      ...typography.caption,
+      fontSize: 10,
+      lineHeight: 12,
+      fontWeight: '700',
+      letterSpacing: 0.2,
+    },
+    queueMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      minWidth: 0,
+    },
+    queueMeta: {
+      ...typography.caption,
+      flex: 1,
+      color: colors.textMuted,
+      fontSize: 12,
+      lineHeight: 16,
+      minWidth: 0,
+    },
+    queueChevron: { marginRight: 10, flexShrink: 0 },
 
     pipelineRow: {
       flexDirection: 'row',

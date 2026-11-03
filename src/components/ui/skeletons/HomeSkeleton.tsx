@@ -45,20 +45,49 @@ export function HomeSkeleton() {
         ))}
       </View>
 
-      <SectionSkeleton styles={styles} rows={3} withAvatar={false} />
-      <SectionSkeleton styles={styles} rows={4} withAvatar />
+      <QueueSectionSkeleton styles={styles} rows={3} />
+      <PipelineSectionSkeleton styles={styles} rows={4} />
     </SkeletonPulse>
   );
 }
 
-function SectionSkeleton({
+function QueueSectionSkeleton({
   styles,
   rows,
-  withAvatar,
 }: {
   styles: ReturnType<typeof createStyles>;
   rows: number;
-  withAvatar: boolean;
+}) {
+  return (
+    <View>
+      <View style={styles.sectionHeader}>
+        <SkeletonBone width={110} height={14} />
+        <SkeletonBone width={72} height={12} />
+      </View>
+      <View style={styles.queueList}>
+        {Array.from({ length: rows }, (_, i) => (
+          <View key={i} style={styles.queueCard}>
+            <SkeletonBone width={3} height={72} radius={0} />
+            <View style={styles.queueCardBody}>
+              <SkeletonBone width={72} height={44} radius={radii.sm} />
+              <View style={styles.queueCopy}>
+                <SkeletonBone width="58%" height={13} />
+                <SkeletonBone width="42%" height={10} />
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function PipelineSectionSkeleton({
+  styles,
+  rows,
+}: {
+  styles: ReturnType<typeof createStyles>;
+  rows: number;
 }) {
   return (
     <View>
@@ -72,11 +101,7 @@ function SectionSkeleton({
             key={i}
             style={[styles.row, i > 0 && styles.rowDivider]}
           >
-            {withAvatar ? (
-              <SkeletonBone width={36} height={36} radius={6} />
-            ) : (
-              <SkeletonBone width={68} height={40} radius={6} />
-            )}
+            <SkeletonBone width={36} height={36} radius={6} />
             <View style={styles.rowCopy}>
               <SkeletonBone width="55%" height={13} />
               <SkeletonBone width="40%" height={10} />
@@ -151,6 +176,27 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'space-between',
       marginBottom: 10,
     },
+    queueList: { gap: 8 },
+    queueCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: radii.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      minHeight: 72,
+    },
+    queueCardBody: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      minWidth: 0,
+    },
+    queueCopy: { flex: 1, gap: 6, minWidth: 0 },
     panel: {
       backgroundColor: colors.surface,
       borderRadius: radii.sm,
