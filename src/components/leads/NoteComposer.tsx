@@ -5,6 +5,7 @@ import {
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
   useAudioRecorder,
+  useAudioRecorderState,
   type AudioPlayer,
 } from 'expo-audio';
 import * as DocumentPicker from 'expo-document-picker';
@@ -16,16 +17,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
-import {
-  Alert,
-  Animated,
-  Easing,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { NOTE_CHANNELS } from '@/features/leads/addNoteLogic';
@@ -44,8 +36,6 @@ export type VoiceClip = {
   name: string;
   durationSec: number;
   mimeType: string;
-  /** Recorded levels (0…1), one per playback bar — the clip's real waveform. */
-  waveform?: number[];
 };
 
 /** A channel chip in the composer toolbar (`label` is the short NOTE_CHANNELS name). */
@@ -94,82 +84,25 @@ const PLAYBACK_BARS = [
   9, 15, 6, 11, 8, 14, 10, 13, 7, 16, 9, 12, 5, 11, 8, 15, 6, 10,
 ];
 
-/** Live meter while recording: newest level on the right, older ones scroll left. */
-const METER_BARS = 36;
-const METER_TICK_MS = 80;
-/** Playback position polls — the scrub thumb glides between them. */
-const STATUS_INTERVAL_MS = 50;
-
-/**
- * Some phones report no input level (metering stays at -160 dB) although the
- * recording itself is fine. Readings below this are "no level", and the live
- * meter then shows an activity pattern instead of real levels.
- */
-const NO_LEVEL_DB = -100;
-
-/** Stand-in level for phones without metering: a steady, speech-like ripple. */
-function activityLevel(tick: number) {
-  const wave = Math.sin(tick * 0.9) * 0.5 + Math.sin(tick * 2.3 + 1) * 0.3;
-  return 0.25 + Math.abs(wave) * 0.45;
-}
-
-/** Recorder metering (dBFS, about -60…0) → 0…1, peaks emphasised like WhatsApp. */
-function meterLevel(db: number | undefined) {
-  if (typeof db !== 'number' || !Number.isFinite(db)) return 0;
-  const norm = Math.min(1, Math.max(0, (db + 60) / 60));
-  return norm ** 1.8;
-}
-
-/** A recording's level history squeezed into the playback bars (loudest per slice). */
-function waveformOf(levels: readonly number[]) {
-  if (!levels.length) return undefined;
-  const n = PLAYBACK_BARS.length;
-  return Array.from({ length: n }, (_, i) => {
-    const from = Math.floor((i * levels.length) / n);
-    const to = Math.max(from + 1, Math.floor(((i + 1) * levels.length) / n));
-    return Math.max(...levels.slice(from, to));
-  });
-}
-
-/** Wall clock for event handlers (kept out of component scope for the React compiler). */
-const nowMs = () => Date.now();
-
 const WAVE_UNFILLED = '#D0D5DD';
 const CHIP_X_BG = '#15202C';
 
 function ProgressWaveform({
   progress,
-  playing,
-  levels,
   brand,
   onSeek,
 }: {
   progress: number;
-  playing: boolean;
-  /** The clip's recorded waveform; a fixed silhouette for picked files. */
-  levels?: number[];
   brand: string;
   onSeek: (fraction: number) => void;
 }) {
   const p = Math.min(1, Math.max(0, progress));
-  const [width, setWidth] = useState(0);
-  const [thumb] = useState(() => new Animated.Value(p));
-  const heights = levels?.length ? levels.map((l) => 4 + l * 14) : PLAYBACK_BARS;
-
-  // Glide to each new position over one status interval, so the thumb moves
-  // continuously instead of jumping every update.
-  useEffect(() => {
-    Animated.timing(thumb, {
-      toValue: p,
-      duration: playing ? STATUS_INTERVAL_MS + 20 : 0,
-      easing: Easing.linear,
-      useNativeDriver: true,
-    }).start();
-  }, [thumb, p, playing]);
+  const widthRef = useRef(0);
 
   function seekAt(x: number) {
-    if (!width) return;
-    onSeek(Math.min(1, Math.max(0, x / width)));
+    const w = widthRef.current;
+    if (!w) return;
+    onSeek(Math.min(1, Math.max(0, x / w)));
   }
 
   return (
@@ -177,14 +110,16 @@ function ProgressWaveform({
       accessibilityRole="adjustable"
       accessibilityLabel="Seek"
       style={waveStyles.progressTrack}
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      onLayout={(e) => {
+        widthRef.current = e.nativeEvent.layout.width;
+      }}
       onStartShouldSetResponder={() => true}
       onMoveShouldSetResponder={() => true}
       onResponderGrant={(e) => seekAt(e.nativeEvent.locationX)}
       onResponderMove={(e) => seekAt(e.nativeEvent.locationX)}
     >
-      {heights.map((h, i) => {
-        const filled = i / heights.length < p;
+      {PLAYBACK_BARS.map((h, i) => {
+        const filled = i / PLAYBACK_BARS.length < p;
         return (
           <View
             key={i}
@@ -198,21 +133,11 @@ function ProgressWaveform({
           />
         );
       })}
-      <Animated.View
+      <View
         pointerEvents="none"
         style={[
           waveStyles.scrubThumb,
-          {
-            backgroundColor: brand,
-            transform: [
-              {
-                translateX: thumb.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, width],
-                }),
-              },
-            ],
-          },
+          { left: `${p * 100}%`, backgroundColor: brand },
         ]}
       />
     </View>
@@ -235,7 +160,6 @@ const waveStyles = StyleSheet.create({
   },
   scrubThumb: {
     position: 'absolute',
-    left: 0,
     top: '50%',
     marginTop: -6,
     marginLeft: -6,
@@ -287,6 +211,7 @@ export function NoteComposer({
     []
   );
   const recorder = useAudioRecorder(recordingOptions);
+  const recorderState = useAudioRecorderState(recorder, 250);
 
   const [recording, setRecordingState] = useState(false);
   const setRecording = (next: boolean) => {
@@ -295,24 +220,52 @@ export function NoteComposer({
   };
   const recordStartedAt = useRef(0);
   const [recordSec, setRecordSec] = useState(0);
-  const [levels, setLevels] = useState<number[]>([]);
-  const levelHistory = useRef<number[]>([]);
-  // Whether this phone reports real input levels during this recording.
-  const hasLevels = useRef(false);
-  const tickCount = useRef(0);
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const playTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [playProgress, setPlayProgress] = useState(0);
   const [playDisplaySec, setPlayDisplaySec] = useState(0);
   const playerRef = useRef<AudioPlayer | null>(null);
-  const activeClipRef = useRef<VoiceClip | null>(null);
+
+  useEffect(() => {
+    if (!recording) return;
+    const t = setInterval(() => {
+      setRecordSec(
+        Math.floor((Date.now() - recordStartedAt.current) / 1000)
+      );
+    }, 250);
+    return () => clearInterval(t);
+  }, [recording]);
+
+  useEffect(() => {
+    if (!playingId || paused) return;
+    const clip = clips.find((c) => c.id === playingId);
+    if (!clip) return;
+    const t = setInterval(() => {
+      const player = playerRef.current;
+      if (!player) return;
+      syncPlayUi(clip);
+      if (!player.playing) {
+        const dur =
+          clip.durationSec > 0
+            ? clip.durationSec
+            : player.duration > 0
+              ? player.duration
+              : 0;
+        if (dur > 0 && player.currentTime >= dur - 0.08) {
+          setPlayingId(null);
+          setPaused(false);
+          setPlayProgress(0);
+          setPlayDisplaySec(clip.durationSec);
+        } else {
+          setPaused(true);
+        }
+      }
+    }, 100);
+    return () => clearInterval(t);
+  }, [playingId, paused, clips]);
 
   useEffect(() => {
     return () => {
-      if (tickRef.current) clearInterval(tickRef.current);
-      if (playTickRef.current) clearInterval(playTickRef.current);
       try {
         playerRef.current?.pause();
         playerRef.current?.remove();
@@ -329,7 +282,6 @@ export function NoteComposer({
     } catch {
       /* ignore */
     }
-    stopPlayTicks();
     if (reset) {
       try {
         playerRef.current?.remove();
@@ -344,20 +296,9 @@ export function NoteComposer({
     }
   }
 
-  function stopPlayTicks() {
-    if (playTickRef.current) clearInterval(playTickRef.current);
-    playTickRef.current = null;
-  }
-
-  /**
-   * Poll the position while playing. Play / pause follow the user's taps only:
-   * right after play() the player can still report "not playing", which must
-   * not be read as a pause.
-   */
-  function playTick() {
+  function syncPlayUi(clip: VoiceClip) {
     const player = playerRef.current;
-    const clip = activeClipRef.current;
-    if (!player || !clip) return;
+    if (!player) return;
     const meta = player.duration;
     const dur =
       clip.durationSec > 0
@@ -367,15 +308,7 @@ export function NoteComposer({
           : 0;
     if (!dur) return;
     const cur = Math.min(player.currentTime || 0, dur);
-    if (!player.playing && cur >= dur - 0.08) {
-      stopPlayTicks();
-      setPlayingId(null);
-      setPaused(false);
-      setPlayProgress(0);
-      setPlayDisplaySec(clip.durationSec);
-      return;
-    }
-    setPlayProgress(cur / dur);
+    setPlayProgress(Math.min(1, cur / dur));
     setPlayDisplaySec(Math.max(0, dur - cur));
   }
 
@@ -393,24 +326,21 @@ export function NoteComposer({
       setPlayProgress(0);
       setPlayDisplaySec(clip.durationSec);
     }
-    activeClipRef.current = clip;
     setPlayingId(clip.id);
     return playerRef.current;
   }
 
   async function togglePlay(clip: VoiceClip) {
     try {
-      if (playingId === clip.id && !paused) {
-        playerRef.current?.pause();
-        stopPlayTicks();
+      if (playingId === clip.id && playerRef.current?.playing) {
+        playerRef.current.pause();
+        syncPlayUi(clip);
         setPaused(true);
         return;
       }
       const player = await ensurePlayer(clip);
       player.play();
       setPaused(false);
-      stopPlayTicks();
-      playTickRef.current = setInterval(playTick, STATUS_INTERVAL_MS);
     } catch {
       Alert.alert('Could not play voice note');
       setPlayingId(null);
@@ -436,27 +366,6 @@ export function NoteComposer({
     } catch {
       /* ignore seek errors */
     }
-  }
-
-  function stopTicks() {
-    if (tickRef.current) clearInterval(tickRef.current);
-    tickRef.current = null;
-  }
-
-  /** Timer and live waveform — every METER_TICK_MS. */
-  function tick() {
-    setRecordSec(Math.floor((nowMs() - recordStartedAt.current) / 1000));
-    let db: number | undefined;
-    try {
-      db = recorder.getStatus().metering;
-    } catch {
-      db = undefined;
-    }
-    if (typeof db === 'number' && db > NO_LEVEL_DB) hasLevels.current = true;
-    tickCount.current += 1;
-    const level = hasLevels.current ? meterLevel(db) : activityLevel(tickCount.current);
-    if (hasLevels.current) levelHistory.current.push(level);
-    setLevels((prev) => [...prev.slice(1 - METER_BARS), level]);
   }
 
   async function startRecording() {
@@ -489,18 +398,11 @@ export function NoteComposer({
       }
 
       await recorder.prepareToRecordAsync();
-      recordStartedAt.current = nowMs();
-      levelHistory.current = [];
-      hasLevels.current = false;
-      tickCount.current = 0;
-      setLevels([]);
+      recordStartedAt.current = Date.now();
       setRecordSec(0);
       recorder.record();
-      stopTicks();
-      tickRef.current = setInterval(tick, METER_TICK_MS);
       setRecording(true);
     } catch (err) {
-      stopTicks();
       setRecording(false);
       const msg = getErrorMessage(err);
       Alert.alert(
@@ -511,13 +413,12 @@ export function NoteComposer({
   }
 
   async function stopRecording() {
-    stopTicks();
     try {
       await recorder.stop();
       const uri = recorder.uri;
       const elapsed = Math.max(
         1,
-        Math.round((nowMs() - recordStartedAt.current) / 1000)
+        Math.round((Date.now() - recordStartedAt.current) / 1000)
       );
       setRecording(false);
       setRecordSec(0);
@@ -530,8 +431,6 @@ export function NoteComposer({
           name: `Voice note ${formatDuration(elapsed)}`,
           durationSec: elapsed,
           mimeType: 'audio/m4a',
-          // Only a real level history is the clip's waveform.
-          waveform: hasLevels.current ? waveformOf(levelHistory.current) : undefined,
         },
       ]);
     } catch {
@@ -563,6 +462,8 @@ export function NoteComposer({
       Alert.alert('Could not pick audio file');
     }
   }
+
+  const meter = recorderState.metering;
 
   return (
     <View style={styles.noteBox}>
@@ -604,8 +505,6 @@ export function NoteComposer({
                 </Pressable>
                 <ProgressWaveform
                   progress={isActive ? playProgress : 0}
-                  playing={isPlaying}
-                  levels={c.waveform}
                   brand={colors.brand}
                   onSeek={(f) => void seekClip(c, f)}
                 />
@@ -641,12 +540,18 @@ export function NoteComposer({
             {formatDuration(recordSec)}
           </Text>
           <View style={styles.meterRow}>
-            {Array.from({ length: METER_BARS }, (_, i) => {
-              const level = levels[levels.length - METER_BARS + i] ?? 0;
+            {Array.from({ length: 12 }).map((_, i) => {
+              const level =
+                typeof meter === 'number'
+                  ? Math.max(0.15, Math.min(1, (meter + 50) / 50))
+                  : 0.3 + (i % 3) * 0.15;
               return (
                 <View
                   key={i}
-                  style={[styles.meterBar, { height: 3 + level * 19 }]}
+                  style={[
+                    styles.meterBar,
+                    { height: 6 + level * 14 },
+                  ]}
                 />
               );
             })}
@@ -881,10 +786,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-end',
       gap: 2,
       height: 22,
-      overflow: 'hidden',
     },
     meterBar: {
       width: 3,
