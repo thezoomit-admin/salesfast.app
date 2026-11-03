@@ -21,7 +21,6 @@ const CLOSE_MS = 320;
 const DISMISS_DISTANCE = 90;
 const DISMISS_VELOCITY = 0.85;
 const CONFETTI_BURST_MS = 1600;
-const CONFETTI_PAUSE_MS = 1100;
 /** Soft ease — slow settle, no overshoot. */
 const EASE_OUT = Easing.bezier(0.16, 1, 0.3, 1);
 const EASE_SOFT = Easing.bezier(0.33, 0, 0.2, 1);
@@ -191,17 +190,11 @@ export function SuccessSheet({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // ZoomX-style loop: burst → fade → pause → repeat while sheet is open.
+  // Burst once when the sheet opens — no loop.
   useEffect(() => {
     if (!open || !mounted) return;
     const start = setTimeout(() => setConfettiCycle(1), 220);
-    const id = setInterval(() => {
-      setConfettiCycle((c) => c + 1);
-    }, CONFETTI_BURST_MS + CONFETTI_PAUSE_MS);
-    return () => {
-      clearTimeout(start);
-      clearInterval(id);
-    };
+    return () => clearTimeout(start);
   }, [open, mounted]);
 
   const panResponder = useMemo(
@@ -331,7 +324,7 @@ export function SuccessSheet({
   );
 }
 
-/** Color bits fly out from the check center, then vanish (parent remounts to loop). */
+/** Color bits fly out from the check center once, then vanish. */
 function ConfettiBurst() {
   const progress = useRef(new Animated.Value(0)).current;
 
