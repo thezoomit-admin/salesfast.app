@@ -41,10 +41,15 @@ export default function TabLayout() {
   // Warm the other tabs after Home loads so switching tabs shows data at once.
   const queryClient = useQueryClient();
   const homeReady = !dashboard.isPending;
+
+  // Same cache as the Leads screen's Unread tab count, so opening a lead
+  // (which invalidates ['my-leads', 'counts']) updates this badge too.
+  const leadCounts = useQuery({ ...leadTabCountsQuery(''), enabled: homeReady });
+  const unread = leadCounts.data?.unread ?? 0;
+
   useEffect(() => {
     if (!homeReady) return;
     void queryClient.prefetchInfiniteQuery(myLeadsQuery(''));
-    void queryClient.prefetchQuery(leadTabCountsQuery(''));
     void queryClient.prefetchQuery(
       followUpMonthQuery(followUpMonthKey(new Date()))
     );
@@ -58,7 +63,10 @@ export default function TabLayout() {
       tabBarPosition="bottom"
       backBehavior="initialRoute"
       tabBar={(props) => (
-        <AppTabBar {...props} badges={{ 'follow-ups': overdue }} />
+        <AppTabBar
+          {...props}
+          badges={{ leads: unread, 'follow-ups': overdue }}
+        />
       )}
       screenOptions={{
         swipeEnabled: true,
