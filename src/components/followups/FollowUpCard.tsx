@@ -70,7 +70,9 @@ export function FollowUpCard({
       {overdue ? (
         <View style={[styles.badge, { backgroundColor: colors.dangerSoft }]}>
           <HugeiconsIcon icon={ClockAlertIcon} size={13} color={colors.danger} strokeWidth={2} />
-          <Text style={[styles.badgeText, { color: colors.danger }]}>Overdue</Text>
+          <Text style={[styles.badgeText, { color: colors.danger }]} numberOfLines={1}>
+            Overdue
+          </Text>
         </View>
       ) : null}
     </View>
@@ -164,13 +166,20 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     more: { marginLeft: -4, marginRight: -6, paddingTop: 2 },
     note: { fontSize: 14, lineHeight: 19, color: ink, opacity: 0.8, marginTop: 6 },
-    badges: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+    // Badges keep their full width and wrap to a new line rather than squeeze.
+    badges: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 6,
+      maxWidth: '100%',
+    },
     badgesBlock: { marginTop: 12 },
     badge: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      flexShrink: 1,
+      maxWidth: '100%',
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 999,
@@ -187,8 +196,9 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       justifyContent: 'space-between',
       gap: 8,
     },
-    cardInlineReminder: { marginTop: 12 },
-    cardTime: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    // Time drops under the badges when the card is too narrow for one line.
+    cardInlineReminder: { marginTop: 12, flexWrap: 'wrap', rowGap: 10 },
+    cardTime: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 },
     cardTimeText: { fontSize: 15, color: ink },
     avatar: {
       width: 38,
