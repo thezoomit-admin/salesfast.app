@@ -86,13 +86,20 @@ function queueStatusLabel(tone: QueueTone) {
   return 'Upcoming';
 }
 
+type ScoreTone = {
+  accent: string;
+  soft: string;
+  iconFg: string;
+};
+
 type ScoreMetric = {
   key: string;
   label: string;
+  unit: string;
   value: number;
   href: Href;
   icon: IoniconName;
-  emphasize?: boolean;
+  tone: ScoreTone;
 };
 
 export default function HomeScreen() {
@@ -237,24 +244,55 @@ export default function HomeScreen() {
   const scoreMetrics: ScoreMetric[] = [
     {
       key: 'assigned',
-      label: 'Leads',
+      label: 'Assigned',
+      unit: kpis.totalAssigned === 1 ? 'lead' : 'leads',
       value: kpis.totalAssigned,
       href: '/(tabs)/leads',
-      icon: 'people-outline',
+      icon: 'people',
+      tone: {
+        accent: colors.success,
+        soft: colors.successSoft,
+        iconFg: colors.white,
+      },
     },
     {
       key: 'new',
-      label: 'New 7d',
+      label: 'This week',
+      unit: 'new',
       value: kpis.newLeads,
       href: '/(tabs)/leads',
-      icon: 'flash-outline',
+      icon: 'flash',
+      tone: {
+        accent: colors.brand,
+        soft: isDark ? colors.brandSoft : colors.primary50,
+        iconFg: colors.white,
+      },
+    },
+    {
+      key: 'due',
+      label: 'Follow-ups',
+      unit: 'today',
+      value: kpis.todayFollowUps,
+      href: '/(tabs)/follow-ups',
+      icon: 'time',
+      tone: {
+        accent: isDark ? '#60A5FA' : '#2563EB',
+        soft: isDark ? '#0B1F3A' : '#EFF6FF',
+        iconFg: colors.white,
+      },
     },
     {
       key: 'done',
-      label: 'Done',
+      label: 'Activities',
+      unit: 'done',
       value: kpis.completedActivities,
       href: '/activities',
-      icon: 'checkmark-done-outline',
+      icon: 'checkmark-done',
+      tone: {
+        accent: colors.warning,
+        soft: colors.warningSoft,
+        iconFg: colors.white,
+      },
     },
   ];
 
@@ -437,15 +475,15 @@ export default function HomeScreen() {
         </View>
       </Pressable>
 
-      {/* Pipeline scoreboard — one panel, three columns */}
+      {/* Pipeline scoreboard — 2×2 metric cards */}
       <View style={styles.scoreBoard}>
-        {scoreMetrics.map((metric, index) => (
+        {scoreMetrics.map((metric) => (
           <Pressable
             key={metric.key}
             onPress={() => router.navigate(metric.href)}
             style={({ pressed }) => [
-              styles.scoreCol,
-              index > 0 && styles.scoreColBorder,
+              styles.scoreCard,
+              { backgroundColor: metric.tone.soft },
               pressed && styles.pressed,
             ]}
             accessibilityRole="button"
@@ -453,11 +491,30 @@ export default function HomeScreen() {
           >
             <Ionicons
               name={metric.icon}
-              size={15}
-              color={isDark ? colors.textSecondary : colors.brand}
-              style={styles.scoreIcon}
+              size={72}
+              color={metric.tone.accent}
+              style={styles.scoreWatermark}
             />
-            <Text style={styles.scoreValue}>{metric.value}</Text>
+            <View
+              style={[
+                styles.scoreIconWrap,
+                { backgroundColor: metric.tone.accent },
+              ]}
+            >
+              <Ionicons
+                name={metric.icon}
+                size={16}
+                color={metric.tone.iconFg}
+              />
+            </View>
+            <View style={styles.scoreValueRow}>
+              <Text style={styles.scoreValue}>{metric.value}</Text>
+              <Text
+                style={[styles.scoreUnit, { color: metric.tone.accent }]}
+              >
+                {metric.unit}
+              </Text>
+            </View>
             <Text style={styles.scoreLabel}>{metric.label}</Text>
           </Pressable>
         ))}
@@ -929,38 +986,57 @@ function createStyles(colors: ThemeColors, _isDark: boolean) {
 
     scoreBoard: {
       flexDirection: 'row',
-      backgroundColor: colors.surface,
-      borderRadius: radii.md,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 10,
+    },
+    scoreCard: {
+      width: '48.5%',
+      borderRadius: 18,
+      paddingHorizontal: 14,
+      paddingTop: 14,
+      paddingBottom: 14,
       overflow: 'hidden',
+      minHeight: 118,
+      gap: 10,
     },
-    scoreCol: {
-      flex: 1,
+    scoreWatermark: {
+      position: 'absolute',
+      right: -6,
+      top: 18,
+      opacity: 0.14,
+    },
+    scoreIconWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 8,
-      gap: 4,
+      justifyContent: 'center',
     },
-    scoreColBorder: {
-      borderLeftWidth: StyleSheet.hairlineWidth,
-      borderLeftColor: colors.border,
+    scoreValueRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 5,
+      marginTop: 2,
     },
-    scoreIcon: { marginBottom: 2 },
     scoreValue: {
-      ...typography.title,
-      fontSize: 22,
-      lineHeight: 26,
-      letterSpacing: -0.4,
+      fontSize: 28,
+      lineHeight: 32,
+      fontWeight: '700',
+      letterSpacing: -0.6,
       color: colors.text,
+    },
+    scoreUnit: {
+      ...typography.caption,
+      fontSize: 13,
+      lineHeight: 16,
+      fontWeight: '700',
     },
     scoreLabel: {
       ...typography.caption,
-      fontSize: 11,
-      fontWeight: '600',
+      fontSize: 13,
+      fontWeight: '500',
       color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
     },
 
     sectionHeader: {

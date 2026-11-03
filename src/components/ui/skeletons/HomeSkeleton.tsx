@@ -35,14 +35,11 @@ export function HomeSkeleton() {
       </View>
 
       <View style={styles.scoreBoard}>
-        {[0, 1, 2].map((i) => (
-          <View
-            key={i}
-            style={[styles.scoreCol, i > 0 && styles.scoreColBorder]}
-          >
-            <SkeletonBone width={16} height={16} radius={8} />
-            <SkeletonBone width={36} height={20} />
-            <SkeletonBone width={48} height={10} />
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={styles.scoreCard}>
+            <SkeletonBone width={32} height={32} radius={16} />
+            <SkeletonBone width={56} height={24} />
+            <SkeletonBone width={64} height={12} />
           </View>
         ))}
       </View>
@@ -200,22 +197,21 @@ function createStyles(colors: ThemeColors) {
     },
     scoreBoard: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    scoreCard: {
+      width: '48%',
+      flexGrow: 1,
+      minWidth: '46%',
+      borderRadius: 18,
       backgroundColor: colors.surface,
-      borderRadius: radii.md,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
-      overflow: 'hidden',
-    },
-    scoreCol: {
-      flex: 1,
-      alignItems: 'center',
+      paddingHorizontal: 14,
       paddingVertical: 14,
-      paddingHorizontal: 8,
-      gap: 6,
-    },
-    scoreColBorder: {
-      borderLeftWidth: StyleSheet.hairlineWidth,
-      borderLeftColor: colors.border,
+      gap: 10,
+      minHeight: 118,
     },
     sectionHeader: {
       flexDirection: 'row',
