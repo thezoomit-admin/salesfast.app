@@ -262,7 +262,6 @@ export function NoteComposer({
       }
     }, 100);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playingId, paused, clips]);
 
   useEffect(() => {

@@ -1,14 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  createAudioPlayer,
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-  type AudioPlayer,
-} from 'expo-audio';
-import * as DocumentPicker from 'expo-document-picker';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -20,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,7 +31,6 @@ import {
 import { SuccessSheet } from '@/components/ui/SuccessSheet';
 import {
   BOTH,
-  NOTE_CHANNELS,
   buildStatusPayload,
   followupTypeOf,
   formatFollowupDateOnly,
@@ -71,7 +59,6 @@ import {
   PRIORITY_META,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
-import { uploadMediaFile } from '@/features/leads/mediaUpload';
 import {
   radii,
   spacing,

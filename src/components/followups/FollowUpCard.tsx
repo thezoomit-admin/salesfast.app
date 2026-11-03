@@ -99,9 +99,7 @@ export function FollowUpCard({
             hitSlop={10}
             onPress={onComplete}
             style={({ pressed }) => [styles.checkbox, pressed && styles.pressed]}
-          >
-            <HugeiconsIcon icon={CheckIcon} size={16} color={colors.textMuted} strokeWidth={2.5} />
-          </Pressable>
+          />
         ) : null}
         {onMore ? (
           <Pressable
@@ -111,7 +109,7 @@ export function FollowUpCard({
             onPress={onMore}
             style={({ pressed }) => [styles.more, pressed && styles.pressed]}
           >
-            <HugeiconsIcon icon={MoreVerticalIcon} size={20} color={colors.text} strokeWidth={1.8} />
+            <HugeiconsIcon icon={MoreVerticalIcon} size={26} color={colors.text} strokeWidth={2.2} />
           </Pressable>
         ) : null}
       </View>
@@ -184,7 +182,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    more: { marginLeft: -4, marginRight: -6, paddingTop: 2 },
+    more: { marginLeft: -6, marginRight: -8 },
     note: { fontSize: 14, lineHeight: 19, color: ink, opacity: 0.8, marginTop: 6 },
     badges: {
       flexDirection: 'row',
