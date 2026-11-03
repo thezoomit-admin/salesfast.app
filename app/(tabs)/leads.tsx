@@ -12,8 +12,10 @@ import {
   Animated,
   FlatList,
   type NativeScrollEvent,
+  type LayoutChangeEvent,
   type NativeSyntheticEvent,
   Pressable,
+  type ScrollViewInstance,
   StyleSheet,
   TextInput,
   type TextInputInstance,
@@ -170,6 +172,30 @@ function LeadsScreen() {
     [setFabShown]
   );
 
+  // Picking a tab slides the row so that tab sits in the middle — the
+  // neighbours on the side you moved toward scroll into view.
+  const tabScrollRef = useRef<ScrollViewInstance>(null);
+  const tabLayouts = useRef(new Map<string, { x: number; width: number }>());
+  const tabRow = useRef({ viewport: 0, content: 0 });
+  const centerTab = useCallback((t: LeadListTab) => {
+    const item = tabLayouts.current.get(String(t));
+    const { viewport, content } = tabRow.current;
+    if (!item || !viewport) return;
+    const max = Math.max(0, content - viewport);
+    const x = Math.min(max, Math.max(0, item.x + item.width / 2 - viewport / 2));
+    tabScrollRef.current?.scrollTo({ x, animated: true });
+  }, []);
+  useEffect(() => {
+    centerTab(tab);
+  }, [tab, centerTab]);
+  const onTabLayout = useCallback(
+    (t: LeadListTab) => (e: LayoutChangeEvent) => {
+      const { x, width } = e.nativeEvent.layout;
+      tabLayouts.current.set(String(t), { x, width });
+    },
+    []
+  );
+
   const renderStatusTab = (status: LeadStatus) => (
     <CountTab
       key={status.id}
@@ -178,6 +204,7 @@ function LeadsScreen() {
       active={tab === status.id}
       onPress={() => setTab(status.id)}
       onPressIn={() => prefetchTab(status.id)}
+      onLayout={onTabLayout(status.id)}
     />
   );
 
@@ -239,6 +266,13 @@ function LeadsScreen() {
       <ChipScroll
         style={styles.chips}
         contentContainerStyle={styles.tabsContent}
+        scrollRef={tabScrollRef}
+        onLayout={(e) => {
+          tabRow.current.viewport = e.nativeEvent.layout.width;
+        }}
+        onContentSizeChange={(w) => {
+          tabRow.current.content = w;
+        }}
       >
         <CountTab
           label="All"
@@ -246,6 +280,7 @@ function LeadsScreen() {
           active={tab === 'all'}
           onPress={() => setTab('all')}
           onPressIn={() => prefetchTab('all')}
+          onLayout={onTabLayout('all')}
         />
         <CountTabDivider />
         {assignTab ? renderStatusTab(assignTab) : null}
@@ -255,6 +290,7 @@ function LeadsScreen() {
           active={tab === 'unread'}
           onPress={() => setTab('unread')}
           onPressIn={() => prefetchTab('unread')}
+          onLayout={onTabLayout('unread')}
         />
         {statusTabs.map(renderStatusTab)}
       </ChipScroll>

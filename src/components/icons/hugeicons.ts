@@ -183,6 +183,12 @@ export const ArrowLeft01Icon: IconSvgElement = [
   ['path', { d: "M15 6C15 6 9.00001 10.4189 9 12C8.99999 13.5812 15 18 15 18", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "1.5", key: '0' }],
 ];
 
+/** Follow-ups week view — back to the month calendar. */
+export const ArrowLeft02Icon: IconSvgElement = [
+  ['path', { d: 'M3.99982 11.9998L19.9998 11.9998', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+  ['path', { d: 'M8.99963 17C8.99963 17 3.99968 13.3176 3.99966 12C3.99965 10.6824 8.99966 7 8.99966 7', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
+];
+
 export const ArrowRight01Icon: IconSvgElement = [
   ['path', { d: "M9.00005 6C9.00005 6 15 10.4189 15 12C15 13.5812 9 18 9 18", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: "1.5", key: '0' }],
 ];

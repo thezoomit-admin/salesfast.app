@@ -5,7 +5,6 @@ import {
   detailOrNull,
   leadDetailKey,
 } from '@/features/leads/leadDetailCache';
-import { endOfLocalDayIso, startOfLocalDayIso } from '@/utils/dates';
 import type {
   ApiResponse,
   LeadDetail,
@@ -349,19 +348,34 @@ export async function createLead(
   return data.data;
 }
 
-export type FollowUpTab = 'today' | 'overdue' | 'upcoming';
-export const FOLLOW_UP_TABS: FollowUpTab[] = ['today', 'overdue', 'upcoming'];
-
-function followUpParams(tab: FollowUpTab): LeadListParams {
-  if (tab === 'overdue') return { followupOverdue: true };
-  if (tab === 'today') {
-    return { followupFrom: startOfLocalDayIso(), followupTo: endOfLocalDayIso() };
-  }
-  return { followupFrom: endOfLocalDayIso() };
+/** Month key for the follow-up calendar — `yyyy-MM`, local time. */
+export function followUpMonthKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export const followUpLeadsQuery = (tab: FollowUpTab) =>
+/** The server caps a page at 100 rows; a month rarely needs more than one. */
+const FOLLOW_UP_MONTH_MAX_PAGES = 5;
+
+/** Every lead of mine with a follow-up due in `month` (`yyyy-MM`, local time). */
+export const followUpMonthQuery = (month: string) =>
   queryOptions({
-    queryKey: ['follow-up-leads', tab],
-    queryFn: () => fetchMyLeads({ ...followUpParams(tab), per_page: 50 }),
+    queryKey: ['follow-up-leads', 'month', month],
+    queryFn: async () => {
+      const [year, monthNo] = month.split('-').map(Number);
+      const from = new Date(year, monthNo - 1, 1).toISOString();
+      const to = new Date(year, monthNo, 0, 23, 59, 59, 999).toISOString();
+      const items: LeadListItem[] = [];
+      for (let page = 1; page <= FOLLOW_UP_MONTH_MAX_PAGES; page++) {
+        const res = await fetchMyLeads({
+          followupFrom: from,
+          followupTo: to,
+          page,
+          per_page: 100,
+        });
+        items.push(...res.items);
+        const lastPage = res.meta.last_page ?? res.meta.totalPages ?? page;
+        if (page >= lastPage) break;
+      }
+      return { items };
+    },
   });

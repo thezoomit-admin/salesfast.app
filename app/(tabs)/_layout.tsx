@@ -6,8 +6,8 @@ import { useEffect } from 'react';
 import { AppTabBar, TAB_ORDER } from '@/components/navigation/AppTabBar';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
-  FOLLOW_UP_TABS,
-  followUpLeadsQuery,
+  followUpMonthKey,
+  followUpMonthQuery,
   leadStatusesQuery,
   leadTabCountsQuery,
   myLeadsQuery,
@@ -45,9 +45,9 @@ export default function TabLayout() {
     if (!homeReady) return;
     void queryClient.prefetchInfiniteQuery(myLeadsQuery(''));
     void queryClient.prefetchQuery(leadTabCountsQuery(''));
-    for (const tab of FOLLOW_UP_TABS) {
-      void queryClient.prefetchQuery(followUpLeadsQuery(tab));
-    }
+    void queryClient.prefetchQuery(
+      followUpMonthQuery(followUpMonthKey(new Date()))
+    );
     void queryClient.prefetchQuery(leadStatusesQuery);
     void queryClient.prefetchQuery(noteChannelsQuery);
   }, [homeReady, queryClient]);

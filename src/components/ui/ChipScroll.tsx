@@ -1,6 +1,8 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import {
   ScrollView,
+  type ScrollViewInstance,
+  type ScrollViewProps,
   StyleSheet,
   View,
   type StyleProp,
@@ -15,6 +17,10 @@ type Props = {
   contentContainerStyle?: StyleProp<ViewStyle>;
   /** Apply standard horizontal screen padding. Default true. */
   padded?: boolean;
+  /** For callers that scroll the row themselves (e.g. keep the active tab in view). */
+  scrollRef?: Ref<ScrollViewInstance>;
+  onLayout?: ScrollViewProps['onLayout'];
+  onContentSizeChange?: ScrollViewProps['onContentSizeChange'];
 };
 
 /**
@@ -27,10 +33,16 @@ export function ChipScroll({
   style,
   contentContainerStyle,
   padded = true,
+  scrollRef,
+  onLayout,
+  onContentSizeChange,
 }: Props) {
   return (
     <View style={[styles.wrap, padded && styles.padded, style]}>
       <ScrollView
+        ref={scrollRef}
+        onLayout={onLayout}
+        onContentSizeChange={onContentSizeChange}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.scroll}

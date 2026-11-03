@@ -1,5 +1,11 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { radii, useThemeColors, type ThemeColors } from '@/theme';
 
@@ -10,6 +16,7 @@ type Props = {
   active?: boolean;
   onPress: () => void;
   onPressIn?: () => void;
+  onLayout?: (e: LayoutChangeEvent) => void;
 };
 
 /** Text tab + count badge — "All (35)  Open (14)" filter row. */
@@ -19,6 +26,7 @@ export function CountTab({
   active = false,
   onPress,
   onPressIn,
+  onLayout,
 }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -29,6 +37,7 @@ export function CountTab({
       accessibilityLabel={count != null ? `${label}, ${count}` : label}
       onPress={onPress}
       onPressIn={onPressIn}
+      onLayout={onLayout}
       hitSlop={{ top: 8, bottom: 8 }}
       style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
     >
