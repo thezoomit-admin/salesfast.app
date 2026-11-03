@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo } from 'react';
@@ -8,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { HomeDashboard } from '@/components/home/HomeDashboard';
-import { Search02Icon } from '@/components/icons/hugeicons';
 import { Screen } from '@/components/ui/Screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
@@ -18,7 +16,7 @@ import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { markFirstContent } from '@/lib/perfMonitor';
-import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
 function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
@@ -43,13 +41,6 @@ export default function HomeScreen() {
   const firstName = displayName.split(/\s+/)[0] || 'Agent';
   const syncOk =
     callSync.status === 'configured' || callSync.status === 'unavailable_web';
-
-  const openLeadSearch = useCallback(() => {
-    router.navigate({
-      pathname: '/(tabs)/leads',
-      params: { focusSearch: '1' },
-    });
-  }, [router]);
 
   const homeHeader = (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -106,40 +97,6 @@ export default function HomeScreen() {
           </Pressable>
           <NotificationBell plain />
         </View>
-      </View>
-
-      <View style={styles.searchBar}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Search leads"
-          onPress={openLeadSearch}
-          style={({ pressed }) => [
-            styles.searchMain,
-            pressed && styles.pressed,
-          ]}
-        >
-          <HugeiconsIcon
-            icon={Search02Icon}
-            size={18}
-            color={colors.textMuted}
-            strokeWidth={1.8}
-          />
-          <Text style={styles.searchPlaceholder} numberOfLines={1}>
-            Search leads...
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open lead search"
-          onPress={openLeadSearch}
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.searchTrailing,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Ionicons name="qr-code-outline" size={20} color={colors.text} />
-        </Pressable>
       </View>
     </View>
   );
@@ -204,7 +161,6 @@ function createStyles(colors: ThemeColors) {
     header: {
       paddingHorizontal: 16,
       paddingBottom: 12,
-      gap: 12,
       backgroundColor: colors.background,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
@@ -243,38 +199,6 @@ function createStyles(colors: ThemeColors) {
     headerIconBtn: {
       width: 40,
       height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    searchBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.surfaceMuted,
-      borderRadius: radii.pill,
-      paddingLeft: 14,
-      paddingRight: 10,
-      minHeight: 46,
-      gap: 4,
-    },
-    searchMain: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      minWidth: 0,
-      paddingVertical: 10,
-    },
-    searchPlaceholder: {
-      ...typography.body,
-      flex: 1,
-      fontSize: 15,
-      lineHeight: 20,
-      color: colors.textMuted,
-      minWidth: 0,
-    },
-    searchTrailing: {
-      width: 36,
-      height: 36,
       alignItems: 'center',
       justifyContent: 'center',
     },
