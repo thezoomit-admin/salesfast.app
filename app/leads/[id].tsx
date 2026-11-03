@@ -26,6 +26,7 @@ import {
 import { AddNoteSheet } from '@/components/leads/AddNoteSheet';
 import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
 import { LeadCallHistoryPanel } from '@/components/leads/LeadCallHistoryPanel';
+import { LeadFollowupCard } from '@/components/leads/LeadFollowupCard';
 import {
   LeadDetailTabBar,
   type LeadDetailTab,
@@ -429,6 +430,13 @@ export default function LeadDetailScreen() {
               </View>
             ) : null}
           </View>
+
+          {!partial ? (
+            <LeadFollowupCard
+              lead={lead}
+              onPress={() => openNote(null)}
+            />
+          ) : null}
 
           <LeadSectionShell
             pills={[
