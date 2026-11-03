@@ -165,7 +165,9 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: 'rgba(17, 24, 39, 0.4)',
     },
     sheet: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       paddingTop: 10,

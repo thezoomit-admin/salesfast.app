@@ -1,6 +1,10 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 
 import { api } from '@/api/client';
+import {
+  detailOrNull,
+  leadDetailKey,
+} from '@/features/leads/leadDetailCache';
 import { endOfLocalDayIso, startOfLocalDayIso } from '@/utils/dates';
 import type {
   ApiResponse,
@@ -56,15 +60,33 @@ type WriteOptions = { accountId?: string };
 
 export async function fetchLeadById(
   id: number | string,
-  options: WriteOptions = {}
+  options: WriteOptions & { signal?: AbortSignal } = {}
 ) {
   const { data } = await api.get<ApiResponse<LeadDetail>>(`/crm/leads/${id}`, {
     // Lean mobile payload — avoids admin `full` graph that 500s for some leads.
     params: { view: 'mobile' },
     accountId: options.accountId,
+    signal: options.signal,
   });
   return data.data;
 }
+
+/**
+ * Cached detail renders at once; a refetch runs in the background once it is
+ * older than this. Short, because other employees edit leads too — list
+ * refreshes and this device's writes also mark it stale (leadDetailCache.ts).
+ */
+const LEAD_DETAIL_STALE_MS = 30_000;
+
+export const leadDetailQuery = (leadId: number) =>
+  queryOptions({
+    queryKey: leadDetailKey(leadId),
+    // The signal cancels the request when every screen showing it is gone.
+    // Deleted / no longer visible → null (see detailOrNull).
+    queryFn: ({ signal }) => detailOrNull(fetchLeadById(leadId, { signal })),
+    staleTime: LEAD_DETAIL_STALE_MS,
+    enabled: Number.isFinite(leadId),
+  });
 
 export async function updateLeadStatus(
   id: number | string,

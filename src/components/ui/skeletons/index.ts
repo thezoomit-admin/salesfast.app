@@ -3,5 +3,5 @@ export { HomeSkeleton } from './HomeSkeleton';
 export { LeadListSkeleton } from './LeadListSkeleton';
 export { ActivitiesSkeleton } from './ActivitiesSkeleton';
 export { NotificationsSkeleton } from './NotificationsSkeleton';
-export { LeadDetailSkeleton } from './LeadDetailSkeleton';
+export { LeadDetailSkeleton, LeadSectionSkeleton } from './LeadDetailSkeleton';
 export { CallsSkeleton } from './CallsSkeleton';

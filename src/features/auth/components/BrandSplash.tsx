@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { authColors } from '../authTheme';
 
-const favicon = require('../../../../assets/images/salesfast-favicon.png');
+const appLogo = require('../../../../assets/images/favicon.png');
 
 type Props = {
   /**
@@ -91,7 +91,7 @@ export function BrandSplash({
       <View style={styles.center}>
         {showLogo ? (
           <Animated.View style={logoStyle}>
-            <Image source={favicon} style={styles.logo} resizeMode="contain" />
+            <Image source={appLogo} style={styles.logo} resizeMode="contain" />
           </Animated.View>
         ) : null}
         {mode === 'animated' ? (

@@ -51,6 +51,27 @@ export function LeadDetailSkeleton() {
   );
 }
 
+/**
+ * One detail-only section (profile, requirements, history, calls) while the
+ * screen shows just the tapped list row and the full record is loading.
+ */
+export function LeadSectionSkeleton({ rows = 4 }: { rows?: number }) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  return (
+    <SkeletonPulse style={styles.panel}>
+      <SkeletonBone width={96} height={14} style={styles.panelTitle} />
+      {Array.from({ length: rows }, (_, i) => (
+        <View key={i} style={styles.detailRow}>
+          <SkeletonBone width={88} height={11} />
+          <SkeletonBone width="42%" height={12} />
+        </View>
+      ))}
+    </SkeletonPulse>
+  );
+}
+
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {

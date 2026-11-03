@@ -27,7 +27,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   // Bump with each store / APK release.
   owner: 'ibnabdullah01',
   orientation: 'portrait',
-  icon: './assets/images/icon.png',
+  icon: './assets/images/salesfast-app-logo.png',
   scheme: 'salesfast',
   userInterfaceStyle: 'automatic',
   ios: {
@@ -39,11 +39,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     package: 'com.salesfastcrm',
     versionCode: 1,
     adaptiveIcon: {
-      backgroundColor: '#000000',
-      foregroundImage: './assets/images/android-icon-foreground.png',
-      backgroundImage: './assets/images/android-icon-background.png',
-      // Status-bar / themed icon — Salesfast mark on black plate.
-      monochromeImage: './assets/images/android-icon-monochrome.png',
+      // Match the orange plate in salesfast-app-logo.png (corners under Android mask).
+      backgroundColor: '#F2461C',
+      foregroundImage: './assets/images/salesfast-app-logo.png',
+      monochromeImage: './assets/images/favicon.png',
     },
     predictiveBackGestureEnabled: false,
     ...(googleServicesFile ? { googleServicesFile } : {}),
@@ -77,7 +76,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-splash-screen',
       {
-        image: './assets/images/splash-icon.png',
+        image: './assets/images/favicon.png',
         resizeMode: 'contain',
         backgroundColor: '#000000',
       },
@@ -86,7 +85,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-notifications',
       {
-        icon: './assets/images/android-icon-monochrome.png',
+        icon: './assets/images/favicon.png',
         color: '#F2461C',
         defaultChannel: 'default',
       },

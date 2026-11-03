@@ -1,9 +1,14 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 import { API_BASE_URL } from '@/constants/config';
 import { upsertSavedAccount } from '@/features/auth/savedAccounts';
 import { reportReachable, reportUnreachable } from '@/lib/connectivity';
-import { recordApiTiming } from '@/lib/perfMonitor';
+import {
+  recordApiRetry,
+  recordApiStart,
+  recordApiTiming,
+  recordAuthRefresh,
+} from '@/lib/perfMonitor';
 import { secureStorage } from '@/services/secureStorage';
 import type { ApiResponse, MobileRefreshResult } from '@/types/api';
 
@@ -58,6 +63,7 @@ api.interceptors.request.use(async (config) => {
   }
   config.headers['X-Device-Id'] = deviceId;
   (config as RetriableConfig)._startedAt = Date.now();
+  recordApiStart(config.method, config.url);
   return config;
 });
 
@@ -67,6 +73,13 @@ function trackResponse(config: RetriableConfig | undefined, status: number | str
   }
 }
 
+/**
+ * Refreshes the active account's session. The user can switch accounts while
+ * the refresh is in flight: the rotated tokens still belong to the account
+ * that started it, so they are kept on its saved entry (the old refresh token
+ * is retired by rotation) but never installed as the active session, and the
+ * request fails with AccountChangedError instead of signing anyone out.
+ */
 async function refreshAccessToken(): Promise<string | null> {
   const [accountId, refreshToken, deviceId] = await Promise.all([
     secureStorage.getAccountId(),
@@ -74,35 +87,54 @@ async function refreshAccessToken(): Promise<string | null> {
     secureStorage.getDeviceId(),
   ]);
   if (!accountId || !refreshToken) return null;
+  const stillActive = async () =>
+    (await secureStorage.getAccountId()) === accountId;
 
-  const { data } = await axios.post<ApiResponse<MobileRefreshResult>>(
-    `${API_BASE_URL}/auth/mobile/refresh`,
-    { accountId, refreshToken },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Device-Id': deviceId,
-      },
-      timeout: 30_000,
-    }
-  );
+  const startedAt = Date.now();
+  recordAuthRefresh('start');
+  let payload: MobileRefreshResult;
+  try {
+    const { data } = await axios.post<ApiResponse<MobileRefreshResult>>(
+      `${API_BASE_URL}/auth/mobile/refresh`,
+      { accountId, refreshToken },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Device-Id': deviceId,
+        },
+        timeout: 30_000,
+      }
+    );
+    payload = data.data;
+  } catch (error) {
+    recordAuthRefresh('failed', Date.now() - startedAt);
+    // Another account is active now — its session is not ours to clear.
+    if (!(await stillActive())) throw new AccountChangedError();
+    throw error;
+  }
 
-  const payload = data.data;
   const nextRefresh = payload.refreshToken ?? refreshToken;
-  await secureStorage.updateTokens(payload.accessToken, payload.refreshToken);
-  if (payload.user) {
+  const active = await stillActive();
+  // No await between the check above and these cache writes.
+  if (active && payload.user) {
     await secureStorage.saveSession({
       accessToken: payload.accessToken,
       refreshToken: nextRefresh,
       accountId: payload.user.id,
       userJson: JSON.stringify(payload.user),
     });
+  } else if (active) {
+    await secureStorage.updateTokens(payload.accessToken, payload.refreshToken);
+  }
+  if (payload.user) {
     await upsertSavedAccount({
       user: payload.user,
       accessToken: payload.accessToken,
       refreshToken: nextRefresh,
     });
   }
+  recordAuthRefresh(active ? 'end' : 'account changed', Date.now() - startedAt);
+  if (!active) throw new AccountChangedError();
   return payload.accessToken;
 }
 
@@ -142,8 +174,14 @@ api.interceptors.response.use(
           return Promise.reject(error);
         }
         original.headers.Authorization = `Bearer ${nextToken}`;
+        recordApiRetry(original.method, original.url, 'after token refresh');
         return api(original);
-      } catch {
+      } catch (refreshError) {
+        // The request's account was switched away mid-refresh; the account
+        // now active is intact.
+        if (refreshError instanceof AccountChangedError) {
+          return Promise.reject(refreshError);
+        }
         await secureStorage.clearSession();
         onAuthLost?.();
         return Promise.reject(error);

@@ -21,6 +21,8 @@ type Props = {
   lead: LeadListItem;
   /** Keep this stable (useCallback) — rows are memoized. */
   onPress: (lead: LeadListItem) => void;
+  /** Touch down — e.g. start loading the detail. Keep stable too. */
+  onPressIn?: (lead: LeadListItem) => void;
 };
 
 function parseRgb(hex: string): { r: number; g: number; b: number } | null {
@@ -92,6 +94,7 @@ function priorityBadgeStyle(priority: LeadPriority, isDark: boolean) {
 export const LeadListItemCard = memo(function LeadListItemCard({
   lead,
   onPress,
+  onPressIn,
 }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === "dark";
@@ -137,6 +140,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   return (
     <Pressable
       onPress={() => onPress(lead)}
+      onPressIn={onPressIn ? () => onPressIn(lead) : undefined}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.row}>

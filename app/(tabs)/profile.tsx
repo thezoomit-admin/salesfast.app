@@ -14,7 +14,7 @@ import {
 
 import { Search02Icon } from '@/components/icons/hugeicons';
 import { getErrorMessage } from '@/api/client';
-import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { LogoutSheet } from '@/components/ui/LogoutSheet';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { APP_NAME, APP_VERSION } from '@/constants/config';
@@ -23,6 +23,7 @@ import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { usePendingWriteCount } from '@/lib/accountWrites';
 import {
+  AccountSwitchSheet,
   SettingsSearchSheet,
   ThemeModeSheet,
   type SettingsSearchItem,
@@ -205,6 +206,7 @@ export default function ProfileScreen() {
   const [accounts, setAccounts] = useState<SavedMobileAccount[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -273,6 +275,7 @@ export default function ProfileScreen() {
     async (account: SavedMobileAccount) => {
       if (account.id === user?.id) return;
       if (!canContinue(account)) {
+        setAccountsOpen(false);
         Alert.alert(
           'Session expired',
           'Sign in again to use this account, or remove it from this device.',
@@ -283,6 +286,14 @@ export default function ProfileScreen() {
               style: 'destructive',
               onPress: () => onRemove(account),
             },
+            {
+              text: 'Sign in',
+              onPress: () => {
+                void prepareAddAccount().then(() =>
+                  router.replace('/(auth)/login')
+                );
+              },
+            },
           ]
         );
         return;
@@ -290,17 +301,63 @@ export default function ProfileScreen() {
       try {
         await switchToAccount(account.id);
         await refreshAccounts();
+        setAccountsOpen(false);
       } catch (error) {
         Alert.alert('Unable to switch', getErrorMessage(error));
       }
     },
-    [user?.id, canContinue, switchToAccount, refreshAccounts, onRemove]
+    [
+      user?.id,
+      canContinue,
+      switchToAccount,
+      refreshAccounts,
+      onRemove,
+      prepareAddAccount,
+      router,
+    ]
+  );
+
+  const onAddAccount = useCallback(() => {
+    setAccountsOpen(false);
+    void prepareAddAccount().then(() => router.replace('/(auth)/login'));
+  }, [prepareAddAccount, router]);
+
+  const onSignInAgain = useCallback(
+    (account: SavedMobileAccount) => {
+      setAccountsOpen(false);
+      Alert.alert(
+        'Sign in again',
+        `${account.email} needs to sign in again on this device.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: () => onRemove(account),
+          },
+          {
+            text: 'Sign in',
+            onPress: () => {
+              void prepareAddAccount().then(() =>
+                router.replace('/(auth)/login')
+              );
+            },
+          },
+        ]
+      );
+    },
+    [onRemove, prepareAddAccount, router]
   );
 
   const otherAccounts = useMemo(
     () => accounts.filter((a) => a.id !== user?.id),
     [accounts, user?.id]
   );
+
+  const accountsValue =
+    otherAccounts.length > 0
+      ? `${otherAccounts.length} saved`
+      : 'This device';
 
   const sections: MenuSectionData[] = useMemo(
     () => [
@@ -341,37 +398,12 @@ export default function ProfileScreen() {
             onPress: () => setThemeOpen(true),
           },
           {
-            key: 'addAccount',
-            label: 'Add another account',
-            icon: 'person-add-outline',
-            onPress: () => {
-              void prepareAddAccount().then(() =>
-                router.replace('/(auth)/login')
-              );
-            },
+            key: 'accounts',
+            label: 'Accounts',
+            icon: 'people-outline',
+            value: accountsValue,
+            onPress: () => setAccountsOpen(true),
           },
-          ...otherAccounts.map(
-            (account): MenuItem => ({
-              key: `account-${account.id}`,
-              label: account.name,
-              icon: 'swap-horizontal-outline',
-              value: account.signedOut ? 'Signed out' : 'Switch',
-              onPress: () => {
-                Alert.alert(account.name, account.email, [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Remove',
-                    style: 'destructive',
-                    onPress: () => onRemove(account),
-                  },
-                  {
-                    text: switchingAccount ? 'Switching…' : 'Switch',
-                    onPress: () => void onSwitch(account),
-                  },
-                ]);
-              },
-            })
-          ),
         ],
       },
       {
@@ -420,16 +452,7 @@ export default function ProfileScreen() {
         ],
       },
     ],
-    [
-      callSync.label,
-      mode,
-      otherAccounts,
-      prepareAddAccount,
-      router,
-      onRemove,
-      onSwitch,
-      switchingAccount,
-    ]
+    [callSync.label, mode, accountsValue]
   );
 
   const searchItems: SettingsSearchItem[] = useMemo(
@@ -548,16 +571,37 @@ export default function ProfileScreen() {
 
       <ThemeModeSheet open={themeOpen} onClose={() => setThemeOpen(false)} />
 
-      <ConfirmModal
+      <AccountSwitchSheet
+        open={accountsOpen}
+        currentId={user?.id}
+        currentName={displayName}
+        currentEmail={user?.email}
+        currentPhoto={user?.profilePhoto}
+        accounts={accounts}
+        switching={switchingAccount}
+        onClose={() => {
+          if (!switchingAccount) setAccountsOpen(false);
+        }}
+        onSwitch={onSwitch}
+        onAddAccount={onAddAccount}
+        onRemove={(account) => {
+          setAccountsOpen(false);
+          onRemove(account);
+        }}
+        onSignInAgain={onSignInAgain}
+        onSignOut={() => {
+          setAccountsOpen(false);
+          setSignOutOpen(true);
+        }}
+      />
+
+      <LogoutSheet
         open={signOutOpen}
         title="Sign out"
         message={signOutMessage}
-        cancelLabel="Cancel"
-        confirmLabel="Sign out"
-        destructive
-        icon="log-out-outline"
+        buttonLabel="Sign out"
         loading={signingOut}
-        onCancel={() => {
+        onClose={() => {
           if (!signingOut) setSignOutOpen(false);
         }}
         onConfirm={() => void onConfirmSignOut()}
