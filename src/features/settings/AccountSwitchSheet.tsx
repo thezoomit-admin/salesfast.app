@@ -422,11 +422,11 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.border,
     },
     title: {
-      ...typography.caption,
-      fontSize: 13,
-      fontWeight: '500',
-      color: colors.textMuted,
-      marginBottom: 10,
+      ...typography.subtitle,
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 12,
       paddingHorizontal: 2,
     },
     listScroll: {

@@ -152,7 +152,7 @@ export function HeaderAddButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.addBtn,
-        (pressed || disabled) && styles.pressed,
+        pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
     >
@@ -310,6 +310,9 @@ function createStyles(colors: ThemeColors) {
     },
     pressed: {
       opacity: 0.85,
+    },
+    disabled: {
+      opacity: 0.45,
     },
   });
 }
