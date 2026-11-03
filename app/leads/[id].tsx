@@ -25,6 +25,7 @@ import {
 } from '@/components/icons/hugeicons';
 import { AddNoteSheet } from '@/components/leads/AddNoteSheet';
 import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
+import { SuccessSheet } from '@/components/ui/SuccessSheet';
 import { LeadCallHistoryPanel } from '@/components/leads/LeadCallHistoryPanel';
 import {
   LeadDetailTabBar,
@@ -97,6 +98,8 @@ export default function LeadDetailScreen() {
   // every lead opened.
   const [noteMounted, setNoteMounted] = useState(false);
   const [noteStageId, setNoteStageId] = useState<number | null>(null);
+  /** TEMP — remove after success-modal QA. */
+  const [successPreviewOpen, setSuccessPreviewOpen] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<LeadDetailTab>('overview');
   const [overviewPill, setOverviewPill] = useState<'profile' | 'requirements'>(
@@ -176,11 +179,38 @@ export default function LeadDetailScreen() {
   }
 
   const headerRight = (
-    <HeaderAddButton
-      label="Add Note"
-      disabled={!lead || partial}
-      onPress={() => openNote(null)}
-    />
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      {/* TEMP — success modal preview; remove after QA */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Preview success modal"
+        onPress={() => setSuccessPreviewOpen(true)}
+        style={({ pressed }) => [
+          {
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 8,
+            backgroundColor: colors.successSoft,
+            opacity: pressed ? 0.75 : 1,
+          },
+        ]}
+      >
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: '700',
+            color: colors.success,
+          }}
+        >
+          Success
+        </Text>
+      </Pressable>
+      <HeaderAddButton
+        label="Add Note"
+        disabled={!lead || partial}
+        onPress={() => openNote(null)}
+      />
+    </View>
   );
 
   const sectionPending = (
@@ -472,6 +502,15 @@ export default function LeadDetailScreen() {
           }}
         />
       ) : null}
+
+      {/* TEMP — success modal preview; remove after QA */}
+      <SuccessSheet
+        open={successPreviewOpen}
+        title="Successful"
+        message="Your note has been added successfully."
+        buttonLabel="Back to lead"
+        onClose={() => setSuccessPreviewOpen(false)}
+      />
 
       <Modal visible={priorityOpen} animationType="fade" transparent>
         <Pressable

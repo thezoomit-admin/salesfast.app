@@ -46,6 +46,9 @@ export function SuccessSheet({
 
   const translateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
   const backdropOp = useRef(new Animated.Value(0)).current;
+  const checkScale = useRef(new Animated.Value(0)).current;
+  const checkPop = useRef(new Animated.Value(0)).current;
+  const ringPulse = useRef(new Animated.Value(0.85)).current;
   const closingRef = useRef(false);
   const mountedRef = useRef(false);
   const onCloseRef = useRef(onClose);
@@ -57,6 +60,9 @@ export function SuccessSheet({
     setMounted(false);
     translateY.setValue(SHEET_OFFSCREEN);
     backdropOp.setValue(0);
+    checkScale.setValue(0);
+    checkPop.setValue(0);
+    ringPulse.setValue(0.85);
     closingRef.current = false;
     if (notify) onCloseRef.current();
   };
@@ -92,6 +98,9 @@ export function SuccessSheet({
       setMounted(true);
       translateY.setValue(SHEET_OFFSCREEN);
       backdropOp.setValue(0);
+      checkScale.setValue(0);
+      checkPop.setValue(0);
+      ringPulse.setValue(0.85);
       const frame = requestAnimationFrame(() => {
         Animated.parallel([
           Animated.timing(backdropOp, {
@@ -106,7 +115,37 @@ export function SuccessSheet({
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
-        ]).start();
+        ]).start(({ finished }) => {
+          if (!finished) return;
+          Animated.parallel([
+            Animated.spring(checkScale, {
+              toValue: 1,
+              friction: 5,
+              tension: 120,
+              useNativeDriver: true,
+            }),
+            Animated.timing(checkPop, {
+              toValue: 1,
+              duration: 320,
+              easing: Easing.out(Easing.back(1.6)),
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(ringPulse, {
+                toValue: 1.06,
+                duration: 280,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+              }),
+              Animated.spring(ringPulse, {
+                toValue: 1,
+                friction: 6,
+                tension: 80,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]).start();
+        });
       });
       return () => cancelAnimationFrame(frame);
     }
@@ -195,14 +234,38 @@ export function SuccessSheet({
           </View>
 
           <View style={styles.hero}>
-            <ConfettiBurst />
-            <View style={styles.ringOuter}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  opacity: checkPop,
+                  transform: [{ scale: checkPop }],
+                },
+              ]}
+            >
+              <ConfettiBurst />
+            </Animated.View>
+            <Animated.View
+              style={[
+                styles.ringOuter,
+                { transform: [{ scale: ringPulse }] },
+              ]}
+            >
               <View style={styles.ringMid}>
-                <View style={styles.checkCircle}>
+                <Animated.View
+                  style={[
+                    styles.checkCircle,
+                    {
+                      opacity: checkScale,
+                      transform: [{ scale: checkScale }],
+                    },
+                  ]}
+                >
                   <Ionicons name="checkmark" size={36} color="#FFFFFF" />
-                </View>
+                </Animated.View>
               </View>
-            </View>
+            </Animated.View>
           </View>
 
           <Text style={styles.title}>{title}</Text>
@@ -272,8 +335,6 @@ function ConfettiBurst() {
 
 function createStyles(colors: ThemeColors, isDark: boolean) {
   const ink = isDark ? colors.text : '#111827';
-  const btnBg = isDark ? colors.text : '#111827';
-  const btnText = isDark ? colors.background : '#FFFFFF';
 
   return StyleSheet.create({
     root: {
@@ -378,7 +439,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       marginBottom: 4,
       paddingVertical: 16,
       borderRadius: radii.pill,
-      backgroundColor: btnBg,
+      backgroundColor: '#000000',
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -386,7 +447,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       ...typography.subtitle,
       fontSize: 16,
       fontWeight: '700',
-      color: btnText,
+      color: '#FFFFFF',
     },
     pressed: {
       opacity: 0.88,

@@ -14,7 +14,7 @@ import {
 
 import { Search02Icon } from '@/components/icons/hugeicons';
 import { getErrorMessage } from '@/api/client';
-import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { LogoutSheet } from '@/components/ui/LogoutSheet';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { APP_NAME, APP_VERSION } from '@/constants/config';
@@ -595,16 +595,13 @@ export default function ProfileScreen() {
         }}
       />
 
-      <ConfirmModal
+      <LogoutSheet
         open={signOutOpen}
         title="Sign out"
         message={signOutMessage}
-        cancelLabel="Cancel"
-        confirmLabel="Sign out"
-        destructive
-        icon="log-out-outline"
+        buttonLabel="Sign out"
         loading={signingOut}
-        onCancel={() => {
+        onClose={() => {
           if (!signingOut) setSignOutOpen(false);
         }}
         onConfirm={() => void onConfirmSignOut()}
