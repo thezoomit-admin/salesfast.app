@@ -9,13 +9,16 @@ import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
-  ArrowDown01Icon,
   ArrowRight01Icon,
   CallIcon,
 } from '@/components/icons/hugeicons';
 import { LeadHistorySheet } from '@/components/home/LeadHistorySheet';
+import {
+  PRIORITY_META,
+  priorityBadgeColors,
+} from '@/features/leads/leadPriority';
 import { typography, useTheme, type ThemeColors } from '@/theme';
-import type { MobileDashboard } from '@/types/api';
+import type { LeadPriority, MobileDashboard } from '@/types/api';
 import { formatRelative, parseDate } from '@/utils/dates';
 import { openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
@@ -90,28 +93,48 @@ export function HomeLatestLeads({ leads }: Props) {
           {items.map((lead) => {
             const statusName = lead.status?.name || 'Lead';
             const statusColor = lead.status?.color || colors.brand;
-            const hasReminder = !!lead.nextFollowupDate;
+            const priority = (lead.priority as LeadPriority | null) ?? null;
+            const priorityMeta = priority ? PRIORITY_META[priority] : null;
+            const priorityBadge = priority
+              ? priorityBadgeColors(priority, isDark)
+              : null;
             const subtitle = [lead.source?.name, lead.assignedToName]
               .filter(Boolean)
               .join(' · ');
 
+            const historyOpen = history?.leadId === lead.id;
+
             return (
-              <Pressable
-                key={lead.id}
-                onPress={() => router.push(`/leads/${lead.id}`)}
-                style={({ pressed }) => [
-                  styles.card,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <View style={styles.cardBody}>
+              <View key={lead.id} style={styles.card}>
+                <Pressable
+                  onPress={() => router.push(`/leads/${lead.id}`)}
+                  style={({ pressed }) => [
+                    styles.cardBody,
+                    pressed && styles.pressed,
+                  ]}
+                >
                   <View style={styles.nameRow}>
                     <Text style={styles.name} numberOfLines={1}>
                       {lead.name || 'Unnamed lead'}
                     </Text>
-                    {hasReminder ? (
-                      <View style={styles.reminderPill}>
-                        <Text style={styles.reminderText}>Reminder</Text>
+                    {priorityMeta && priorityBadge ? (
+                      <View
+                        style={[
+                          styles.priorityPill,
+                          {
+                            backgroundColor: priorityBadge.backgroundColor,
+                            borderColor: priorityBadge.borderColor,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.priorityText,
+                            { color: priorityBadge.color },
+                          ]}
+                        >
+                          {priorityMeta.label}
+                        </Text>
                       </View>
                     ) : null}
                   </View>
@@ -153,11 +176,12 @@ export function HomeLatestLeads({ leads }: Props) {
                       {whenLabel(lead)}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
 
                 <View style={styles.cardFooter}>
                   <Pressable
                     accessibilityRole="button"
+                    accessibilityState={{ expanded: historyOpen }}
                     accessibilityLabel="Open lead history"
                     hitSlop={6}
                     onPress={() =>
@@ -172,11 +196,10 @@ export function HomeLatestLeads({ leads }: Props) {
                     ]}
                   >
                     <Text style={styles.historyText}>History</Text>
-                    <HugeiconsIcon
-                      icon={ArrowDown01Icon}
-                      size={14}
-                      color={colors.textMuted}
-                      strokeWidth={2}
+                    <Ionicons
+                      name={historyOpen ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color={colors.textSecondary}
                     />
                   </Pressable>
 
@@ -239,7 +262,7 @@ export function HomeLatestLeads({ leads }: Props) {
                     </Pressable>
                   </View>
                 </View>
-              </Pressable>
+              </View>
             );
           })}
         </View>
@@ -318,17 +341,17 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       color: colors.text,
       minWidth: 0,
     },
-    reminderPill: {
+    priorityPill: {
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 6,
-      backgroundColor: isDark ? colors.surfaceMuted : '#EEF0F2',
+      borderWidth: StyleSheet.hairlineWidth,
+      flexShrink: 0,
     },
-    reminderText: {
+    priorityText: {
       ...typography.caption,
       fontSize: 11,
-      fontWeight: '600',
-      color: colors.textSecondary,
+      fontWeight: '700',
     },
     subtitle: {
       ...typography.caption,
