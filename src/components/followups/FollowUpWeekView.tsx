@@ -1,9 +1,6 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import { addDays } from 'date-fns/addDays';
 import { format } from 'date-fns/format';
-import { isSameDay } from 'date-fns/isSameDay';
 import { isToday } from 'date-fns/isToday';
-import { startOfWeek } from 'date-fns/startOfWeek';
 import { memo, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -34,9 +31,10 @@ import {
   Clock01Icon,
   Notification01Icon,
 } from '@/components/icons/hugeicons';
+import { WeekStrip } from '@/components/followups/WeekStrip';
 import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
 import type { LeadListItem } from '@/types/api';
-import { radii, useTheme, type ThemeColors } from '@/theme';
+import { useTheme, type ThemeColors } from '@/theme';
 
 /** The timeline always covers working hours; earlier/later slots appear when used. */
 const DAY_START_HOUR = 8;
@@ -81,11 +79,6 @@ function FollowUpWeekViewImpl({
   const tones = useMemo(() => kindTones(isDark), [isDark]);
   const now = useMinuteClock();
 
-  const week = useMemo(() => {
-    const start = startOfWeek(selected);
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [selected]);
-
   const items = byDay.get(dayKey(selected)) ?? NO_FOLLOW_UPS;
   const hours = useMemo(() => {
     let first = DAY_START_HOUR;
@@ -117,39 +110,8 @@ function FollowUpWeekViewImpl({
         }
       />
 
-      <View style={styles.stripCard}>
-        <View style={styles.strip}>
-          {week.map((day) => {
-            const active = isSameDay(day, selected);
-            const today = isToday(day);
-            return (
-              <Pressable
-                key={dayKey(day)}
-                accessibilityRole="button"
-                accessibilityLabel={format(day, 'EEEE d MMMM')}
-                accessibilityState={{ selected: active }}
-                onPress={() => onSelect(day)}
-                style={styles.stripDay}
-              >
-                <Text style={[styles.stripName, active && styles.stripNameActive]}>
-                  {format(day, 'EEE')}
-                </Text>
-                <View style={[styles.stripBar, active && styles.stripBarActive]} />
-                <View style={[styles.stripDate, active && styles.stripDateActive]}>
-                  <Text
-                    style={[
-                      styles.stripDateText,
-                      today && !active && styles.stripDateToday,
-                      active && styles.stripDateTextActive,
-                    ]}
-                  >
-                    {day.getDate()}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+      <View style={styles.weekStrip}>
+        <WeekStrip selected={selected} onSelect={onSelect} />
       </View>
 
       <ScrollView
@@ -167,46 +129,44 @@ function FollowUpWeekViewImpl({
           <Text style={styles.error}>{errorMessage}</Text>
         ) : null}
 
-        <View style={styles.timelineCard}>
-          {hours.map((hour) => {
-            const label = hourLabel(hour);
-            const slot = items.filter(({ due }) => due.getHours() === hour);
-            const nowHere = showNow && now.getHours() === hour;
-            return (
-              <View key={hour} style={styles.hourRow}>
-                {nowHere ? (
-                  <View
-                    pointerEvents="none"
-                    style={[styles.nowLine, { top: `${(now.getMinutes() / 60) * 100}%` }]}
-                  >
-                    {Array.from({ length: NOW_DASHES }, (_, i) => (
-                      <View key={i} style={styles.nowDash} />
-                    ))}
-                  </View>
-                ) : null}
-                <View style={styles.hourLabel}>
-                  <Text style={styles.hourValue}>{label.value}</Text>
-                  <Text style={styles.hourSuffix}>{label.suffix}</Text>
-                </View>
-                <View style={styles.slot}>
-                  {slot.map(({ lead, due }) => (
-                    <FollowUpCard
-                      key={lead.id}
-                      lead={lead}
-                      due={due}
-                      overdue={due.getTime() < now.getTime()}
-                      tone={tones[followUpKind(lead)]}
-                      styles={styles}
-                      colors={colors}
-                      onPress={onOpenLead}
-                      onPressIn={onPressInLead}
-                    />
+        {hours.map((hour) => {
+          const label = hourLabel(hour);
+          const slot = items.filter(({ due }) => due.getHours() === hour);
+          const nowHere = showNow && now.getHours() === hour;
+          return (
+            <View key={hour} style={styles.hourRow}>
+              {nowHere ? (
+                <View
+                  pointerEvents="none"
+                  style={[styles.nowLine, { top: `${(now.getMinutes() / 60) * 100}%` }]}
+                >
+                  {Array.from({ length: NOW_DASHES }, (_, i) => (
+                    <View key={i} style={styles.nowDash} />
                   ))}
                 </View>
+              ) : null}
+              <View style={styles.hourLabel}>
+                <Text style={styles.hourValue}>{label.value}</Text>
+                <Text style={styles.hourSuffix}>{label.suffix}</Text>
               </View>
-            );
-          })}
-        </View>
+              <View style={styles.slot}>
+                {slot.map(({ lead, due }) => (
+                  <FollowUpCard
+                    key={lead.id}
+                    lead={lead}
+                    due={due}
+                    overdue={due.getTime() < now.getTime()}
+                    tone={tones[followUpKind(lead)]}
+                    styles={styles}
+                    colors={colors}
+                    onPress={onOpenLead}
+                    onPressIn={onPressInLead}
+                  />
+                ))}
+              </View>
+            </View>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -294,44 +254,18 @@ export const FollowUpWeekView = memo(FollowUpWeekViewImpl);
 
 function createStyles(colors: ThemeColors, isDark: boolean) {
   const ink = isDark ? '#FFFFFF' : '#111111';
-  const pageWash = isDark ? colors.background : '#EEF1F4';
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: pageWash },
+    root: { flex: 1, backgroundColor: colors.surface },
     pressed: { opacity: 0.6 },
-    // White section cards on the Home page wash.
-    stripCard: {
-      marginHorizontal: 16,
-      marginBottom: 12,
-      paddingHorizontal: 6,
-      paddingTop: 14,
-      paddingBottom: 12,
-      borderRadius: 22,
-      backgroundColor: colors.surface,
+    weekStrip: {
+      paddingHorizontal: 16,
+      paddingTop: 4,
+      paddingBottom: 18,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
-    strip: { flexDirection: 'row' },
-    stripDay: { flex: 1, alignItems: 'center' },
-    stripName: { fontSize: 15, color: colors.textMuted },
-    stripNameActive: { color: ink, fontWeight: '600' },
-    stripBar: { width: 44, height: 2, borderRadius: 1, marginTop: 6, marginBottom: 10 },
-    stripBarActive: { backgroundColor: colors.brand },
-    stripDate: {
-      width: 40,
-      height: 40,
-      borderRadius: radii.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    stripDateActive: { backgroundColor: colors.brand },
-    stripDateText: { fontSize: 18, color: colors.textMuted },
-    stripDateToday: { color: colors.brand, fontWeight: '700' },
-    stripDateTextActive: { color: colors.white, fontWeight: '600' },
     timeline: { flex: 1 },
-    timelineContent: { paddingHorizontal: 16, paddingBottom: 24 },
-    timelineCard: {
-      borderRadius: 22,
-      overflow: 'hidden',
-      backgroundColor: colors.surface,
-    },
+    timelineContent: { paddingBottom: 24 },
     loading: { paddingVertical: 16 },
     error: {
       paddingVertical: 16,
