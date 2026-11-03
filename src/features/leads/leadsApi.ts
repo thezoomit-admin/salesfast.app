@@ -1,5 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import axios from 'axios';
+import { isAxiosError } from 'axios';
 
 import { api } from '@/api/client';
 import { leadDetailKey } from '@/features/leads/leadDetailCache';
@@ -86,7 +86,7 @@ export const leadDetailQuery = (leadId: number) =>
       } catch (error) {
         // Deleted, or no longer visible to this account (e.g. reassigned):
         // null replaces any cached copy, so it stops being shown or saved.
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
+        if (isAxiosError(error) && error.response?.status === 404) {
           return null;
         }
         throw error;

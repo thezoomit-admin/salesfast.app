@@ -30,6 +30,8 @@ const PERSISTED_ROOTS = new Set([
   'my-leads',
   'follow-up-leads',
   'lead',
+  // Option labels for the lead detail sections (admin lookups, no lead data).
+  'lead-meta',
   'lead-statuses',
   'note-channels',
   'notifications',

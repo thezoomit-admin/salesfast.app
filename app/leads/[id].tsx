@@ -40,12 +40,16 @@ import {
   HeaderAddButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
-import { LeadDetailSkeleton } from '@/components/ui/skeletons';
+import {
+  LeadDetailSkeleton,
+  LeadSectionSkeleton,
+} from '@/components/ui/skeletons';
 import {
   ErrorState,
   QueryPlaceholder,
 } from '@/components/ui/StateViews';
 import { useAuth } from '@/features/auth/AuthContext';
+import { findListLead } from '@/features/leads/leadDetailCache';
 import {
   leadStatusesQuery,
   updateLeadPriority,
@@ -89,6 +93,9 @@ export default function LeadDetailScreen() {
   const accountId = useAuth().user?.id ?? '';
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
+  // The sheet (audio recorder, channel list) mounts on first use, not with
+  // every lead opened.
+  const [noteMounted, setNoteMounted] = useState(false);
   const [noteStageId, setNoteStageId] = useState<number | null>(null);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<LeadDetailTab>('overview');
@@ -144,20 +151,50 @@ export default function LeadDetailScreen() {
         'New status')
       : null;
 
+  // After a failed first load, keep the tapped row on screen (call and
+  // WhatsApp still work); the detail sections show the error and a retry.
+  const fallbackRow =
+    leadQuery.data === undefined && leadQuery.isError
+      ? findListLead(queryClient, leadId)
+      : undefined;
+  const lead = leadQuery.data ?? fallbackRow;
+  // Only the list row is known: its summary fields are real, detail-only
+  // fields are not loaded yet, and writes still need the record's version.
+  const partial = leadQuery.isPlaceholderData || fallbackRow !== undefined;
+  // Saved detail on screen, but this open's refresh failed.
+  const refreshFailed = leadQuery.isError && !partial && !!lead;
+
   const headerTitle =
-    leadQuery.data?.buyerPersona?.fullName?.trim() ||
+    lead?.buyerPersona?.fullName?.trim() ||
     (Number.isFinite(leadId) ? `Lead #${leadId}` : 'Lead');
 
   function openNote(stageId: number | null = null) {
+    if (!lead || partial) return;
     setNoteStageId(stageId);
     setNoteOpen(true);
+    setNoteMounted(true);
   }
 
   const headerRight = (
-    <HeaderAddButton label="Add Note" onPress={() => openNote(null)} />
+    <HeaderAddButton
+      label="Add Note"
+      disabled={!lead || partial}
+      onPress={() => openNote(null)}
+    />
   );
 
-  if (!leadQuery.data) {
+  const sectionPending = (
+    <QueryPlaceholder
+      query={leadQuery}
+      errorMessage={getErrorMessage(
+        leadQuery.error,
+        'Could not load lead details'
+      )}
+      skeleton={<LeadSectionSkeleton />}
+    />
+  );
+
+  if (!lead) {
     return (
       <Screen
         header={<ScreenHeader title="Lead" right={headerRight} />}
@@ -165,7 +202,7 @@ export default function LeadDetailScreen() {
           <LeadDetailTabBar active={activeTab} onChange={setActiveTab} />
         }
       >
-        {Number.isFinite(leadId) ? (
+        {Number.isFinite(leadId) && lead !== null ? (
           <QueryPlaceholder
             query={leadQuery}
             errorMessage={getErrorMessage(leadQuery.error, 'Lead not found')}
@@ -178,7 +215,6 @@ export default function LeadDetailScreen() {
     );
   }
 
-  const lead = leadQuery.data;
   const name = lead.buyerPersona?.fullName || 'Unnamed lead';
   const phone = lead.buyerPersona?.phone;
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
@@ -219,9 +255,21 @@ export default function LeadDetailScreen() {
         <LeadDetailTabBar active={activeTab} onChange={setActiveTab} />
       }
       scroll
-      refreshing={leadQuery.isRefetching}
+      refreshing={leadQuery.isRefetching && !partial}
       onRefresh={() => leadQuery.refetch()}
     >
+      {refreshFailed ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void leadQuery.refetch()}
+          style={styles.refreshNotice}
+        >
+          <Text style={styles.pendingText}>
+            Couldn&apos;t refresh — showing details saved on this device. Tap
+            to retry.
+          </Text>
+        </Pressable>
+      ) : null}
       {activeTab === 'overview' ? (
         <View style={styles.overviewBlock}>
           <View style={styles.summaryCard}>
@@ -233,6 +281,7 @@ export default function LeadDetailScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Change priority"
+                  disabled={partial}
                   onPress={() => setPriorityOpen(true)}
                   style={({ pressed }) => [
                     styles.priorityChip,
@@ -338,7 +387,7 @@ export default function LeadDetailScreen() {
                 statuses={statusesQuery.data ?? []}
                 currentStatusId={currentStatusId}
                 assignedToName={lead.assignedToName}
-                onStepPress={(statusId) => openNote(statusId)}
+                onStepPress={partial ? undefined : (id) => openNote(id)}
               />
             </View>
 
@@ -367,7 +416,9 @@ export default function LeadDetailScreen() {
               setOverviewPill(k as 'profile' | 'requirements')
             }
           >
-            {overviewPill === 'profile' ? (
+            {partial ? (
+              sectionPending
+            ) : overviewPill === 'profile' ? (
               <LeadBuyerProfilePanel lead={lead} meta={metaQuery.data} />
             ) : (
               <LeadRequirementsPanel lead={lead} meta={metaQuery.data} />
@@ -387,14 +438,14 @@ export default function LeadDetailScreen() {
               <Text style={styles.noteBody}>{note.note}</Text>
             </View>
           ))}
-          <LeadHistoryPanel lead={lead} />
+          {partial ? sectionPending : <LeadHistoryPanel lead={lead} />}
         </View>
       ) : null}
 
       {activeTab === 'calls' ? (
         <View style={styles.pageBlock}>
           <Text style={styles.pageTitle}>Call History</Text>
-          <LeadCallHistoryPanel lead={lead} />
+          {partial ? sectionPending : <LeadCallHistoryPanel lead={lead} />}
         </View>
       ) : null}
 
@@ -405,20 +456,22 @@ export default function LeadDetailScreen() {
         </View>
       ) : null}
 
-      <AddNoteSheet
-        visible={noteOpen}
-        lead={lead}
-        statuses={statusesQuery.data ?? []}
-        accountId={accountId}
-        initialStageId={noteStageId}
-        onClose={() => {
-          setNoteOpen(false);
-          setNoteStageId(null);
-        }}
-        onSaved={() => {
-          void leadQuery.refetch();
-        }}
-      />
+      {noteMounted && !partial ? (
+        <AddNoteSheet
+          visible={noteOpen}
+          lead={lead}
+          statuses={statusesQuery.data ?? []}
+          accountId={accountId}
+          initialStageId={noteStageId}
+          onClose={() => {
+            setNoteOpen(false);
+            setNoteStageId(null);
+          }}
+          onSaved={() => {
+            void leadQuery.refetch();
+          }}
+        />
+      ) : null}
 
       <Modal visible={priorityOpen} animationType="fade" transparent>
         <Pressable
@@ -598,6 +651,12 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.warningSoft,
     },
     pendingText: { ...typography.caption, color: colors.warning },
+    refreshNotice: {
+      borderRadius: radii.md,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      backgroundColor: colors.warningSoft,
+    },
     noteBody: { ...typography.body, color: colors.textSecondary },
     dropdownBackdrop: {
       flex: 1,
