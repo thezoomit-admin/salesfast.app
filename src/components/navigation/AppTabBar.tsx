@@ -1,6 +1,13 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import type { MaterialTopTabBarProps } from 'expo-router/js-top-tabs';
-import { useEffect, useMemo, useState, type ComponentProps } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react';
 import {
   Animated,
   Platform,
@@ -70,55 +77,53 @@ export function AppTabBar({
   const routesByName = Object.fromEntries(
     state.routes.map((route) => [route.name, route])
   );
+  const routeCount = state.routes.length;
 
-  // Highlight runs on the UI thread off the pager's live `position`, so the
-  // colour crossfades with the finger. Waiting for `state.index` lags: it
-  // updates after the pager settles and the navigator re-renders on JS.
-  const highlights = useMemo(
-    () =>
-      state.routes.map((_, i) => {
-        const inputRange = [i - 1, i, i + 1];
-        return {
-          on: position.interpolate({
-            inputRange,
-            outputRange: [0, 1, 0],
-            extrapolate: 'clamp',
-          }),
-          off: position.interpolate({
-            inputRange,
-            outputRange: [1, 0, 1],
-            extrapolate: 'clamp',
-          }),
-        };
-      }),
-    [position, state.routes]
-  );
+  // The highlighted tab is plain React state, and each tab fades its own
+  // JS-driven value to exactly 0 or 1. Binding opacity to the pager's
+  // native-driven `position` left tabs stuck half-lit: the native value is
+  // not re-applied when nodes are swapped or the bar re-renders.
+  const [active, setActive] = useState(state.index);
+  const activeRef = useRef(state.index);
+  const highlight = useCallback((index: number) => {
+    if (activeRef.current === index) return;
+    activeRef.current = index;
+    setActive(index);
+  }, []);
 
-  // A tap crossfades straight from the old tab to the new one, so the pages
-  // the pager scrolls past don't light up; once it settles, the live
-  // highlight takes over.
-  const [press, setPress] = useState<{ from: number; to: number } | null>(null);
-  const [pressProgress] = useState(() => new Animated.Value(1));
-  const pressFade = useMemo(
-    () => ({
-      in: { on: pressProgress, off: Animated.subtract(1, pressProgress) },
-      out: { on: Animated.subtract(1, pressProgress), off: pressProgress },
-    }),
-    [pressProgress]
-  );
-  const [seenIndex, setSeenIndex] = useState(state.index);
-  if (seenIndex !== state.index) {
-    setSeenIndex(state.index);
-    // Swiped elsewhere, back button or redirect before the tap finished.
-    if (press !== null && state.index !== press.to) setPress(null);
-  }
+  // While a tap scrolls the pager to its target, the pages it passes must
+  // not light up.
+  const tapTargetRef = useRef<number | null>(null);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endTap = useCallback(() => {
+    tapTargetRef.current = null;
+    if (tapTimerRef.current !== null) clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = null;
+  }, []);
+  useEffect(() => endTap, [endTap]);
+
+  // The settled index always wins (swipe end, back button, redirect).
   useEffect(() => {
-    if (press === null) return;
+    if (tapTargetRef.current !== null && tapTargetRef.current !== state.index) {
+      endTap();
+    }
+    highlight(state.index);
+  }, [state.index, endTap, highlight]);
+
+  // Mid-swipe, follow the page nearest the finger so the highlight moves
+  // before the pager settles.
+  useEffect(() => {
     const id = position.addListener(({ value }) => {
-      if (Math.abs(value - press.to) < 0.01) setPress(null);
+      const target = tapTargetRef.current;
+      if (target !== null) {
+        if (Math.abs(value - target) < 0.01) endTap();
+        return;
+      }
+      const nearest = Math.round(value);
+      if (nearest >= 0 && nearest < routeCount) highlight(nearest);
     });
     return () => position.removeListener(id);
-  }, [position, press]);
+  }, [position, routeCount, endTap, highlight]);
 
   return (
     <View style={styles.wrap} accessibilityRole="tablist">
@@ -131,16 +136,6 @@ export function AppTabBar({
           const focused = state.index === routeIndex;
           const { options } = descriptors[route.key];
           const label = TAB_LABELS[name] ?? options.title ?? name;
-          const icon = TAB_ICONS[name];
-          const badge = badges?.[name] || undefined;
-          const highlight =
-            press === null
-              ? highlights[routeIndex]
-              : press.to === routeIndex
-                ? pressFade.in
-                : press.from === routeIndex
-                  ? pressFade.out
-                  : { on: 0, off: 1 };
 
           const onPress = () => {
             const event = emitter.emit({
@@ -149,13 +144,11 @@ export function AppTabBar({
               canPreventDefault: true,
             });
             if (!focused && !event.defaultPrevented) {
-              setPress({ from: state.index, to: routeIndex });
-              pressProgress.setValue(0);
-              Animated.timing(pressProgress, {
-                toValue: 1,
-                duration: 220,
-                useNativeDriver: true,
-              }).start();
+              endTap();
+              tapTargetRef.current = routeIndex;
+              // Fallback if the pager never reports reaching the target.
+              tapTimerRef.current = setTimeout(endTap, 1000);
+              highlight(routeIndex);
               // Next frame, so the highlight paints before the navigator's
               // re-render occupies the JS thread.
               requestAnimationFrame(() => navigateToTab(route.key));
@@ -170,58 +163,114 @@ export function AppTabBar({
           };
 
           return (
-            <Pressable
+            <TabItem
               key={route.key}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: focused }}
+              styles={styles}
+              colors={colors}
+              icon={TAB_ICONS[name]}
+              label={label}
+              badge={badges?.[name] || undefined}
+              active={active === routeIndex}
+              focused={focused}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
               onPress={onPress}
               onLongPress={onLongPress}
-              style={({ pressed }) => [
-                styles.item,
-                pressed && styles.itemPressed,
-              ]}
-            >
-              <View style={styles.iconWrap}>
-                {icon ? (
-                  <>
-                    <Animated.View style={[styles.iconLayer, { opacity: highlight.off }]}>
-                      <HugeiconsIcon
-                        icon={icon}
-                        size={24}
-                        color={colors.textMuted}
-                        strokeWidth={1.7}
-                      />
-                    </Animated.View>
-                    <Animated.View style={[styles.iconLayer, { opacity: highlight.on }]}>
-                      <HugeiconsIcon
-                        icon={icon}
-                        size={24}
-                        color={colors.brand}
-                        strokeWidth={2.1}
-                      />
-                    </Animated.View>
-                  </>
-                ) : null}
-                {badge != null ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      {badge > 99 ? '99+' : String(badge)}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-              <Animated.Text
-                style={[styles.label, { opacity: highlight.on }]}
-                numberOfLines={1}
-              >
-                {label}
-              </Animated.Text>
-            </Pressable>
+            />
           );
         })}
       </View>
     </View>
+  );
+}
+
+const FADE_MS = 180;
+
+type TabItemProps = {
+  styles: ReturnType<typeof createStyles>;
+  colors: ThemeColors;
+  icon: HugeIconData | undefined;
+  label: string;
+  badge: number | undefined;
+  /** Drawn highlighted (follows taps and swipes ahead of `focused`). */
+  active: boolean;
+  /** The navigator's current tab. */
+  focused: boolean;
+  accessibilityLabel: string;
+  onPress: () => void;
+  onLongPress: () => void;
+};
+
+function TabItem({
+  styles,
+  colors,
+  icon,
+  label,
+  badge,
+  active,
+  focused,
+  accessibilityLabel,
+  onPress,
+  onLongPress,
+}: TabItemProps) {
+  const [on] = useState(() => new Animated.Value(active ? 1 : 0));
+  const off = useMemo(
+    () => on.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+    [on]
+  );
+  useEffect(() => {
+    // JS driver on purpose: the JS value stays the source of truth, so a
+    // re-render can never commit a stale opacity.
+    const animation = Animated.timing(on, {
+      toValue: active ? 1 : 0,
+      duration: FADE_MS,
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [active, on]);
+
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityState={{ selected: focused }}
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
+    >
+      <View style={styles.iconWrap}>
+        {icon ? (
+          <>
+            <Animated.View style={[styles.iconLayer, { opacity: off }]}>
+              <HugeiconsIcon
+                icon={icon}
+                size={24}
+                color={colors.textMuted}
+                strokeWidth={1.7}
+              />
+            </Animated.View>
+            <Animated.View style={[styles.iconLayer, { opacity: on }]}>
+              <HugeiconsIcon
+                icon={icon}
+                size={24}
+                color={colors.brand}
+                strokeWidth={2.1}
+              />
+            </Animated.View>
+          </>
+        ) : null}
+        {badge != null ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
+              {badge > 99 ? '99+' : String(badge)}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      <Animated.Text style={[styles.label, { opacity: on }]} numberOfLines={1}>
+        {label}
+      </Animated.Text>
+    </Pressable>
   );
 }
 
