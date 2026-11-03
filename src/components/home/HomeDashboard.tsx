@@ -21,6 +21,7 @@ import {
   ClockAlertIcon,
   UserIcon,
 } from '@/components/icons/hugeicons';
+import { HomeLatestLeads } from '@/components/home/HomeLatestLeads';
 import { UpcomingFollowupsTimeline } from '@/components/home/UpcomingFollowupsTimeline';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
@@ -113,7 +114,7 @@ function ProgressRing({
 
 export function HomeDashboard({
   kpis,
-  recentLeads: _recentLeads,
+  recentLeads,
   queue,
   firstName,
   showCallSyncSetup = false,
@@ -625,6 +626,8 @@ export function HomeDashboard({
           </View>
         </View>
       </Pressable>
+
+      <HomeLatestLeads leads={recentLeads} />
 
       <UpcomingFollowupsTimeline queue={queue} />
     </View>
