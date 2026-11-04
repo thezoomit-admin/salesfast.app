@@ -19,6 +19,7 @@ import { getErrorMessage } from '@/api/client';
 import {
   CallBlockedIcon,
   FilterIcon,
+  MultiplicationSignIcon,
   PhoneIncomingIcon,
   PhoneMissedIcon,
   PhoneOutgoingIcon,
@@ -30,6 +31,7 @@ import {
   HeaderIconButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
+import { SettingsIconButton } from '@/components/ui/SettingsIconButton';
 import { CallsSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, ErrorState } from '@/components/ui/StateViews';
 import type { CallSyncDirection } from '@/features/call-tracking/callSyncApi';
@@ -250,16 +252,24 @@ function CallsScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  /** Session-only — reopens whenever this screen is focused again. */
+  const [alertDismissed, setAlertDismissed] = useState(false);
 
   const setupDone =
     USE_CALLS_DEMO ||
     Boolean(callSync.prefs?.consentedAt && callSync.prefs?.enabled);
   const calls = useRecentCalls(setupDone && !USE_CALLS_DEMO);
 
+  const needsSetup =
+    callSync.status === 'not_configured' ||
+    callSync.status === 'paused' ||
+    callSync.status === 'needs_dev_build';
+
   const refreshSync = callSync.refresh;
   const refetchCalls = calls.refetch;
   useFocusEffect(
     useCallback(() => {
+      setAlertDismissed(false);
       void refreshSync();
       if (setupDone && !USE_CALLS_DEMO) void refetchCalls();
     }, [refreshSync, setupDone, refetchCalls])
@@ -342,6 +352,7 @@ function CallsScreen() {
         ? 'Match phone calls with CRM leads. Only lead calls are saved.'
         : callSync.message
   );
+  const showSetupAlert = needsSetup && !alertDismissed;
 
   const dateFilterActive = dateFilter !== 'all';
 
@@ -362,18 +373,76 @@ function CallsScreen() {
               strokeWidth={1.5}
             />
           </HeaderIconButton>
-          <HeaderIconButton
-            label="Call sync settings"
-            onPress={() => router.push('/call-sync/setup')}
-          >
-            <Ionicons name="settings-outline" size={22} color={colors.text} />
-          </HeaderIconButton>
+          <SettingsIconButton size={22} color={colors.text} />
         </View>
       }
     />
   );
 
-  const toolbar = (
+  const setupAlert = showSetupAlert ? (
+    <View style={styles.alertOverlay} pointerEvents="box-none">
+      <View
+        style={[
+          styles.syncCard,
+          styles[`syncCard_${banner.tone}`],
+          styles.alertCard,
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${banner.title}. ${banner.action}`}
+          onPress={() => router.push('/call-sync/setup')}
+          style={({ pressed }) => [
+            styles.alertMain,
+            pressed && styles.pressed,
+          ]}
+        >
+          <View style={[styles.syncIcon, styles[`syncIcon_${banner.tone}`]]}>
+            <Ionicons
+              name={banner.icon}
+              size={22}
+              color={
+                banner.tone === 'ok'
+                  ? colors.success
+                  : banner.tone === 'warn'
+                    ? colors.warning
+                    : colors.textMuted
+              }
+            />
+          </View>
+          <View style={styles.syncCopy}>
+            <Text style={styles.syncTitle}>{banner.title}</Text>
+            <Text style={styles.syncBody} numberOfLines={2}>
+              {bannerBody}
+            </Text>
+          </View>
+          <View style={styles.syncAction}>
+            <Text style={styles.syncActionText}>{banner.action}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.brand} />
+          </View>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss alert"
+          onPress={() => setAlertDismissed(true)}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.alertClose,
+            pressed && styles.pressed,
+          ]}
+        >
+          <HugeiconsIcon
+            icon={MultiplicationSignIcon}
+            size={18}
+            color={colors.textMuted}
+            strokeWidth={1.5}
+          />
+        </Pressable>
+      </View>
+    </View>
+  ) : null;
+
+  const configuredToolbar = syncOk ? (
     <View style={styles.toolbar}>
       <Pressable
         accessibilityRole="button"
@@ -381,22 +450,12 @@ function CallsScreen() {
         onPress={() => router.push('/call-sync/setup')}
         style={({ pressed }) => [
           styles.syncCard,
-          styles[`syncCard_${banner.tone}`],
+          styles.syncCard_ok,
           pressed && styles.pressed,
         ]}
       >
-        <View style={[styles.syncIcon, styles[`syncIcon_${banner.tone}`]]}>
-          <Ionicons
-            name={banner.icon}
-            size={22}
-            color={
-              banner.tone === 'ok'
-                ? colors.success
-                : banner.tone === 'warn'
-                  ? colors.warning
-                  : colors.textMuted
-            }
-          />
+        <View style={[styles.syncIcon, styles.syncIcon_ok]}>
+          <Ionicons name={banner.icon} size={22} color={colors.success} />
         </View>
         <View style={styles.syncCopy}>
           <Text style={styles.syncTitle}>{banner.title}</Text>
@@ -405,31 +464,20 @@ function CallsScreen() {
           </Text>
         </View>
         <View style={styles.syncAction}>
-          <Text
-            style={[
-              styles.syncActionText,
-              banner.tone === 'ok' && styles.syncActionTextOk,
-            ]}
-          >
+          <Text style={[styles.syncActionText, styles.syncActionTextOk]}>
             {banner.action}
           </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={banner.tone === 'ok' ? colors.success : colors.brand}
-          />
+          <Ionicons name="chevron-forward" size={16} color={colors.success} />
         </View>
       </Pressable>
-      {syncOk ? (
-        <Button
-          title="Sync now"
-          variant="secondary"
-          loading={syncing}
-          onPress={syncNow}
-        />
-      ) : null}
+      <Button
+        title="Sync now"
+        variant="secondary"
+        loading={syncing}
+        onPress={syncNow}
+      />
     </View>
-  );
+  ) : null;
 
   if (!USE_CALLS_DEMO && callSync.loading && !callSync.prefs) {
     return (
@@ -444,16 +492,18 @@ function CallsScreen() {
     return (
       <View style={styles.safe}>
         {pageHeader}
-        {toolbar}
-        <EmptyState
-          title="Set up call sync"
-          message="Match your phone calls with CRM leads. Only calls with your leads are saved to the CRM."
-        />
-        <View style={styles.cta}>
-          <Button
-            title="Start setup"
-            onPress={() => router.push('/call-sync/setup')}
+        <View style={styles.body}>
+          <EmptyState
+            title="Set up call sync"
+            message="Match your phone calls with CRM leads. Only calls with your leads are saved to the CRM."
           />
+          <View style={styles.cta}>
+            <Button
+              title="Start setup"
+              onPress={() => router.push('/call-sync/setup')}
+            />
+          </View>
+          {setupAlert}
         </View>
         <CallsFilterSheet
           open={filterOpen}
@@ -488,83 +538,89 @@ function CallsScreen() {
   return (
     <View style={styles.safe}>
       {pageHeader}
-      {toolbar}
+      {configuredToolbar}
 
-      {!USE_CALLS_DEMO && calls.isLoading ? (
-        <CallsSkeleton />
-      ) : !USE_CALLS_DEMO && calls.isError ? (
-        <ErrorState
-          message={getErrorMessage(calls.error)}
-          onRetry={() => calls.refetch()}
-        />
-      ) : !USE_CALLS_DEMO && calls.data?.state === 'unsupported' ? (
-        <EmptyState
-          title="Call history not available"
-          message="Call history is shown in the SalesFast Android app (development or production build). Expo Go and web cannot read it."
-        />
-      ) : !USE_CALLS_DEMO && calls.data?.state === 'no_permission' ? (
-        <View style={styles.flex}>
+      <View style={styles.body}>
+        {!USE_CALLS_DEMO && calls.isLoading ? (
+          <CallsSkeleton />
+        ) : !USE_CALLS_DEMO && calls.isError ? (
+          <ErrorState
+            message={getErrorMessage(calls.error)}
+            onRetry={() => calls.refetch()}
+          />
+        ) : !USE_CALLS_DEMO && calls.data?.state === 'unsupported' ? (
           <EmptyState
-            title="Permission needed"
-            message="Allow call log access to see recent calls with your leads."
+            title="Call history not available"
+            message="Call history is shown in the SalesFast Android app (development or production build). Expo Go and web cannot read it."
           />
-          <View style={styles.cta}>
-            <Button title="Allow access" onPress={grantPermission} />
+        ) : !USE_CALLS_DEMO && calls.data?.state === 'no_permission' ? (
+          <View style={styles.flex}>
+            <EmptyState
+              title="Permission needed"
+              message="Allow call log access to see recent calls with your leads."
+            />
+            <View style={styles.cta}>
+              <Button title="Allow access" onPress={grantPermission} />
+            </View>
           </View>
-        </View>
-      ) : showList ? (
-        <>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.pillRow}
-          >
-            {TABS.map((t) => (
-              <FilterChip
-                key={t.key}
-                label={
-                  t.key === 'all'
-                    ? `${t.label}  ${counts.total}`
-                    : `${t.label}  ${counts[t.key]}`
-                }
-                active={tab === t.key}
-                onPress={() => setTab(t.key)}
-              />
-            ))}
-          </ScrollView>
-
-          <SectionList
-            sections={sections}
-            keyExtractor={(item) => item.key}
-            stickySectionHeadersEnabled={false}
-            contentContainerStyle={styles.list}
-            refreshing={!USE_CALLS_DEMO && calls.isRefetching}
-            onRefresh={() => {
-              if (!USE_CALLS_DEMO) void calls.refetch();
-            }}
-            ListEmptyComponent={
-              <EmptyState
-                title={emptyCopy || 'No lead calls yet'}
-                message={`Watching ${data?.watchedCount ?? 0} lead numbers.`}
-              />
-            }
-            renderSectionHeader={({ section }) => (
-              <DayGroupHeader label={section.title} />
-            )}
-            renderItem={({ item, index, section }) => {
-              const isFirstOverall =
-                index === 0 && section.key === sections[0]?.key;
-              return (
-                <CallRow
-                  call={item}
-                  isFirst={isFirstOverall}
-                  onOpenLead={() => router.push(`/leads/${item.leadId}`)}
+        ) : showList ? (
+          <>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.pillRow}
+            >
+              {TABS.map((t) => (
+                <FilterChip
+                  key={t.key}
+                  label={
+                    t.key === 'all'
+                      ? `${t.label}  ${counts.total}`
+                      : `${t.label}  ${counts[t.key]}`
+                  }
+                  active={tab === t.key}
+                  onPress={() => setTab(t.key)}
                 />
-              );
-            }}
-          />
-        </>
-      ) : null}
+              ))}
+            </ScrollView>
+
+            <SectionList
+              sections={sections}
+              keyExtractor={(item) => item.key}
+              stickySectionHeadersEnabled={false}
+              contentContainerStyle={styles.list}
+              refreshing={!USE_CALLS_DEMO && calls.isRefetching}
+              onRefresh={() => {
+                if (!USE_CALLS_DEMO) void calls.refetch();
+              }}
+              ListEmptyComponent={
+                <EmptyState
+                  title={emptyCopy || 'No lead calls yet'}
+                  message={`Watching ${data?.watchedCount ?? 0} lead numbers.`}
+                />
+              }
+              renderSectionHeader={({ section }) => (
+                <DayGroupHeader label={section.title} />
+              )}
+              renderItem={({ item, index, section }) => {
+                const isFirstOverall =
+                  index === 0 && section.key === sections[0]?.key;
+                const isLastInGroup = index === section.data.length - 1;
+                return (
+                  <CallRow
+                    call={item}
+                    isFirst={isFirstOverall}
+                    isLast={isLastInGroup}
+                    onOpenLead={() => router.push(`/leads/${item.leadId}`)}
+                  />
+                );
+              }}
+            />
+          </>
+        ) : null}
+
+        {setupAlert}
+      </View>
 
       <CallsFilterSheet
         open={filterOpen}
@@ -659,10 +715,12 @@ function CallsFilterSheet({
 function CallRow({
   call,
   isFirst,
+  isLast,
   onOpenLead,
 }: {
   call: RecentCall;
   isFirst: boolean;
+  isLast: boolean;
   onOpenLead: () => void;
 }) {
   const colors = useThemeColors();
@@ -677,6 +735,7 @@ function CallRow({
       style={({ pressed }) => [
         styles.row,
         isFirst && styles.rowFirst,
+        isLast && styles.rowLast,
         pressed && styles.pressed,
       ]}
       onPress={onOpenLead}
@@ -724,6 +783,7 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.surface },
     flex: { flex: 1 },
+    body: { flex: 1, position: 'relative' },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -731,7 +791,40 @@ function createStyles(colors: ThemeColors) {
     toolbar: {
       paddingHorizontal: spacing.lg,
       gap: spacing.md,
+      marginTop: spacing.md,
       marginBottom: spacing.md,
+    },
+    alertOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: spacing.md,
+      paddingHorizontal: spacing.lg,
+      zIndex: 20,
+      elevation: 8,
+    },
+    alertCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      shadowColor: '#000',
+      shadowOpacity: 0.12,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+    },
+    alertMain: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      minWidth: 0,
+    },
+    alertClose: {
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
     },
     cta: {
       paddingHorizontal: spacing.lg,
@@ -817,6 +910,9 @@ function createStyles(colors: ThemeColors) {
     rowFirst: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
+    },
+    rowLast: {
+      borderBottomWidth: 0,
     },
     avatar: {
       width: 28,

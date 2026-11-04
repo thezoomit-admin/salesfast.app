@@ -386,6 +386,7 @@ function createStyles(colors: ThemeColors, pageWash: string) {
     list: {
       flexGrow: 1,
       paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
       paddingBottom: spacing.xl,
     },
     panelTop: {

@@ -198,7 +198,6 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     wrap: {
       minHeight: 48,
-      marginBottom: 12,
       paddingHorizontal: 16,
       paddingBottom: 8,
       justifyContent: 'center',

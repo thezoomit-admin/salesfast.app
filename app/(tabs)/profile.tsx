@@ -26,6 +26,7 @@ import {
   AccountSwitchSheet,
   SettingsSearchSheet,
   ThemeModeSheet,
+  useSettingsPendingCount,
   type SettingsSearchItem,
 } from '@/features/settings';
 import {
@@ -82,6 +83,8 @@ type MenuItem = {
   danger?: boolean;
   showChevron?: boolean;
   soon?: boolean;
+  /** Pending setup count badge on the row icon. */
+  badge?: number;
 };
 
 type MenuSectionData = {
@@ -153,6 +156,13 @@ function MenuRow({
       >
         <View style={[styles.iconSlot, { backgroundColor: iconBg }]}>
           <Ionicons name={item.icon} size={18} color={iconColor} />
+          {item.badge != null && item.badge > 0 ? (
+            <View style={styles.rowBadge}>
+              <Text style={styles.rowBadgeText}>
+                {item.badge > 99 ? '99+' : String(item.badge)}
+              </Text>
+            </View>
+          ) : null}
         </View>
         <View style={styles.rowBody}>
           <Text style={[styles.rowLabel, { color: labelColor }]} numberOfLines={1}>
@@ -203,6 +213,7 @@ function ProfileScreen() {
   const more = useMemo(() => makeMore(colors), [colors]);
   const styles = useMemo(() => createStyles(more), [more]);
   const callSync = useCallSyncStatus();
+  const pendingSetup = useSettingsPendingCount();
   const [accounts, setAccounts] = useState<SavedMobileAccount[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -383,6 +394,7 @@ function ProfileScreen() {
             icon: 'phone-portrait-outline',
             href: '/call-sync/setup',
             value: callSync.label,
+            badge: pendingSetup.items.includes('call-sync') ? 1 : 0,
           },
         ],
       },
@@ -452,7 +464,7 @@ function ProfileScreen() {
         ],
       },
     ],
-    [callSync.label, mode, accountsValue]
+    [callSync.label, mode, accountsValue, pendingSetup.items]
   );
 
   const searchItems: SettingsSearchItem[] = useMemo(
@@ -715,6 +727,26 @@ function createStyles(more: MoreChrome) {
       borderRadius: more.radiusFull,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    rowBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -6,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 4,
+      borderRadius: more.radiusFull,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: more.primary,
+      borderWidth: 1.5,
+      borderColor: more.card,
+    },
+    rowBadgeText: {
+      fontSize: 9,
+      lineHeight: 11,
+      fontWeight: '700',
+      color: '#FFFFFF',
     },
     rowBody: {
       flex: 1,

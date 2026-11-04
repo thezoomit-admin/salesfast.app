@@ -7,8 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import { HomeDashboard } from '@/components/home/HomeDashboard';
-import { Message01Icon, Settings01Icon } from '@/components/icons/hugeicons';
+import { Message01Icon } from '@/components/icons/hugeicons';
 import { Screen } from '@/components/ui/Screen';
+import { SettingsIconButton } from '@/components/ui/SettingsIconButton';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -88,23 +89,11 @@ function HomeScreen() {
               strokeWidth={1.8}
             />
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open settings"
-            onPress={() => router.navigate('/(tabs)/profile')}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.headerIconBtn,
-              pressed && styles.pressed,
-            ]}
-          >
-            <HugeiconsIcon
-              icon={Settings01Icon}
-              size={20}
-              color={colors.text}
-              strokeWidth={1.8}
-            />
-          </Pressable>
+          <SettingsIconButton
+            size={20}
+            color={colors.text}
+            style={styles.headerIconBtn}
+          />
         </View>
       </View>
     </View>

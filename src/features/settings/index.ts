@@ -5,3 +5,4 @@ export {
   type SettingsSearchItem,
 } from './SettingsSearchSheet';
 export { ThemeModeSheet } from './ThemeModeSheet';
+export { useSettingsPendingCount } from './useSettingsPendingCount';
