@@ -49,7 +49,7 @@ const TAB_LABELS: Record<string, string> = {
   'follow-ups': 'Follow-ups',
   index: 'Home',
   calls: 'Calls',
-  notifications: 'Notifications',
+  notifications: 'Inbox',
 };
 
 type AppTabBarProps = MaterialTopTabBarProps & {
@@ -67,10 +67,11 @@ export function AppTabBar({
   badges,
 }: AppTabBarProps) {
   const { colors } = useTheme();
-  const bottomInset = Math.max(insets.bottom, 8);
+  // Real system inset only — edge-to-edge paints brand under the nav buttons.
+  const systemInset = insets.bottom;
   const styles = useMemo(
-    () => createStyles(colors, bottomInset),
-    [colors, bottomInset]
+    () => createStyles(colors, systemInset),
+    [colors, systemInset]
   );
 
   const routesByName = Object.fromEntries(
@@ -167,6 +168,7 @@ export function AppTabBar({
               styles={styles}
               colors={colors}
               icon={TAB_ICONS[name]}
+              label={label}
               badge={badges?.[name] || undefined}
               active={active === routeIndex}
               focused={focused}
@@ -177,6 +179,8 @@ export function AppTabBar({
           );
         })}
       </View>
+      {/* Edge-to-edge: system nav is transparent — paint brand under the inset. */}
+      {systemInset > 0 ? <View style={styles.systemBar} /> : null}
     </View>
   );
 }
@@ -187,6 +191,7 @@ type TabItemProps = {
   styles: ReturnType<typeof createStyles>;
   colors: ThemeColors;
   icon: HugeIconData | undefined;
+  label: string;
   badge: number | undefined;
   /** Drawn highlighted (follows taps and swipes ahead of `focused`). */
   active: boolean;
@@ -201,6 +206,7 @@ function TabItem({
   styles,
   colors,
   icon,
+  label,
   badge,
   active,
   focused,
@@ -263,32 +269,44 @@ function TabItem({
           </View>
         ) : null}
       </View>
+      <Text
+        style={[styles.label, active && styles.labelActive]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
-function createStyles(colors: ThemeColors, bottomInset: number) {
+function createStyles(colors: ThemeColors, systemInset: number) {
   return StyleSheet.create({
     wrap: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.brand,
     },
     bar: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       backgroundColor: colors.surface,
-      paddingTop: 8,
-      paddingBottom: bottomInset,
-      paddingHorizontal: 8,
-      minHeight: 52 + bottomInset,
+      paddingTop: 6,
+      paddingBottom: 8,
+      paddingHorizontal: 4,
+      minHeight: 64,
       borderTopWidth: 1,
       borderTopColor: colors.border,
+    },
+    systemBar: {
+      height: systemInset,
+      backgroundColor: colors.brand,
     },
     item: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 2,
       minHeight: 44,
+      minWidth: 0,
     },
     itemPressed: {
       opacity: 0.72,
@@ -303,6 +321,16 @@ function createStyles(colors: ThemeColors, bottomInset: number) {
       ...StyleSheet.absoluteFill,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    label: {
+      fontSize: 11,
+      lineHeight: 14,
+      fontWeight: '500',
+      color: colors.textSecondary,
+    },
+    labelActive: {
+      fontWeight: '600',
+      color: colors.brand,
     },
     badge: {
       position: 'absolute',

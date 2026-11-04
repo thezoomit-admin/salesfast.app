@@ -220,6 +220,10 @@ export async function fetchLeadMeta() {
 /** Admin-managed lookups — change rarely, so keep them fresh for a while. */
 const LOOKUP_STALE_MS = 10 * 60_000;
 
+// Name fallback until every server sends `code`.
+export const isDraftStatus = (s: LeadStatus) =>
+  s.code === 'DRAFT' || /^draft$/i.test(s.name.trim());
+
 export const leadStatusesQuery = queryOptions({
   queryKey: ['lead-statuses'],
   queryFn: fetchLeadStatuses,

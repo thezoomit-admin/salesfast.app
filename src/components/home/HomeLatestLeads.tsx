@@ -2,15 +2,22 @@ import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import {
   ArrowDownDoubleIcon,
-  ArrowRight01Icon,
   CallIcon,
   FlameIcon,
   MinusSignIcon,
 } from '@/components/icons/hugeicons';
+import { HomeSection } from '@/components/home/HomeSection';
 import { LeadHistorySheet } from '@/components/home/LeadHistorySheet';
 import { PriorityPickerSheet } from '@/components/home/PriorityPickerSheet';
 import {
@@ -18,7 +25,7 @@ import {
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
 import { useLeadPriorityMutation } from '@/features/leads/useLeadPriorityMutation';
-import { typography, useTheme, type ThemeColors } from '@/theme';
+import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import type { LeadPriority, MobileDashboard } from '@/types/api';
 import { followupWhenLabel } from '@/utils/dates';
 import { openPhoneDialer, openWhatsApp } from '@/utils/phone';
@@ -65,34 +72,21 @@ export function HomeLatestLeads({ leads }: Props) {
   );
 
   return (
-    <View style={styles.root}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Latest leads</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open leads"
-          onPress={() => router.navigate('/(tabs)/leads')}
-          hitSlop={6}
-          style={({ pressed }) => [
-            styles.arrowBtn,
-            pressed && styles.pressed,
-          ]}
-        >
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            size={18}
-            color={colors.brand}
-            strokeWidth={2}
-          />
-        </Pressable>
-      </View>
-
+    <HomeSection
+      title="Latest leads"
+      onSeeAll={() => router.navigate('/(tabs)/leads')}
+    >
       {items.length === 0 ? (
         <Text style={styles.empty}>
           No recent leads yet. New assigns will show up here.
         </Text>
       ) : (
-        <View style={styles.list}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.slider}
+          contentContainerStyle={styles.sliderRow}
+        >
           {items.map((lead) => {
             const statusName = lead.status?.name || 'Lead';
             const statusColor = lead.status?.color || colors.brand;
@@ -108,6 +102,23 @@ export function HomeLatestLeads({ leads }: Props) {
 
             return (
               <View key={lead.id} style={styles.card}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${lead.name || 'lead'}`}
+                  onPress={() => router.push(`/leads/${lead.id}`)}
+                  style={styles.cover}
+                >
+                  <View
+                    style={[styles.coverWash, { backgroundColor: statusColor }]}
+                  />
+                  <View
+                    style={[styles.coverMark, { backgroundColor: statusColor }]}
+                  >
+                    <Text style={styles.coverInitial}>
+                      {(lead.name || '?').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                </Pressable>
                 <View style={styles.cardBody}>
                   <View style={styles.nameRow}>
                     <Pressable
@@ -308,7 +319,7 @@ export function HomeLatestLeads({ leads }: Props) {
               </View>
             );
           })}
-        </View>
+        </ScrollView>
       )}
 
       <PriorityPickerSheet
@@ -333,53 +344,49 @@ export function HomeLatestLeads({ leads }: Props) {
         leadName={history?.leadName ?? ''}
         onClose={() => setHistory(null)}
       />
-    </View>
+    </HomeSection>
   );
 }
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    root: {
-      gap: 12,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingRight: 2,
-    },
-    title: {
-      ...typography.subtitle,
-      fontSize: 17,
-      fontWeight: '700',
-      color: colors.text,
-    },
-    arrowBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     empty: {
       ...typography.caption,
       color: colors.textMuted,
       lineHeight: 18,
-      backgroundColor: colors.surface,
-      borderRadius: 18,
-      paddingHorizontal: 14,
-      paddingVertical: 16,
     },
-    list: {
-      gap: 10,
-    },
+    slider: { marginHorizontal: -spacing.lg },
+    sliderRow: { gap: 10, paddingHorizontal: spacing.lg },
     pressed: { opacity: 0.9 },
     card: {
+      width: 272,
       backgroundColor: colors.surface,
-      borderRadius: 16,
+      borderRadius: 12,
       overflow: 'hidden',
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: 1,
       borderColor: colors.border,
+    },
+    cover: {
+      height: 72,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    coverWash: {
+      ...StyleSheet.absoluteFill,
+      opacity: 0.14,
+    },
+    coverMark: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    coverInitial: {
+      fontSize: 19,
+      lineHeight: 24,
+      fontWeight: '700',
+      color: '#FFFFFF',
     },
     cardBody: {
       paddingHorizontal: 14,

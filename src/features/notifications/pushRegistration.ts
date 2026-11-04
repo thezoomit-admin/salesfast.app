@@ -108,10 +108,10 @@ export async function registerForPushNotifications(
     lastRegistration = accountId ? { accountId, token } : null;
     return { status: 'registered', token };
   } catch (error) {
-    return {
-      status: 'error',
-      reason: error instanceof Error ? error.message : 'Push setup failed',
-    };
+    const reason = error instanceof Error ? error.message : 'Push setup failed';
+    // Callers ignore the result, so this log (adb logcat) is the only trace.
+    console.warn('[Push] Setup failed:', reason);
+    return { status: 'error', reason };
   }
 }
 

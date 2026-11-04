@@ -1,0 +1,32 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Amber person with magnifying-glass cutout (matches provided reference) -->
+  <g fill="#F9B233" fill-rule="evenodd">
+    <!-- Head -->
+    <circle cx="25" cy="14.5" r="9.2"/>
+    <!-- Body with circular bite for the glass (outer body − glass clearance disk) -->
+    <path d="
+      M9 54.5
+      C10 41.5 16.8 34 25 34
+      C32.5 34 38.2 38.2 41.2 43.6
+      A13.8 13.8 0 0 0 30.5 42.5
+      A13.8 13.8 0 0 0 30.5 56.5
+      C28.2 57.2 26.4 57.5 25 57.5
+      C16.2 57.5 10.2 53.2 9 54.5
+      Z
+      M44 42.5
+      m-13.2 0
+      a13.2 13.2 0 1 0 26.4 0
+      a13.2 13.2 0 1 0 -26.4 0
+    "/>
+  </g>
+  <!-- Magnifying glass ring -->
+  <circle cx="44" cy="42.5" r="9.2" fill="none" stroke="#F9B233" stroke-width="5.2"/>
+  <!-- Handle -->
+  <path
+    d="M51.5 50 L59.5 58"
+    fill="none"
+    stroke="#F9B233"
+    stroke-width="5.2"
+    stroke-linecap="round"
+  />
+</svg>

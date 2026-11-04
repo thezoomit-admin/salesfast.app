@@ -6,9 +6,10 @@ import {
   useSegments,
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { NavigationBar } from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { BrandSplash } from '@/features/auth/components/BrandSplash';
@@ -73,6 +74,8 @@ function ThemedStack() {
   return (
     <>
       <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
+      {/* Light buttons on brand-colored system inset (Android). */}
+      {Platform.OS === 'android' ? <NavigationBar style="light" /> : null}
       <Stack
         screenOptions={{
           headerShown: false,

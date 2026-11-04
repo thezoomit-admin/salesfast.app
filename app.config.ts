@@ -18,6 +18,25 @@ const googleServicesFile =
     ? './google-services.json'
     : undefined);
 
+/**
+ * An Android build without Firebase still installs and shows the in-app inbox,
+ * but it can never get a push token, so no notification reaches the phone.
+ * Stop that build on EAS instead of shipping it. Checked only on the build
+ * server, where GOOGLE_SERVICES_JSON is available; dev clients may skip push.
+ */
+if (
+  process.env.EAS_BUILD === 'true' &&
+  process.env.EAS_BUILD_PLATFORM === 'android' &&
+  !isDevClientBuild &&
+  !googleServicesFile
+) {
+  throw new Error(
+    'google-services.json is missing, so this APK could not receive push ' +
+      'notifications. Add it to salesfast.app/ or set the GOOGLE_SERVICES_JSON ' +
+      'EAS file variable (Firebase Android app com.salesfastcrm).'
+  );
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Salesfast- CRM',
@@ -82,6 +101,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-secure-store',
+    [
+      // Transparent system nav (edge-to-edge). Don't force a contrast scrim
+      // so the brand strip under AppTabBar stays visible (bKash-style).
+      'expo-navigation-bar',
+      {
+        enforceContrast: false,
+        style: 'light',
+      },
+    ],
     [
       'expo-notifications',
       {

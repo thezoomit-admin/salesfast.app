@@ -301,6 +301,13 @@ export const CircleCheckIcon: IconSvgElement = [
 ];
 
 
+/** lucide Info — Home app info tile. */
+export const InfoIcon: IconSvgElement = [
+  ['circle', { cx: '12', cy: '12', r: '10', ...lucide, key: '0' }],
+  ['path', { d: 'M12 16v-4', ...lucide, key: '1' }],
+  ['path', { d: 'M12 8h.01', ...lucide, key: '2' }],
+];
+
 /** lucide Check — follow-up card checkbox. */
 export const CheckIcon: IconSvgElement = [
   ['path', { d: 'M20 6 9 17l-5-5', ...lucide, key: '0' }],

@@ -6,7 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -49,6 +49,7 @@ import {
   type LeadFilters,
 } from '@/features/leads/leadFilters';
 import {
+  isDraftStatus,
   leadSourcesQuery,
   leadStatusesQuery,
   leadTabCountsQuery,
@@ -56,6 +57,7 @@ import {
   type LeadListTab,
 } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
+import { useTabIntent } from '@/lib/tabIntent';
 import type { LeadListItem, LeadStatus } from '@/types/api';
 import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
@@ -69,8 +71,6 @@ function useDebounced<T>(value: T, delay = 350) {
 }
 
 // Name fallback until every server sends `code`.
-const isDraftStatus = (s: LeadStatus) =>
-  s.code === 'DRAFT' || /^draft$/i.test(s.name.trim());
 const isAssignStatus = (s: LeadStatus) =>
   s.code === 'ASSIGN' || /^assign(ed)?$/i.test(s.name.trim());
 
@@ -78,7 +78,6 @@ function LeadsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const params = useLocalSearchParams<{ focusSearch?: string }>();
   const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -88,12 +87,26 @@ function LeadsScreen() {
   const debouncedSearch = useDebounced(search);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (params.focusSearch !== '1') return;
-    setSearchOpen(true);
-    requestAnimationFrame(() => searchRef.current?.focus());
-    router.setParams({ focusSearch: undefined });
-  }, [params.focusSearch, router]);
+  // Home's shortcuts: 'search', 'unread' or a status id.
+  const focusSearchOnArrival = useRef(false);
+  const onIntent = useCallback((value: string) => {
+    if (value === 'search') {
+      setSearchOpen(true);
+      focusSearchOnArrival.current = true;
+    } else {
+      setTab(value === 'unread' ? 'unread' : Number(value));
+    }
+  }, []);
+  useTabIntent('leads', onIntent);
+  // A preloaded page is still off screen when the intent lands, and an
+  // off-screen input can't take focus.
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusSearchOnArrival.current) return;
+      focusSearchOnArrival.current = false;
+      requestAnimationFrame(() => searchRef.current?.focus());
+    }, [])
+  );
 
   const statuses = useQuery(leadStatusesQuery);
   const counts = useQuery({
@@ -218,15 +231,19 @@ function LeadsScreen() {
     const x = Math.min(max, Math.max(0, item.x + item.width / 2 - viewport / 2));
     tabScrollRef.current?.scrollTo({ x, animated: true });
   }, []);
+  // A tab opened from Home can be set before its chip has been measured.
+  const activeTabRef = useRef(tab);
   useEffect(() => {
+    activeTabRef.current = tab;
     centerTab(tab);
   }, [tab, centerTab]);
   const onTabLayout = useCallback(
     (t: LeadListTab) => (e: LayoutChangeEvent) => {
       const { x, width } = e.nativeEvent.layout;
       tabLayouts.current.set(String(t), { x, width });
+      if (t === activeTabRef.current) centerTab(t);
     },
-    []
+    [centerTab]
   );
 
   const renderStatusTab = (status: LeadStatus) => (
@@ -320,9 +337,11 @@ function LeadsScreen() {
         scrollRef={tabScrollRef}
         onLayout={(e) => {
           tabRow.current.viewport = e.nativeEvent.layout.width;
+          centerTab(activeTabRef.current);
         }}
         onContentSizeChange={(w) => {
           tabRow.current.content = w;
+          centerTab(activeTabRef.current);
         }}
       >
         <CountTab

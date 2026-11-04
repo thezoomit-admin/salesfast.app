@@ -26,6 +26,7 @@ import {
   type FollowUpBucketPage,
 } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
+import { useTabIntent } from '@/lib/tabIntent';
 import type { MyFollowUp } from '@/types/api';
 
 type MonthData = { items: MyFollowUp[] };
@@ -62,6 +63,12 @@ function FollowUpsScreen() {
   const [tab, setTab] = useState<FollowUpTab>('calendar');
   const [selected, setSelected] = useState(() => new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Home's shortcuts open a tab directly.
+  const onIntent = useCallback((value: string) => {
+    setTab(value as FollowUpTab);
+  }, []);
+  useTabIntent('follow-ups', onIntent);
 
   // A week can straddle two months.
   const months = useMemo(() => {
