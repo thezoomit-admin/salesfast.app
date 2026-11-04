@@ -144,9 +144,6 @@ export function LeadCallHistoryPanel({ lead }: Props) {
                               color={kindColor(kind, colors)}
                               strokeWidth={1.5}
                             />
-                            <Text style={styles.meta} numberOfLines={1}>
-                              · {n.addedByName?.trim() || 'Agent'}
-                            </Text>
                           </View>
                         </View>
                         <View style={styles.right}>

@@ -141,7 +141,6 @@ export default function ActivitiesScreen() {
           <ActivityRow
             leadId={item.leadId}
             leadName={item.leadName}
-            addedByName={item.addedByName}
             createdAt={item.createdAt}
             view={describeActivity(item)}
             last={last}
@@ -192,17 +191,19 @@ export default function ActivitiesScreen() {
               }
               onPress={() => setFilterOpen(true)}
             >
-              <HugeiconsIcon
-                icon={FilterIcon}
-                size={22}
-                color={pickedFilters ? colors.brand : colors.text}
-                strokeWidth={1.5}
-              />
-              {pickedFilters ? (
-                <View style={styles.filterBadge}>
-                  <Text style={styles.filterBadgeText}>{pickedFilters}</Text>
-                </View>
-              ) : null}
+              <View style={styles.filterIconWrap}>
+                <HugeiconsIcon
+                  icon={FilterIcon}
+                  size={22}
+                  color={pickedFilters ? colors.brand : colors.text}
+                  strokeWidth={1.5}
+                />
+                {pickedFilters ? (
+                  <View style={styles.filterBadge}>
+                    <Text style={styles.filterBadgeText}>{pickedFilters}</Text>
+                  </View>
+                ) : null}
+              </View>
             </HeaderIconButton>
           </>
         }
@@ -333,21 +334,29 @@ export default function ActivitiesScreen() {
 function createStyles(colors: ThemeColors, pageWash: string) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: pageWash },
+    filterIconWrap: {
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     filterBadge: {
       position: 'absolute',
-      top: 2,
-      right: 0,
-      minWidth: 17,
-      height: 17,
+      top: -4,
+      right: -8,
+      minWidth: 16,
+      height: 16,
       paddingHorizontal: 4,
       borderRadius: radii.pill,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.brand,
+      borderWidth: 1.5,
+      borderColor: pageWash,
     },
     filterBadgeText: {
-      fontSize: 10,
-      lineHeight: 13,
+      fontSize: 9,
+      lineHeight: 11,
       fontWeight: '700',
       color: colors.white,
     },

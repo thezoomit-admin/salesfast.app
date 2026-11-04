@@ -54,7 +54,6 @@ export function activityAccent(
 type Props = {
   leadId: number;
   leadName: string;
-  addedByName: string | null;
   createdAt: string;
   view: ActivityView;
   /** The last row of a day has no rail running on to the next one. */
@@ -63,11 +62,10 @@ type Props = {
   onOpen: (leadId: number) => void;
 };
 
-/** Timeline row — tinted icon on a rail | lead, note, badges | time. */
+/** Timeline row — tinted icon on a rail | lead + note | time + kind. */
 export const ActivityRow = memo(function ActivityRow({
   leadId,
   leadName,
-  addedByName,
   createdAt,
   view,
   last,
@@ -78,7 +76,6 @@ export const ActivityRow = memo(function ActivityRow({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const accent = activityAccent(view.kind, colors, isDark);
   const tint = `${accent}26`;
-  const by = addedByName?.trim();
 
   return (
     <Pressable
@@ -98,35 +95,32 @@ export const ActivityRow = memo(function ActivityRow({
 
       <View style={[styles.content, !last && styles.contentGap]}>
         <View style={styles.top}>
-          <Text style={styles.lead} numberOfLines={1}>
-            {leadName}
-          </Text>
-          <Text style={styles.time}>{formatClockTime(createdAt)}</Text>
-        </View>
-
-        {view.text ? (
-          <Text style={styles.note} numberOfLines={3}>
-            {view.text}
-          </Text>
-        ) : null}
-
-        <View style={styles.badges}>
-          <View style={[styles.badge, { backgroundColor: tint }]}>
-            <Text style={[styles.badgeText, { color: accent }]} numberOfLines={1}>
+          <View style={styles.left}>
+            <Text style={styles.lead} numberOfLines={1}>
+              {leadName}
+            </Text>
+            {view.text ? (
+              <Text style={styles.note} numberOfLines={3}>
+                {view.text}
+              </Text>
+            ) : null}
+            {view.hasVoiceNote ? (
+              <View style={styles.voiceRow}>
+                <Ionicons
+                  name="mic-outline"
+                  size={12}
+                  color={colors.textSecondary}
+                />
+                <Text style={styles.voiceText}>Voice note</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.right}>
+            <Text style={styles.time}>{formatClockTime(createdAt)}</Text>
+            <Text style={[styles.kind, { color: accent }]} numberOfLines={1}>
               {view.label}
             </Text>
           </View>
-          {view.hasVoiceNote ? (
-            <View style={[styles.badge, styles.voiceBadge]}>
-              <Ionicons name="mic-outline" size={12} color={colors.textSecondary} />
-              <Text style={[styles.badgeText, styles.voiceText]}>Voice note</Text>
-            </View>
-          ) : null}
-          {by ? (
-            <Text style={styles.by} numberOfLines={1}>
-              by {by}
-            </Text>
-          ) : null}
         </View>
       </View>
     </Pressable>
@@ -152,16 +146,21 @@ function createStyles(colors: ThemeColors) {
       marginVertical: 4,
       backgroundColor: colors.border,
     },
-    content: { flex: 1, minWidth: 0, gap: 6 },
+    content: { flex: 1, minWidth: 0 },
     contentGap: { paddingBottom: 18 },
     top: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 8,
-      minHeight: 20,
+    },
+    left: { flex: 1, minWidth: 0, gap: 4 },
+    right: {
+      alignItems: 'flex-end',
+      gap: 2,
+      maxWidth: '42%',
+      paddingTop: 1,
     },
     lead: {
-      flex: 1,
       fontSize: 15,
       lineHeight: 20,
       fontWeight: '700',
@@ -173,35 +172,33 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '400',
       color: colors.textMuted,
     },
+    kind: {
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '700',
+      textAlign: 'right',
+    },
     note: {
       fontSize: 14,
       lineHeight: 20,
       color: colors.textSecondary,
     },
-    badges: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 6,
-    },
-    badge: {
+    voiceRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      maxWidth: '100%',
-      paddingHorizontal: 10,
+      alignSelf: 'flex-start',
+      marginTop: 2,
+      paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 999,
+      backgroundColor: colors.surfaceMuted,
     },
-    badgeText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '600' },
-    voiceBadge: { backgroundColor: colors.surfaceMuted },
-    voiceText: { color: colors.textSecondary },
-    by: {
-      flexShrink: 1,
-      marginLeft: 2,
+    voiceText: {
       fontSize: 12,
       lineHeight: 16,
-      color: colors.textMuted,
+      fontWeight: '600',
+      color: colors.textSecondary,
     },
   });
 }
