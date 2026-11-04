@@ -23,6 +23,8 @@ type Props = {
    * Defaults on when `showBack` and no `center` slot.
    */
   titleCentered?: boolean;
+  /** No rule or gap below, for a tab row that continues the header. */
+  flush?: boolean;
 };
 
 /**
@@ -39,6 +41,7 @@ export function ScreenHeader({
   backIcon = 'arrow-back',
   onTitlePress,
   titleCentered,
+  flush = false,
 }: Props) {
   const router = useRouter();
   const navigation = useNavigation();
@@ -80,7 +83,13 @@ export function ScreenHeader({
   ) : null;
 
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
+    <View
+      style={[
+        styles.wrap,
+        flush && styles.wrapFlush,
+        { paddingTop: insets.top + 8 },
+      ]}
+    >
       {center || centered ? (
         <View
           style={[styles.centerSlot, { top: insets.top }]}
@@ -207,6 +216,11 @@ function createStyles(colors: ThemeColors) {
       backgroundColor: colors.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.primary50,
+    },
+    wrapFlush: {
+      marginBottom: 0,
+      paddingBottom: 0,
+      borderBottomWidth: 0,
     },
     centerSlot: {
       position: 'absolute',
