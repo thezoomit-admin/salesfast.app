@@ -66,6 +66,13 @@ export function formatDueDay(value?: string | Date | null) {
   return day;
 }
 
+/** "Due in 12 min" while `due` is ahead of `now`, else null. */
+export function formatDueIn(value: string | Date | null | undefined, now: number) {
+  const d = parseDate(value);
+  if (!d || d.getTime() <= now) return null;
+  return `Due in ${Math.ceil((d.getTime() - now) / 60_000)} min`;
+}
+
 /** Compact relative time — "Just now", "5m ago", "2h ago", "3d ago". */
 export function formatRelative(value?: string | Date | null) {
   const d = parseDate(value);

@@ -3,7 +3,7 @@ import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { spacing, useThemeColors, type ThemeColors } from '@/theme';
-import { formatClockTime, formatDueDay } from '@/utils/dates';
+import { formatClockTime, formatDueDay, formatDueIn } from '@/utils/dates';
 
 import type { AppNotification } from './notificationsApi';
 
@@ -15,6 +15,8 @@ const KIND: Record<string, { icon: IconName; tone: Tone }> = {
   LEAD_ASSIGNMENT_ACTIVITY: { icon: 'swap-horizontal-outline', tone: 'brand' },
   LEAD_REASSIGNED_AWAY: { icon: 'share-outline', tone: 'warning' },
   LEAD_UNASSIGNED: { icon: 'alert-circle-outline', tone: 'danger' },
+  FOLLOW_UP_WARN_15: { icon: 'calendar-outline', tone: 'warning' },
+  FOLLOW_UP_WARN_5: { icon: 'calendar-outline', tone: 'warning' },
   FOLLOW_UP_DUE_SOON: { icon: 'calendar-outline', tone: 'warning' },
   FOLLOW_UP_REMINDER: { icon: 'alarm-outline', tone: 'warning' },
   FOLLOW_UP_OVERDUE: { icon: 'calendar-outline', tone: 'danger' },
@@ -29,7 +31,20 @@ const KIND: Record<string, { icon: IconName; tone: Tone }> = {
 const FALLBACK = { icon: 'notifications-outline' as IconName, tone: 'brand' as Tone };
 
 /** Their title names the lead, so the second line can be the due date. */
-const SHOWS_DUE_DATE = new Set(['FOLLOW_UP_DUE_SOON', 'FOLLOW_UP_OVERDUE']);
+const SHOWS_DUE_DATE = new Set([
+  'FOLLOW_UP_WARN_15',
+  'FOLLOW_UP_WARN_5',
+  'FOLLOW_UP_DUE_SOON',
+  'FOLLOW_UP_OVERDUE',
+]);
+
+const RESOLUTION_LABEL: Record<string, string> = {
+  COMPLETED: 'Follow-up completed',
+  RESCHEDULED: 'Follow-up rescheduled',
+  CANCELLED: 'Follow-up cancelled',
+  SUPERSEDED: 'Replaced by a newer alert',
+  REASSIGNED: 'Lead reassigned',
+};
 
 const toneColors = (colors: ThemeColors, tone: Tone) => {
   if (tone === 'warning') return { fg: colors.warning, bg: colors.warningSoft };
@@ -40,13 +55,18 @@ const toneColors = (colors: ThemeColors, tone: Tone) => {
 
 type Props = {
   item: AppNotification;
+  /** Current time, so remaining minutes stay right while the list is open. */
+  now: number;
   onPress: (item: AppNotification) => void;
+  onLongPress: (item: AppNotification) => void;
 };
 
 /** Inbox row — tinted icon | title + one line | time + unread dot. */
 export const NotificationCard = memo(function NotificationCard({
   item,
+  now,
   onPress,
+  onLongPress,
 }: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -55,18 +75,28 @@ export const NotificationCard = memo(function NotificationCard({
   const tint = toneColors(colors, kind.tone);
   const unread = !item.isRead;
 
+  const resolved = !!item.resolvedAt;
   const dueAt = SHOWS_DUE_DATE.has(crmType) ? item.metadata?.dueAt : undefined;
-  const subtitle = dueAt
-    ? `${formatDueDay(dueAt)}  •  ${formatClockTime(dueAt)}`
-    : item.message;
+  const dueDay = formatDueIn(dueAt, now) ?? formatDueDay(dueAt);
+  const subtitle = resolved
+    ? (RESOLUTION_LABEL[item.resolution ?? ''] ?? item.message)
+    : dueAt
+      ? `${dueDay}  •  ${formatClockTime(dueAt)}`
+      : item.message;
 
   return (
     <Pressable
       onPress={() => onPress(item)}
+      onLongPress={() => onLongPress(item)}
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}. ${item.message}`}
+      accessibilityLabel={`${item.title}. ${subtitle}`}
+      accessibilityHint="Long press to dismiss"
       accessibilityState={{ selected: unread }}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        resolved && styles.resolved,
+        pressed && styles.pressed,
+      ]}
     >
       <View style={[styles.iconWrap, { backgroundColor: tint.bg }]}>
         <Ionicons name={kind.icon} size={20} color={tint.fg} />
@@ -79,7 +109,9 @@ export const NotificationCard = memo(function NotificationCard({
         <Text
           style={[
             styles.subtitle,
-            crmType === 'FOLLOW_UP_OVERDUE' && styles.subtitleOverdue,
+            crmType === 'FOLLOW_UP_OVERDUE' &&
+              !resolved &&
+              styles.subtitleOverdue,
           ]}
           numberOfLines={1}
         >
@@ -89,7 +121,7 @@ export const NotificationCard = memo(function NotificationCard({
 
       <View style={styles.side}>
         <Text style={styles.time}>{formatClockTime(item.createdAt)}</Text>
-        {unread ? <View style={styles.unreadDot} /> : null}
+        {unread && !resolved ? <View style={styles.unreadDot} /> : null}
       </View>
     </Pressable>
   );
@@ -104,6 +136,7 @@ function createStyles(colors: ThemeColors) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
+    resolved: { opacity: 0.6 },
     pressed: { opacity: 0.7 },
     iconWrap: {
       width: 40,

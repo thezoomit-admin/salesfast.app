@@ -1,11 +1,12 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
-} from '@tanstack/react-query';
-import { type Href, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+} from "@tanstack/react-query";
+import { type Href, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -14,26 +15,34 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { getErrorMessage } from '@/api/client';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { NotificationsSkeleton } from '@/components/ui/skeletons';
-import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
-import { NotificationCard } from '@/features/notifications/NotificationCard';
-import { NotificationTabs } from '@/features/notifications/NotificationTabs';
+import { getErrorMessage } from "@/api/client";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { NotificationsSkeleton } from "@/components/ui/skeletons";
+import { EmptyState, QueryPlaceholder } from "@/components/ui/StateViews";
+import { NotificationCard } from "@/features/notifications/NotificationCard";
+import { NotificationTabs } from "@/features/notifications/NotificationTabs";
 import {
   type AppNotification,
+  dismissNotification,
   fetchNotifications,
   fetchUnreadByCategory,
   markAllNotificationsRead,
   markNotificationRead,
   type NotificationCategory,
+  type NotificationState,
   NOTIFICATIONS_KEY,
   UNREAD_BY_CATEGORY_KEY,
-} from '@/features/notifications/notificationsApi';
-import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
-import { formatDayHeading } from '@/utils/dates';
+} from "@/features/notifications/notificationsApi";
+import { spacing, typography, useThemeColors, type ThemeColors } from "@/theme";
+import { formatDayHeading } from "@/utils/dates";
+
+/** Live updates arrive as pushes; this covers phones with push turned off. */
+const REFRESH_MS = 60_000;
+/** How often "Due in N min" re-renders. */
+const CLOCK_MS = 30_000;
 
 const TABS: {
   key: NotificationCategory;
@@ -42,22 +51,22 @@ const TABS: {
   emptyMessage: string;
 }[] = [
   {
-    key: 'warn',
-    label: 'Warn',
-    emptyTitle: 'No warnings',
-    emptyMessage: 'Follow-ups due within 12 hours will show up here.',
+    key: "warn",
+    label: "Warn",
+    emptyTitle: "No warnings",
+    emptyMessage: "Follow-ups due within 12 hours will show up here.",
   },
   {
-    key: 'urgent',
-    label: 'Urgent',
-    emptyTitle: 'Nothing urgent',
-    emptyMessage: 'Overdue follow-ups will show up here.',
+    key: "urgent",
+    label: "Urgent",
+    emptyTitle: "Nothing urgent",
+    emptyMessage: "Overdue follow-ups will show up here.",
   },
   {
-    key: 'info',
-    label: 'Info',
-    emptyTitle: 'No notifications yet',
-    emptyMessage: 'New lead assignments and updates will show up here.',
+    key: "info",
+    label: "Info",
+    emptyTitle: "No notifications yet",
+    emptyMessage: "New lead assignments and updates will show up here.",
   },
 ];
 
@@ -81,32 +90,50 @@ function routeFor(item: AppNotification): Href | null {
   return null;
 }
 
-function NotificationList({ tab }: { tab: (typeof TABS)[number] }) {
+function NotificationList({
+  tab,
+  state,
+}: {
+  tab: (typeof TABS)[number];
+  state: NotificationState;
+}) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  const [now, setNow] = useState(() => Date.now());
+  const [dismissing, setDismissing] = useState<AppNotification | null>(null);
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), CLOCK_MS);
+    return () => clearInterval(id);
+  }, []);
+
   const query = useInfiniteQuery({
-    queryKey: [...NOTIFICATIONS_KEY, 'list', tab.key],
-    queryFn: ({ pageParam }) => fetchNotifications(tab.key, pageParam),
-    initialPageParam: 1,
-    getNextPageParam: (last) =>
-      last.page < last.lastPage ? last.page + 1 : undefined,
+    queryKey: [...NOTIFICATIONS_KEY, "list", tab.key, state],
+    queryFn: ({ pageParam }) => fetchNotifications(tab.key, state, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    refetchInterval: REFRESH_MS,
   });
 
   const sections = useMemo(
     () => groupByDay(query.data?.pages.flatMap((p) => p.items) ?? []),
-    [query.data]
+    [query.data],
   );
 
   const refreshAll = useCallback(
     () => queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY }),
-    [queryClient]
+    [queryClient],
   );
 
   const markOne = useMutation({
     mutationFn: markNotificationRead,
+    onSettled: refreshAll,
+  });
+  const dismiss = useMutation({
+    mutationFn: dismissNotification,
     onSettled: refreshAll,
   });
 
@@ -116,21 +143,26 @@ function NotificationList({ tab }: { tab: (typeof TABS)[number] }) {
       const route = routeFor(item);
       if (route) router.push(route);
     },
-    [markOne, router]
+    [markOne, router],
   );
 
   const renderItem = useCallback(
     ({ item }: { item: AppNotification }) => (
-      <NotificationCard item={item} onPress={onPressItem} />
+      <NotificationCard
+        item={item}
+        now={now}
+        onPress={onPressItem}
+        onLongPress={setDismissing}
+      />
     ),
-    [onPressItem]
+    [now, onPressItem],
   );
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: DaySection }) => (
       <Text style={styles.sectionTitle}>{section.title}</Text>
     ),
-    [styles]
+    [styles],
   );
 
   if (!query.data) {
@@ -143,46 +175,68 @@ function NotificationList({ tab }: { tab: (typeof TABS)[number] }) {
     );
   }
 
+  const history = state === "history";
+
   return (
-    <SectionList
-      style={styles.list}
-      contentContainerStyle={[
-        styles.content,
-        sections.length === 0 && styles.emptyContent,
-      ]}
-      sections={sections}
-      keyExtractor={(item) => item._id}
-      stickySectionHeadersEnabled={false}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={query.isRefetching && !query.isFetchingNextPage}
-          onRefresh={() => {
-            void refreshAll();
-          }}
-          tintColor={colors.brand}
-        />
-      }
-      onEndReachedThreshold={0.4}
-      onEndReached={() => {
-        if (query.hasNextPage && !query.isFetchingNextPage) {
-          void query.fetchNextPage();
+    <>
+      <SectionList
+        style={styles.list}
+        contentContainerStyle={[
+          styles.content,
+          sections.length === 0 && styles.emptyContent,
+        ]}
+        sections={sections}
+        keyExtractor={(item) => item._id}
+        stickySectionHeadersEnabled={false}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={query.isRefetching && !query.isFetchingNextPage}
+            onRefresh={() => {
+              void refreshAll();
+            }}
+            tintColor={colors.brand}
+          />
         }
-      }}
-      ListEmptyComponent={
-        <EmptyState title={tab.emptyTitle} message={tab.emptyMessage} />
-      }
-      ListFooterComponent={
-        query.isFetchingNextPage ? (
-          <ActivityIndicator color={colors.brand} style={styles.footer} />
-        ) : undefined
-      }
-      renderItem={renderItem}
-      renderSectionHeader={renderSectionHeader}
-      initialNumToRender={12}
-      maxToRenderPerBatch={10}
-      windowSize={7}
-    />
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          if (query.hasNextPage && !query.isFetchingNextPage) {
+            void query.fetchNextPage();
+          }
+        }}
+        ListEmptyComponent={
+          <EmptyState
+            title={history ? "No history yet" : tab.emptyTitle}
+            message={
+              history
+                ? "Alerts for finished follow-ups are kept here."
+                : tab.emptyMessage
+            }
+          />
+        }
+        ListFooterComponent={
+          query.isFetchingNextPage ? (
+            <ActivityIndicator color={colors.brand} style={styles.footer} />
+          ) : undefined
+        }
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+      />
+      <ConfirmModal
+        open={!!dismissing}
+        title="Dismiss notification?"
+        message="It will be removed from your inbox."
+        confirmLabel="Dismiss"
+        onCancel={() => setDismissing(null)}
+        onConfirm={() => {
+          if (dismissing) dismiss.mutate(dismissing._id);
+          setDismissing(null);
+        }}
+      />
+    </>
   );
 }
 
@@ -190,14 +244,15 @@ export default function NotificationsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const queryClient = useQueryClient();
-  const [active, setActive] = useState<NotificationCategory>('warn');
+  const [active, setActive] = useState<NotificationCategory>("warn");
+  const [history, setHistory] = useState(false);
 
   const { data: unread } = useQuery({
     queryKey: UNREAD_BY_CATEGORY_KEY,
     queryFn: fetchUnreadByCategory,
+    refetchInterval: REFRESH_MS,
   });
-  const hasUnread =
-    !!unread && unread.warn + unread.urgent + unread.info > 0;
+  const hasUnread = !!unread && unread.warn + unread.urgent + unread.info > 0;
 
   const markAll = useMutation({
     mutationFn: markAllNotificationsRead,
@@ -206,6 +261,9 @@ export default function NotificationsScreen() {
   });
 
   const activeTab = TABS.find((t) => t.key === active) ?? TABS[0]!;
+  // Info rows never resolve, so only alert tabs have a history.
+  const hasHistory = active !== "info";
+  const state: NotificationState = history && hasHistory ? "history" : "active";
 
   return (
     <View style={styles.safe}>
@@ -238,9 +296,31 @@ export default function NotificationsScreen() {
         unread={unread}
         active={active}
         onChange={setActive}
+        right={
+          hasHistory ? (
+            <Pressable
+              onPress={() => setHistory((on) => !on)}
+              accessibilityRole="button"
+              accessibilityLabel="History"
+              accessibilityState={{ selected: state === "history" }}
+              hitSlop={8}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Ionicons
+                name="time-outline"
+                size={20}
+                color={state === "history" ? colors.brand : colors.textMuted}
+              />
+            </Pressable>
+          ) : null
+        }
       />
 
-      <NotificationList key={active} tab={activeTab} />
+      <NotificationList
+        key={`${active}-${state}`}
+        tab={activeTab}
+        state={state}
+      />
     </View>
   );
 }
@@ -265,12 +345,12 @@ function createStyles(colors: ThemeColors) {
     footer: { paddingVertical: spacing.lg },
     markAll: {
       minHeight: 40,
-      justifyContent: 'center',
+      justifyContent: "center",
     },
     markAllText: {
       fontSize: 14,
       lineHeight: 20,
-      fontWeight: '500',
+      fontWeight: "500",
       color: colors.textSecondary,
     },
     markAllDisabled: { color: colors.textMuted },

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
@@ -11,10 +11,18 @@ type Props = {
   unread?: Record<NotificationCategory, number>;
   active: NotificationCategory;
   onChange: (tab: NotificationCategory) => void;
+  /** Sits at the far end of the row. */
+  right?: ReactNode;
 };
 
 /** Underlined tab row on a full-width rule, unread badge beside the label. */
-export function NotificationTabs({ tabs, unread, active, onChange }: Props) {
+export function NotificationTabs({
+  tabs,
+  unread,
+  active,
+  onChange,
+  right,
+}: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -51,6 +59,7 @@ export function NotificationTabs({ tabs, unread, active, onChange }: Props) {
           </Pressable>
         );
       })}
+      {right ? <View style={styles.right}>{right}</View> : null}
     </View>
   );
 }
@@ -71,6 +80,11 @@ function createStyles(colors: ThemeColors) {
       minHeight: 44,
     },
     pressed: { opacity: 0.7 },
+    right: {
+      flex: 1,
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+    },
     label: {
       fontSize: 15,
       lineHeight: 20,
