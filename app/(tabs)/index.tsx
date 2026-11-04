@@ -14,7 +14,6 @@ import { QueryPlaceholder } from '@/components/ui/StateViews';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
-import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { markFirstContent } from '@/lib/perfMonitor';
 import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
@@ -89,7 +88,6 @@ function HomeScreen() {
               strokeWidth={1.8}
             />
           </Pressable>
-          <NotificationBell circle />
         </View>
       </View>
     </View>

@@ -6,6 +6,10 @@ import { useEffect } from 'react';
 import { AppTabBar, TAB_ORDER } from '@/components/navigation/AppTabBar';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
+  fetchUnreadByTab,
+  UNREAD_BY_TAB_KEY,
+} from '@/features/notifications/notificationsApi';
+import {
   followUpMonthKey,
   followUpMonthQuery,
   leadStatusesQuery,
@@ -48,6 +52,16 @@ export default function TabLayout() {
   const leadCounts = useQuery({ ...leadTabCountsQuery(''), enabled: homeReady });
   const unread = leadCounts.data?.unread ?? 0;
 
+  // Urgent only: an Info count would keep the badge lit and teach people to
+  // ignore it. Same cache as the Notifications tabs.
+  const inbox = useQuery({
+    queryKey: UNREAD_BY_TAB_KEY,
+    queryFn: fetchUnreadByTab,
+    enabled: homeReady,
+    refetchInterval: 60_000,
+  });
+  const urgent = inbox.data?.urgent ?? 0;
+
   useEffect(() => {
     if (!homeReady) return;
     void queryClient.prefetchInfiniteQuery(myLeadsQuery(''));
@@ -66,7 +80,11 @@ export default function TabLayout() {
       tabBar={(props) => (
         <AppTabBar
           {...props}
-          badges={{ leads: unread, 'follow-ups': overdue }}
+          badges={{
+            leads: unread,
+            'follow-ups': overdue,
+            notifications: urgent,
+          }}
         />
       )}
       screenOptions={{
@@ -82,13 +100,14 @@ export default function TabLayout() {
       })}
     >
       {/* Declaration order is the pager order — keep it equal to TAB_ORDER.
-          Notifications comes last: a page with the bar but no bar item. */}
+          Profile comes last: a page with the bar but no bar item, opened
+          from the Home header. */}
       <TopTabs.Screen name="leads" options={{ title: 'Leads' }} />
       <TopTabs.Screen name="follow-ups" options={{ title: 'Follow-ups' }} />
       <TopTabs.Screen name="index" options={{ title: 'Home' }} />
       <TopTabs.Screen name="calls" options={{ title: 'Calls' }} />
-      <TopTabs.Screen name="profile" options={{ title: 'Profile' }} />
       <TopTabs.Screen name="notifications" options={{ title: 'Notifications' }} />
+      <TopTabs.Screen name="profile" options={{ title: 'Profile' }} />
     </TopTabs>
   );
 }

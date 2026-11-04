@@ -18,10 +18,10 @@ import {
 } from 'react-native';
 
 import {
-  AccountSetting02Icon,
   Calendar03Icon,
   CallIcon,
   Home03Icon,
+  Notification01Icon,
   PermanentJobIcon,
 } from '@/components/icons/hugeicons';
 import { typography, useTheme, type ThemeColors } from '@/theme';
@@ -32,7 +32,7 @@ export const TAB_ORDER = [
   'follow-ups',
   'index',
   'calls',
-  'profile',
+  'notifications',
 ] as const;
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
@@ -42,7 +42,7 @@ const TAB_ICONS: Record<string, HugeIconData> = {
   'follow-ups': Calendar03Icon,
   index: Home03Icon,
   calls: CallIcon,
-  profile: AccountSetting02Icon,
+  notifications: Notification01Icon,
 };
 
 const TAB_LABELS: Record<string, string> = {
@@ -50,7 +50,7 @@ const TAB_LABELS: Record<string, string> = {
   'follow-ups': 'Follow-ups',
   index: 'Home',
   calls: 'Calls',
-  profile: 'Profile',
+  notifications: 'Notifications',
 };
 
 type AppTabBarProps = MaterialTopTabBarProps & {

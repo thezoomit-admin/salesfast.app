@@ -267,7 +267,7 @@ export default function NotificationsScreen() {
   const queryClient = useQueryClient();
   const [active, setActive] = useState<NotificationTab>('urgent');
   const [history, setHistory] = useState(false);
-  const [focused, setFocused] = useState(true);
+  const [focused, setFocused] = useState(false);
   const navigation = useNavigation();
 
   useFocusEffect(
@@ -290,7 +290,6 @@ export default function NotificationsScreen() {
   const { data: unread } = useQuery({
     queryKey: UNREAD_BY_TAB_KEY,
     queryFn: fetchUnreadByTab,
-    refetchInterval: focused ? REFRESH_MS : false,
   });
   const hasUnread = !!unread && unread.all > 0;
 
