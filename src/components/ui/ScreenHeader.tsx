@@ -15,7 +15,6 @@ type Props = {
   right?: ReactNode;
   onBack?: () => void;
   showBack?: boolean;
-  backIcon?: 'arrow-back' | 'chevron-back';
   /** Makes the inline title a button (with a chevron), e.g. a date picker. */
   onTitlePress?: () => void;
   /**
@@ -38,7 +37,6 @@ export function ScreenHeader({
   right,
   onBack,
   showBack = true,
-  backIcon = 'arrow-back',
   onTitlePress,
   titleCentered,
   flush = false,
@@ -78,7 +76,7 @@ export function ScreenHeader({
       hitSlop={8}
       style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
     >
-      <Ionicons name={backIcon} size={22} color={colors.text} />
+      <Ionicons name="arrow-back" size={22} color={colors.text} />
     </Pressable>
   ) : null;
 

@@ -25,6 +25,7 @@ type TabNavigation = {
 /** Mount the pages either side of `name`, so a tab switch never reveals a blank page. */
 function preloadNeighbours(navigation: TabNavigation, name: string) {
   const index = TAB_ORDER.indexOf(name as (typeof TAB_ORDER)[number]);
+  if (index < 0) return;
   const loaded = navigation.getState().routes;
   for (const neighbour of [TAB_ORDER[index - 1], TAB_ORDER[index + 1]]) {
     if (neighbour && !loaded.some((route) => route.name === neighbour)) {
@@ -80,12 +81,14 @@ export default function TabLayout() {
         focus: () => preloadNeighbours(navigation, route.name),
       })}
     >
-      {/* Declaration order is the pager order — keep it equal to TAB_ORDER. */}
+      {/* Declaration order is the pager order — keep it equal to TAB_ORDER.
+          Notifications comes last: a page with the bar but no bar item. */}
       <TopTabs.Screen name="leads" options={{ title: 'Leads' }} />
       <TopTabs.Screen name="follow-ups" options={{ title: 'Follow-ups' }} />
       <TopTabs.Screen name="index" options={{ title: 'Home' }} />
       <TopTabs.Screen name="calls" options={{ title: 'Calls' }} />
       <TopTabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <TopTabs.Screen name="notifications" options={{ title: 'Notifications' }} />
     </TopTabs>
   );
 }

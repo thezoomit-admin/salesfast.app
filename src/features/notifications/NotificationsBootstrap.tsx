@@ -128,7 +128,9 @@ export function NotificationsBootstrap() {
     }
 
     const route = safeRoute(data['url']) ?? '/notifications';
-    router.push(route);
+    // The inbox is a tab: navigate reuses the tab bar instead of stacking one.
+    if (route === '/notifications') router.navigate(route);
+    else router.push(route);
   }, [lastResponse, userId, router, queryClient]);
 
   // Keep the launcher badge in sync with the unread count.

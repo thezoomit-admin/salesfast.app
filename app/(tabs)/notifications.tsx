@@ -5,7 +5,12 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { type Href, useRouter } from 'expo-router';
+import {
+  type Href,
+  useFocusEffect,
+  useNavigation,
+  useRouter,
+} from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -99,9 +104,12 @@ function routeFor(item: AppNotification): Href | null {
 function NotificationList({
   tab,
   state,
+  live,
 }: {
   tab: (typeof TABS)[number];
   state: NotificationState;
+  /** The page stays mounted as a tab; refresh only while it's on screen. */
+  live: boolean;
 }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -112,16 +120,23 @@ function NotificationList({
   const [dismissing, setDismissing] = useState<AppNotification | null>(null);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), CLOCK_MS);
-    return () => clearInterval(id);
-  }, []);
+    if (!live) return;
+    const tick = () => setNow(Date.now());
+    // Right away too: the clock stood still while the page was out of view.
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, CLOCK_MS);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [live]);
 
   const query = useInfiniteQuery({
     queryKey: [...NOTIFICATIONS_KEY, 'list', tab.key, state],
     queryFn: ({ pageParam }) => fetchNotifications(tab.key, state, pageParam),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
-    refetchInterval: REFRESH_MS,
+    refetchInterval: live ? REFRESH_MS : false,
   });
 
   const sections = useMemo(
@@ -252,11 +267,30 @@ export default function NotificationsScreen() {
   const queryClient = useQueryClient();
   const [active, setActive] = useState<NotificationTab>('urgent');
   const [history, setHistory] = useState(false);
+  const [focused, setFocused] = useState(true);
+  const navigation = useNavigation();
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
+      return () => {
+        setFocused(false);
+        // Coming back from another tab starts on Urgent again; coming back
+        // from a lead opened here keeps the tab the user was on.
+        const { routes, index } = navigation.getState() ?? {};
+        if (routes?.[index ?? 0]?.name !== 'notifications') {
+          setActive('urgent');
+          setHistory(false);
+        }
+      };
+    }, [navigation, queryClient])
+  );
 
   const { data: unread } = useQuery({
     queryKey: UNREAD_BY_TAB_KEY,
     queryFn: fetchUnreadByTab,
-    refetchInterval: REFRESH_MS,
+    refetchInterval: focused ? REFRESH_MS : false,
   });
   const hasUnread = !!unread && unread.all > 0;
 
@@ -275,9 +309,7 @@ export default function NotificationsScreen() {
     <View style={styles.safe}>
       <ScreenHeader
         title="Notifications"
-        backIcon="chevron-back"
-        titleCentered={false}
-        flush
+        showBack={false}
         right={
           <Pressable
             disabled={!hasUnread || markAll.isPending}
@@ -326,6 +358,7 @@ export default function NotificationsScreen() {
         key={`${active}-${state}`}
         tab={activeTab}
         state={state}
+        live={focused}
       />
     </View>
   );
