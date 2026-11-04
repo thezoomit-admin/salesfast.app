@@ -1,23 +1,23 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
+import { spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 import { SkeletonBone, SkeletonPulse } from './primitives';
 
-/** Mirrors Testora-style home: greeting → CTA → KPI grid → live → insights → queue. */
+/** Mirrors HomeDashboard: greeting → KPI → live → insights → leads → queue. */
 export function HomeSkeleton() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <SkeletonPulse style={styles.root}>
-      <View style={styles.greeting}>
-        <SkeletonBone width="55%" height={24} />
-        <SkeletonBone width="40%" height={12} />
-      </View>
-
-      <SkeletonBone width="100%" height={48} radius={radii.pill} />
+      <SkeletonBone
+        width="58%"
+        height={22}
+        radius={6}
+        style={styles.onWash}
+      />
 
       <View style={styles.kpiRow}>
         {[0, 1].map((i) => (
@@ -35,17 +35,23 @@ export function HomeSkeleton() {
       </View>
 
       <View style={styles.sectionHead}>
-        <SkeletonBone width={140} height={14} />
-        <SkeletonBone width={56} height={12} />
+        <SkeletonBone width={160} height={14} style={styles.onWash} />
+        <SkeletonBone width={32} height={32} radius={16} style={styles.onWash} />
       </View>
 
       <View style={styles.liveCard}>
-        <SkeletonBone width={92} height={92} radius={46} />
-        <View style={styles.liveCopy}>
-          <SkeletonBone width={80} height={10} />
-          <SkeletonBone width="90%" height={16} />
-          <SkeletonBone width="70%" height={12} />
-          <SkeletonBone width={96} height={24} radius={12} />
+        <View style={styles.liveTop}>
+          <SkeletonBone width={30} height={30} radius={15} />
+          <SkeletonBone width={30} height={30} radius={15} />
+        </View>
+        <SkeletonBone width="70%" height={14} />
+        <SkeletonBone width={88} height={12} />
+        <View style={styles.liveBottom}>
+          <View style={styles.liveCopy}>
+            <SkeletonBone width="90%" height={11} />
+            <SkeletonBone width="75%" height={11} />
+          </View>
+          <SkeletonBone width={72} height={72} radius={36} />
         </View>
       </View>
 
@@ -58,8 +64,28 @@ export function HomeSkeleton() {
       ))}
 
       <View style={styles.sectionHead}>
-        <SkeletonBone width={150} height={14} />
-        <SkeletonBone width={72} height={12} />
+        <SkeletonBone width={110} height={14} style={styles.onWash} />
+        <SkeletonBone width={32} height={32} radius={16} style={styles.onWash} />
+      </View>
+
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={styles.leadCard}>
+          <View style={styles.leadTop}>
+            <SkeletonBone width="48%" height={14} />
+            <SkeletonBone width={56} height={22} radius={6} />
+          </View>
+          <SkeletonBone width="62%" height={11} />
+          <View style={styles.leadActions}>
+            <SkeletonBone width={36} height={36} radius={18} />
+            <SkeletonBone width={36} height={36} radius={18} />
+            <SkeletonBone width={36} height={36} radius={18} />
+          </View>
+        </View>
+      ))}
+
+      <View style={styles.sectionHead}>
+        <SkeletonBone width={150} height={14} style={styles.onWash} />
+        <SkeletonBone width={72} height={12} style={styles.onWash} />
       </View>
 
       <View style={styles.upcomingCard}>
@@ -84,16 +110,18 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       gap: 14,
-      paddingTop: spacing.sm,
       paddingBottom: spacing.xxl,
     },
-    greeting: { gap: 6 },
+    /** Bones sitting on page wash — surfaceMuted blends into #EEF1F4. */
+    onWash: {
+      backgroundColor: colors.border,
+    },
     kpiRow: {
       flexDirection: 'row',
       gap: 12,
     },
     kpiCard: {
-      width: 168,
+      flex: 1,
       backgroundColor: colors.surface,
       borderRadius: 16,
       paddingHorizontal: 14,
@@ -119,30 +147,55 @@ function createStyles(colors: ThemeColors) {
       marginTop: 4,
     },
     liveCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
       backgroundColor: colors.surface,
       borderRadius: 20,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
-      padding: 16,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 12,
+      gap: 8,
+      minHeight: 168,
     },
-    liveCopy: { flex: 1, gap: 8 },
+    liveTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    liveBottom: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginTop: 4,
+    },
+    liveCopy: { flex: 1, gap: 6 },
     insightCard: {
       backgroundColor: colors.surface,
       borderRadius: 18,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
       paddingHorizontal: 14,
       paddingVertical: 14,
       gap: 12,
     },
+    leadCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      gap: 10,
+    },
+    leadTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    leadActions: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 2,
+    },
     upcomingCard: {
       backgroundColor: colors.surface,
       borderRadius: 18,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
       paddingHorizontal: 12,
       paddingVertical: 4,
     },

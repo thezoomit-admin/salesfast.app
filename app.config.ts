@@ -25,7 +25,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '1.0.1',
   // Android versionCode / iOS buildNumber — shown on App info.
   // Bump with each store / APK release.
-  owner: 'ibnabdullah01',
+  owner: 'zoomits-team',
   orientation: 'portrait',
   icon: './assets/images/salesfast-app-logo.png',
   scheme: 'salesfast',
