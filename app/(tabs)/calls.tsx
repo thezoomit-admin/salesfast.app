@@ -4,16 +4,28 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { memo, useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '@/api/client';
 import {
   CallBlockedIcon,
+  FilterIcon,
   PhoneIncomingIcon,
   PhoneMissedIcon,
   PhoneOutgoingIcon,
 } from '@/components/icons/hugeicons';
+import { DayGroupHeader } from '@/components/leads/LeadSectionShell';
 import { Button } from '@/components/ui/Button';
+import { FilterChip } from '@/components/ui/FilterChip';
 import {
   HeaderIconButton,
   ScreenHeader,
@@ -24,13 +36,12 @@ import type { CallSyncDirection } from '@/features/call-tracking/callSyncApi';
 import { runCallSync } from '@/features/call-tracking/runCallSync';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import {
-  isMissed,
   RECENT_CALLS_KEY,
   requestCallLogPermission,
   useRecentCalls,
   type RecentCall,
 } from '@/features/call-tracking/useRecentCalls';
-import { timeOf } from '@/features/leads/dayGroups';
+import { groupByDay, timeOf } from '@/features/leads/dayGroups';
 import type { CallSyncStatus } from '@/features/call-tracking/syncPreferences';
 import {
   lightColors,
@@ -45,6 +56,8 @@ import { formatPhoneDisplay } from '@/utils/phone';
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 type CallUiKind = 'incoming' | 'outgoing' | 'missed' | 'failed';
+type CallTab = 'all' | CallUiKind;
+type DateFilter = 'all' | 'today' | 'yesterday' | '7d' | '10d';
 
 const SYNC_BANNER: Record<
   CallSyncStatus,
@@ -87,95 +100,93 @@ const SYNC_BANNER: Record<
   },
 };
 
-type FilterKey = 'leads' | 'missed';
+/** Same tabs as lead details Call History. */
+const TABS: { key: CallTab; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'incoming', label: 'Incoming' },
+  { key: 'outgoing', label: 'Outgoing' },
+  { key: 'missed', label: 'Missed' },
+  { key: 'failed', label: 'Failed' },
+];
 
-const FILTERS: readonly (readonly [FilterKey, string])[] = [
-  ['leads', 'Lead calls'],
-  ['missed', 'Missed'],
+const DATE_FILTERS: { key: DateFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'today', label: 'Today' },
+  { key: 'yesterday', label: 'Yesterday' },
+  { key: '7d', label: 'Last 7 days' },
+  { key: '10d', label: 'Last 10 days' },
 ];
 
 /** UI-design only — set false / delete when real call data is ready. */
 const USE_CALLS_DEMO = true;
 
-const DEMO_CALLS: RecentCall[] = [
-  {
-    key: 'demo-1',
-    phone: '+8801712345678',
-    direction: 'MISSED',
-    startedAt: new Date(Date.now() - 12 * 60 * 1000),
-    durationSec: 0,
-    leadId: 101,
-    leadName: 'Rahim Electronics',
-  },
-  {
-    key: 'demo-2',
-    phone: '+8801811223344',
-    direction: 'OUTGOING',
-    startedAt: new Date(Date.now() - 45 * 60 * 1000),
-    durationSec: 187,
-    leadId: 102,
-    leadName: 'Nusrat Fashion House',
-  },
-  {
-    key: 'demo-3',
-    phone: '+8801919988776',
-    direction: 'INCOMING',
-    startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    durationSec: 64,
-    leadId: 103,
-    leadName: 'Karim Trading Co.',
-  },
-  {
-    key: 'demo-4',
-    phone: '+8801612340001',
-    direction: 'REJECTED',
-    startedAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
-    durationSec: 0,
-    leadId: 104,
-    leadName: 'Green Leaf Agro',
-  },
-  {
-    key: 'demo-5',
-    phone: '+8801555667788',
-    direction: 'OUTGOING',
-    startedAt: new Date(Date.now() - 26 * 60 * 60 * 1000),
-    durationSec: 9,
-    leadId: 105,
-    leadName: 'Sultana Pharma',
-  },
-  {
-    key: 'demo-6',
-    phone: '+8801700112233',
-    direction: 'MISSED',
-    startedAt: new Date(Date.now() - 28 * 60 * 60 * 1000),
-    durationSec: 0,
-    leadId: 106,
-    leadName: 'Bay View Properties',
-  },
-  {
-    key: 'demo-7',
-    phone: '+8801888776655',
-    direction: 'INCOMING',
-    startedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    durationSec: 412,
-    leadId: 107,
-    leadName: 'Dhaka Soft Solutions',
-  },
-  {
-    key: 'demo-8',
-    phone: '+8801300987654',
-    direction: 'UNKNOWN',
-    startedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-    durationSec: 22,
-    leadId: 108,
-    leadName: 'Metro Logistics',
-  },
+const DEMO_LEADS = [
+  { id: 101, name: 'Rahim Electronics', phone: '+8801712345678' },
+  { id: 102, name: 'Nusrat Fashion House', phone: '+8801811223344' },
+  { id: 103, name: 'Karim Trading Co.', phone: '+8801919988776' },
+  { id: 104, name: 'Green Leaf Agro', phone: '+8801612340001' },
+  { id: 105, name: 'Sultana Pharma', phone: '+8801555667788' },
+  { id: 106, name: 'Bay View Properties', phone: '+8801700112233' },
+  { id: 107, name: 'Dhaka Soft Solutions', phone: '+8801888776655' },
+  { id: 108, name: 'Metro Logistics', phone: '+8801300987654' },
+  { id: 109, name: 'Sunrise Café', phone: '+8801966554433' },
+  { id: 110, name: 'Orbit Motors', phone: '+8801522334455' },
+] as const;
+
+const DEMO_DIRS: CallSyncDirection[] = [
+  'INCOMING',
+  'OUTGOING',
+  'MISSED',
+  'REJECTED',
+  'OUTGOING',
+  'INCOMING',
+  'MISSED',
+  'UNKNOWN',
+  'OUTGOING',
+  'INCOMING',
 ];
+
+function buildDemoCalls(): RecentCall[] {
+  const now = new Date();
+  const calls: RecentCall[] = [];
+  let n = 0;
+
+  for (let day = 0; day < 10; day += 1) {
+    const perDay = 2 + (day % 3);
+    for (let i = 0; i < perDay; i += 1) {
+      const lead = DEMO_LEADS[(day * 2 + i) % DEMO_LEADS.length]!;
+      const direction = DEMO_DIRS[(day + i) % DEMO_DIRS.length]!;
+      const startedAt = new Date(now);
+      startedAt.setHours(0, 0, 0, 0);
+      startedAt.setDate(startedAt.getDate() - day);
+      startedAt.setHours(9 + i * 3, 10 + i * 11 + day, 0, 0);
+
+      const missedOrFailed =
+        direction === 'MISSED' ||
+        direction === 'REJECTED' ||
+        direction === 'UNKNOWN';
+      calls.push({
+        key: `demo-${day}-${i}-${n}`,
+        phone: lead.phone,
+        direction,
+        startedAt,
+        durationSec: missedOrFailed ? 0 : 45 + ((day * 17 + i * 23) % 360),
+        leadId: lead.id,
+        leadName: lead.name,
+      });
+      n += 1;
+    }
+  }
+
+  return calls.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
+}
+
+const DEMO_CALLS = buildDemoCalls();
 
 const DEMO_RESULT = {
   state: 'ok' as const,
   calls: DEMO_CALLS,
-  watchedCount: DEMO_CALLS.length,
+  watchedCount: DEMO_LEADS.length,
 };
 
 /** Same Hugeicons + colors as lead details Call History. */
@@ -207,13 +218,36 @@ function formatDuration(sec: number, kind: CallUiKind) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function matchesDateFilter(startedAt: Date, filter: DateFilter, now: Date) {
+  const dayStart = startOfDay(now).getTime();
+  const t = startedAt.getTime();
+  if (filter === 'today') return t >= dayStart;
+  if (filter === 'yesterday') {
+    const yStart = dayStart - 24 * 60 * 60 * 1000;
+    return t >= yStart && t < dayStart;
+  }
+  if (filter === '7d') return t >= dayStart - 6 * 24 * 60 * 60 * 1000;
+  if (filter === '10d' || filter === 'all') {
+    return t >= dayStart - 9 * 24 * 60 * 60 * 1000;
+  }
+  return true;
+}
+
 function CallsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
   const queryClient = useQueryClient();
   const callSync = useCallSyncStatus();
-  const [filter, setFilter] = useState<FilterKey>('leads');
+  const [tab, setTab] = useState<CallTab>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
@@ -237,22 +271,39 @@ function CallsScreen() {
       ? calls.data
       : null;
 
-  const visible = useMemo(() => {
+  const datedCalls = useMemo(() => {
     if (!data) return [];
-    if (filter === 'missed') return data.calls.filter((c) => isMissed(c.direction));
-    return data.calls;
-  }, [data, filter]);
+    const now = new Date();
+    return data.calls.filter((c) =>
+      matchesDateFilter(c.startedAt, dateFilter, now)
+    );
+  }, [data, dateFilter]);
 
-  // Missed lead calls in the 24h before the call log was last read.
-  const loadedAt = USE_CALLS_DEMO ? Date.now() : calls.dataUpdatedAt;
-  const missedCount = useMemo(
+  const counts = useMemo(() => {
+    const c = {
+      incoming: 0,
+      outgoing: 0,
+      missed: 0,
+      failed: 0,
+      total: datedCalls.length,
+    };
+    for (const call of datedCalls) c[callUiKind(call.direction)] += 1;
+    return c;
+  }, [datedCalls]);
+
+  const filtered = useMemo(() => {
+    if (tab === 'all') return datedCalls;
+    return datedCalls.filter((c) => callUiKind(c.direction) === tab);
+  }, [datedCalls, tab]);
+
+  const sections = useMemo(
     () =>
-      data?.calls.filter(
-        (c) =>
-          isMissed(c.direction) &&
-          loadedAt - c.startedAt.getTime() < 24 * 60 * 60 * 1000
-      ).length ?? 0,
-    [data, loadedAt]
+      groupByDay(filtered, (c) => c.startedAt).map((g) => ({
+        key: g.key,
+        title: g.label,
+        data: g.items,
+      })),
+    [filtered]
   );
 
   const syncNow = async () => {
@@ -292,17 +343,32 @@ function CallsScreen() {
         : callSync.message
   );
 
+  const dateFilterActive = dateFilter !== 'all';
+
   const pageHeader = (
     <ScreenHeader
       title="Calls"
       showBack={false}
       right={
-        <HeaderIconButton
-          label="Call sync settings"
-          onPress={() => router.push('/call-sync/setup')}
-        >
-          <Ionicons name="settings-outline" size={22} color={colors.text} />
-        </HeaderIconButton>
+        <View style={styles.headerActions}>
+          <HeaderIconButton
+            label="Filter calls"
+            onPress={() => setFilterOpen(true)}
+          >
+            <HugeiconsIcon
+              icon={FilterIcon}
+              size={22}
+              color={dateFilterActive ? colors.brand : colors.text}
+              strokeWidth={1.5}
+            />
+          </HeaderIconButton>
+          <HeaderIconButton
+            label="Call sync settings"
+            onPress={() => router.push('/call-sync/setup')}
+          >
+            <Ionicons name="settings-outline" size={22} color={colors.text} />
+          </HeaderIconButton>
+        </View>
       }
     />
   );
@@ -389,6 +455,12 @@ function CallsScreen() {
             onPress={() => router.push('/call-sync/setup')}
           />
         </View>
+        <CallsFilterSheet
+          open={filterOpen}
+          value={dateFilter}
+          onClose={() => setFilterOpen(false)}
+          onChange={setDateFilter}
+        />
       </View>
     );
   }
@@ -399,6 +471,19 @@ function CallsScreen() {
       !calls.isError &&
       calls.data?.state !== 'unsupported' &&
       calls.data?.state !== 'no_permission');
+
+  const emptyCopy =
+    filtered.length === 0
+      ? tab === 'incoming'
+        ? 'No incoming calls'
+        : tab === 'outgoing'
+          ? 'No outgoing calls'
+          : tab === 'missed'
+            ? 'No missed calls'
+            : tab === 'failed'
+              ? 'No failed calls'
+              : 'No lead calls yet'
+      : '';
 
   return (
     <View style={styles.safe}>
@@ -429,27 +514,29 @@ function CallsScreen() {
         </View>
       ) : showList ? (
         <>
-          <View style={styles.tabs}>
-            {FILTERS.map(([key, label]) => {
-              const active = filter === key;
-              const showBadge = key === 'missed' && missedCount > 0;
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => setFilter(key)}
-                  style={[styles.tab, active && styles.tabActive]}
-                >
-                  <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                    {label}
-                    {showBadge ? ` (${missedCount})` : ''}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <FlatList
-            data={visible}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pillRow}
+          >
+            {TABS.map((t) => (
+              <FilterChip
+                key={t.key}
+                label={
+                  t.key === 'all'
+                    ? `${t.label}  ${counts.total}`
+                    : `${t.label}  ${counts[t.key]}`
+                }
+                active={tab === t.key}
+                onPress={() => setTab(t.key)}
+              />
+            ))}
+          </ScrollView>
+
+          <SectionList
+            sections={sections}
             keyExtractor={(item) => item.key}
+            stickySectionHeadersEnabled={false}
             contentContainerStyle={styles.list}
             refreshing={!USE_CALLS_DEMO && calls.isRefetching}
             onRefresh={() => {
@@ -457,27 +544,117 @@ function CallsScreen() {
             }}
             ListEmptyComponent={
               <EmptyState
-                title={
-                  filter === 'missed' ? 'No missed lead calls' : 'No lead calls yet'
-                }
+                title={emptyCopy || 'No lead calls yet'}
                 message={`Watching ${data?.watchedCount ?? 0} lead numbers.`}
               />
             }
-            renderItem={({ item, index }) => (
-              <CallRow
-                call={item}
-                isFirst={index === 0}
-                onOpenLead={() => router.push(`/leads/${item.leadId}`)}
-              />
+            renderSectionHeader={({ section }) => (
+              <DayGroupHeader label={section.title} />
             )}
+            renderItem={({ item, index, section }) => {
+              const isFirstOverall =
+                index === 0 && section.key === sections[0]?.key;
+              return (
+                <CallRow
+                  call={item}
+                  isFirst={isFirstOverall}
+                  onOpenLead={() => router.push(`/leads/${item.leadId}`)}
+                />
+              );
+            }}
           />
         </>
       ) : null}
+
+      <CallsFilterSheet
+        open={filterOpen}
+        value={dateFilter}
+        onClose={() => setFilterOpen(false)}
+        onChange={setDateFilter}
+      />
     </View>
   );
 }
 
 export default memo(CallsScreen);
+
+function CallsFilterSheet({
+  open,
+  value,
+  onClose,
+  onChange,
+}: {
+  open: boolean;
+  value: DateFilter;
+  onClose: () => void;
+  onChange: (next: DateFilter) => void;
+}) {
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  return (
+    <Modal
+      visible={open}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.filterBackdrop}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close filter"
+        />
+        <View
+          style={[
+            styles.filterSheet,
+            { paddingBottom: Math.max(insets.bottom, spacing.lg) },
+          ]}
+        >
+          <View style={styles.filterHandle} />
+          <Text style={styles.filterTitle}>Filter by date</Text>
+          {DATE_FILTERS.map((opt) => {
+            const active = value === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => {
+                  onChange(opt.key);
+                  onClose();
+                }}
+                style={({ pressed }) => [
+                  styles.filterRow,
+                  active && styles.filterRowActive,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <Text
+                  style={[
+                    styles.filterRowLabel,
+                    active && styles.filterRowLabelActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+                {active ? (
+                  <Ionicons
+                    name="checkmark"
+                    size={20}
+                    color={colors.brand}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 function CallRow({
   call,
@@ -547,6 +724,10 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.surface },
     flex: { flex: 1 },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
     toolbar: {
       paddingHorizontal: spacing.lg,
       gap: spacing.md,
@@ -612,24 +793,16 @@ function createStyles(colors: ThemeColors) {
     },
     syncActionTextOk: { color: colors.success },
 
-    tabs: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
-    tab: {
-      flex: 1,
+    pillRow: {
+      paddingHorizontal: spacing.lg,
+      gap: spacing.sm,
+      paddingBottom: spacing.sm,
       alignItems: 'center',
-      paddingVertical: spacing.sm,
-      borderRadius: radii.md,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
-    tabActive: { backgroundColor: colors.brand, borderColor: colors.brand },
-    tabText: { ...typography.caption, color: colors.textSecondary },
-    tabTextActive: { color: colors.white },
 
     list: {
       paddingLeft: spacing.md,
       paddingRight: spacing.lg,
-      paddingTop: spacing.sm,
       paddingBottom: spacing.lg,
       flexGrow: 1,
     },
@@ -677,6 +850,56 @@ function createStyles(colors: ThemeColors) {
     failed: {
       ...typography.caption,
       color: colors.warning,
+      fontWeight: '700',
+    },
+
+    filterBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(17, 24, 39, 0.45)',
+      justifyContent: 'flex-end',
+    },
+    filterSheet: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: radii.lg,
+      borderTopRightRadius: radii.lg,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      gap: spacing.xs,
+    },
+    filterHandle: {
+      alignSelf: 'center',
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: colors.border,
+      marginBottom: spacing.sm,
+    },
+    filterTitle: {
+      ...typography.subtitle,
+      color: colors.text,
+      marginBottom: spacing.sm,
+    },
+    filterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    filterRowActive: {
+      backgroundColor: colors.primary50,
+      marginHorizontal: -spacing.sm,
+      paddingHorizontal: spacing.sm,
+      borderRadius: radii.sm,
+      borderBottomWidth: 0,
+    },
+    filterRowLabel: {
+      ...typography.body,
+      color: colors.text,
+    },
+    filterRowLabelActive: {
+      color: colors.brand,
       fontWeight: '700',
     },
   });

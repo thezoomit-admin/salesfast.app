@@ -6,8 +6,6 @@ import {
   type CallKind,
 } from '@/features/leads/leadActivity';
 
-export type ActivityFilter = 'all' | 'call' | 'whatsapp' | 'note';
-
 export type ActivityKind =
   | 'call'
   | 'callMissed'
@@ -22,7 +20,6 @@ export type ActivityKind =
 
 export type ActivityView = {
   kind: ActivityKind;
-  filter: Exclude<ActivityFilter, 'all'>;
   label: string;
   /** What the agent wrote, or the call's duration. Null when there is neither. */
   text: string | null;
@@ -74,11 +71,11 @@ function tagKind(tag: string | null): Pick<ActivityView, 'kind' | 'label'> {
   return { kind: 'note', label: tag };
 }
 
-function channelKind(name: string): Pick<ActivityView, 'kind' | 'label' | 'filter'> {
+function channelKind(name: string): Pick<ActivityView, 'kind' | 'label'> {
   const label = NOTE_CHANNELS.find((c) => c.match.test(name))?.label;
-  if (label === 'WhatsApp') return { kind: 'whatsapp', label, filter: 'whatsapp' };
-  if (label === 'In person') return { kind: 'inPerson', label, filter: 'note' };
-  return { kind: 'note', label: name, filter: 'note' };
+  if (label === 'WhatsApp') return { kind: 'whatsapp', label };
+  if (label === 'In person') return { kind: 'inPerson', label };
+  return { kind: 'note', label: name };
 }
 
 /** Lead notes hold system tags and sync lines; this is what a person should read. */
@@ -89,12 +86,11 @@ export function describeActivity(n: NoteInput): ActivityView {
   if (isCallHistoryNote(n)) {
     const call = callBody(raw);
     if (!call.status) {
-      return { kind: 'call', filter: 'call', label: 'Call', text, hasVoiceNote };
+      return { kind: 'call', label: 'Call', text, hasVoiceNote };
     }
     const type = callKind(raw);
     return {
       kind: type === 'missed' || type === 'failed' ? 'callMissed' : 'call',
-      filter: 'call',
       label: CALL_LABEL[type],
       text: call.duration && !/^0\s*s?$/i.test(call.duration) ? call.duration : null,
       hasVoiceNote,
@@ -103,5 +99,5 @@ export function describeActivity(n: NoteInput): ActivityView {
 
   const channel = n.channel?.name?.trim();
   if (channel) return { ...channelKind(channel), text, hasVoiceNote };
-  return { ...tagKind(tag), filter: 'note', text, hasVoiceNote };
+  return { ...tagKind(tag), text, hasVoiceNote };
 }

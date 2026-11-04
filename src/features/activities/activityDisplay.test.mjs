@@ -18,7 +18,6 @@ describe('describeActivity', () => {
     });
     assert.equal(view.label, 'Outgoing call');
     assert.equal(view.kind, 'call');
-    assert.equal(view.filter, 'call');
     assert.equal(view.text, '3m 12s');
   });
 
@@ -44,7 +43,6 @@ describe('describeActivity', () => {
       channel: { name: 'WhatsApp' },
     });
     assert.equal(view.label, 'WhatsApp');
-    assert.equal(view.filter, 'whatsapp');
     assert.equal(view.text, 'Sent brochure');
 
     const done = describeActivity({
@@ -85,7 +83,6 @@ describe('describeActivity', () => {
   it('leaves a plain note alone', () => {
     const view = describeActivity({ note: 'Prefers a call after 5pm [urgent]' });
     assert.equal(view.label, 'Note');
-    assert.equal(view.filter, 'note');
     assert.equal(view.text, 'Prefers a call after 5pm [urgent]');
     assert.equal(view.hasVoiceNote, false);
   });

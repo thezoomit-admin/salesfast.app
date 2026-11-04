@@ -34,10 +34,7 @@ export function ActivitiesSkeleton({ rows = 5 }: { rows?: number }) {
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    root: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-    },
+    root: { paddingHorizontal: spacing.lg },
     panel: {
       backgroundColor: colors.surface,
       borderRadius: 18,

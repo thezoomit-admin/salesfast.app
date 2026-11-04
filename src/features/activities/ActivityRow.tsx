@@ -10,7 +10,7 @@ import type { ActivityKind, ActivityView } from './activityDisplay';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
-const ICON: Record<ActivityKind, IconName> = {
+export const ACTIVITY_ICON: Record<ActivityKind, IconName> = {
   call: 'call-outline',
   callMissed: 'call-outline',
   whatsapp: 'logo-whatsapp',
@@ -24,7 +24,11 @@ const ICON: Record<ActivityKind, IconName> = {
 };
 
 /** Same colour families as the follow-up cards and notification icons. */
-function accentOf(kind: ActivityKind, colors: ThemeColors, isDark: boolean) {
+export function activityAccent(
+  kind: ActivityKind,
+  colors: ThemeColors,
+  isDark: boolean
+) {
   const tones = kindTones(isDark);
   switch (kind) {
     case 'call':
@@ -72,7 +76,7 @@ export const ActivityRow = memo(function ActivityRow({
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const accent = accentOf(view.kind, colors, isDark);
+  const accent = activityAccent(view.kind, colors, isDark);
   const tint = `${accent}26`;
   const by = addedByName?.trim();
 
@@ -87,7 +91,7 @@ export const ActivityRow = memo(function ActivityRow({
     >
       <View style={styles.rail}>
         <View style={[styles.icon, { backgroundColor: tint }]}>
-          <Ionicons name={ICON[view.kind]} size={18} color={accent} />
+          <Ionicons name={ACTIVITY_ICON[view.kind]} size={18} color={accent} />
         </View>
         {last ? null : <View style={styles.railLine} />}
       </View>
