@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 
 import { CountTab } from '@/components/ui/CountTab';
 import type { FollowUpBucket } from '@/features/leads/leadsApi';
@@ -7,11 +7,13 @@ import { useThemeColors, type ThemeColors } from '@/theme';
 
 export type FollowUpTab = 'calendar' | FollowUpBucket;
 
-/** Below this, two three-digit badges no longer fit at the normal gap. */
-const NARROW_WIDTH = 360;
+/** Below this, three badges no longer fit at the normal gap. */
+const NARROW_WIDTH = 390;
 
 type Props = {
   active: FollowUpTab;
+  /** Follow-ups on the selected date. Hidden until known, and when there are none. */
+  calendarCount?: number;
   /** Hidden until known, and when nothing is overdue. */
   overdueCount?: number;
   /** Open follow-ups not yet due. Hidden until known, and when there are none. */
@@ -19,18 +21,32 @@ type Props = {
   onChange: (tab: FollowUpTab) => void;
 };
 
-/** Tap only: the week strip below already owns the horizontal swipe. */
-export function FollowUpTabs({ active, overdueCount, upcomingCount, onChange }: Props) {
+/**
+ * Tap to switch: the week strip below already owns the horizontal swipe. The
+ * row only scrolls when badges outgrow a small screen or a large font setting.
+ */
+export function FollowUpTabs({
+  active,
+  calendarCount,
+  overdueCount,
+  upcomingCount,
+  onChange,
+}: Props) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { width } = useWindowDimensions();
   return (
-    <View
+    <ScrollView
+      horizontal
+      bounces={false}
+      showsHorizontalScrollIndicator={false}
       accessibilityRole="tablist"
-      style={[styles.row, width < NARROW_WIDTH && styles.rowNarrow]}
+      style={styles.scroller}
+      contentContainerStyle={[styles.row, width < NARROW_WIDTH && styles.rowNarrow]}
     >
       <CountTab
         label="Calendar"
+        count={calendarCount || undefined}
         active={active === 'calendar'}
         onPress={() => onChange('calendar')}
       />
@@ -46,18 +62,18 @@ export function FollowUpTabs({ active, overdueCount, upcomingCount, onChange }: 
         active={active === 'upcoming'}
         onPress={() => onChange('upcoming')}
       />
-    </View>
+    </ScrollView>
   );
 }
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
+    scroller: { flexGrow: 0, backgroundColor: colors.surface },
     row: {
       flexDirection: 'row',
       gap: 20,
       paddingHorizontal: 16,
       paddingBottom: 8,
-      backgroundColor: colors.surface,
     },
     rowNarrow: { gap: 8 },
   });

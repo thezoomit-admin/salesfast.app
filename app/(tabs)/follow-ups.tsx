@@ -12,7 +12,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 
 import { getErrorMessage } from '@/api/client';
 import { useFollowUpActions, type FollowUpTarget } from '@/components/followups/FollowUpActions';
-import { groupByDay } from '@/components/followups/followUpCalendar';
+import { dayKey, groupByDay } from '@/components/followups/followUpCalendar';
 import { FollowUpBucketView } from '@/components/followups/FollowUpBucketView';
 import { FollowUpCalendarSheet } from '@/components/followups/FollowUpCalendarSheet';
 import { FollowUpTabs, type FollowUpTab } from '@/components/followups/FollowUpTabs';
@@ -94,6 +94,7 @@ function FollowUpsScreen() {
   );
 
   const byDay = useMemo(() => groupByDay(data.items), [data.items]);
+  const calendarCount = data.loading ? undefined : byDay.get(dayKey(selected))?.length;
   const leadRows = useMemo(() => data.items.map(leadRowOfFollowUp), [data.items]);
   const { openLead, prefetchLead } = useLeadRowHandlers(leadRows);
   const actions = useFollowUpActions();
@@ -114,12 +115,13 @@ function FollowUpsScreen() {
     () => (
       <FollowUpTabs
         active={tab}
+        calendarCount={calendarCount}
         overdueCount={overdueCount}
         upcomingCount={upcomingCount}
         onChange={setTab}
       />
     ),
-    [overdueCount, tab, upcomingCount]
+    [calendarCount, overdueCount, tab, upcomingCount]
   );
 
   return (

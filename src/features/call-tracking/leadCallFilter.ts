@@ -1,4 +1,4 @@
-import { phoneMatchKey } from './phoneMatch';
+import { phoneMatchKey } from '@/features/call-tracking/phoneMatch';
 
 /**
  * Privacy gate for the device call log. Android hands back every call on the
