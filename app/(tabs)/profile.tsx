@@ -643,6 +643,7 @@ function createStyles(more: MoreChrome) {
     screen: {
       flexGrow: 1,
       paddingHorizontal: more.screenPad,
+      paddingTop: 12,
       paddingBottom: 32,
     },
     profileCard: {
