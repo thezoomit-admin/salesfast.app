@@ -8,7 +8,7 @@ import type { NotificationTab } from './notificationsApi';
 
 type Props = {
   tabs: { key: NotificationTab; label: string }[];
-  /** Badges stay hidden until known, so a count never flashes 0 while loading. */
+  /** A badge shows only while a tab has unread items. */
   unread?: Record<NotificationTab, number>;
   active: NotificationTab;
   onChange: (tab: NotificationTab) => void;
@@ -46,7 +46,7 @@ export function NotificationTabs({
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
                 accessibilityLabel={
-                  count != null ? `${tab.label}, ${count} unread` : tab.label
+                  count ? `${tab.label}, ${count} unread` : tab.label
                 }
                 onPress={() => onChange(tab.key)}
                 style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
@@ -57,7 +57,7 @@ export function NotificationTabs({
                 >
                   {tab.label}
                 </Text>
-                {count != null ? (
+                {count ? (
                   <View style={[styles.badge, selected && styles.badgeActive]}>
                     <Text
                       style={[

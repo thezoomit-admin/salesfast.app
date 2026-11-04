@@ -10,7 +10,6 @@ import {
 } from 'react';
 import {
   Animated,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -24,7 +23,7 @@ import {
   Notification01Icon,
   PermanentJobIcon,
 } from '@/components/icons/hugeicons';
-import { typography, useTheme, type ThemeColors } from '@/theme';
+import { useTheme, type ThemeColors } from '@/theme';
 
 /** Visual tab order — Home centered. Also the page order of the pager. */
 export const TAB_ORDER = [
@@ -67,11 +66,11 @@ export function AppTabBar({
   position,
   badges,
 }: AppTabBarProps) {
-  const { colors, resolved } = useTheme();
+  const { colors } = useTheme();
   const bottomInset = Math.max(insets.bottom, 8);
   const styles = useMemo(
-    () => createStyles(colors, resolved === 'dark', bottomInset),
-    [colors, resolved, bottomInset]
+    () => createStyles(colors, bottomInset),
+    [colors, bottomInset]
   );
 
   const routesByName = Object.fromEntries(
@@ -168,7 +167,6 @@ export function AppTabBar({
               styles={styles}
               colors={colors}
               icon={TAB_ICONS[name]}
-              label={label}
               badge={badges?.[name] || undefined}
               active={active === routeIndex}
               focused={focused}
@@ -189,7 +187,6 @@ type TabItemProps = {
   styles: ReturnType<typeof createStyles>;
   colors: ThemeColors;
   icon: HugeIconData | undefined;
-  label: string;
   badge: number | undefined;
   /** Drawn highlighted (follows taps and swipes ahead of `focused`). */
   active: boolean;
@@ -204,7 +201,6 @@ function TabItem({
   styles,
   colors,
   icon,
-  label,
   badge,
   active,
   focused,
@@ -245,7 +241,7 @@ function TabItem({
               <HugeiconsIcon
                 icon={icon}
                 size={24}
-                color={colors.textMuted}
+                color={colors.text}
                 strokeWidth={1.7}
               />
             </Animated.View>
@@ -267,51 +263,32 @@ function TabItem({
           </View>
         ) : null}
       </View>
-      <Animated.Text style={[styles.label, { opacity: on }]} numberOfLines={1}>
-        {label}
-      </Animated.Text>
     </Pressable>
   );
 }
 
-function createStyles(colors: ThemeColors, isDark: boolean, bottomInset: number) {
+function createStyles(colors: ThemeColors, bottomInset: number) {
   return StyleSheet.create({
     wrap: {
-      backgroundColor: 'transparent',
+      backgroundColor: colors.surface,
     },
     bar: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       backgroundColor: colors.surface,
-      borderTopLeftRadius: 22,
-      borderTopRightRadius: 22,
-      paddingTop: 12,
+      paddingTop: 8,
       paddingBottom: bottomInset,
       paddingHorizontal: 8,
-      minHeight: 56 + bottomInset,
-      borderTopWidth: StyleSheet.hairlineWidth,
+      minHeight: 52 + bottomInset,
+      borderTopWidth: 1,
       borderTopColor: colors.border,
-      ...Platform.select({
-        ios: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: isDark ? 0.35 : 0.08,
-          shadowRadius: 12,
-        },
-        android: {
-          elevation: 12,
-        },
-        default: {},
-      }),
     },
     item: {
       flex: 1,
       alignItems: 'center',
-      justifyContent: 'flex-start',
-      gap: 4,
-      paddingVertical: 2,
-      minHeight: 48,
+      justifyContent: 'center',
+      minHeight: 44,
     },
     itemPressed: {
       opacity: 0.72,
@@ -326,14 +303,6 @@ function createStyles(colors: ThemeColors, isDark: boolean, bottomInset: number)
       ...StyleSheet.absoluteFill,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    label: {
-      ...typography.caption,
-      fontSize: 11,
-      lineHeight: 14,
-      fontWeight: '700',
-      color: colors.brand,
-      textAlign: 'center',
     },
     badge: {
       position: 'absolute',
