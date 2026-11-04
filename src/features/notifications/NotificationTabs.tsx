@@ -95,7 +95,7 @@ function createStyles(colors: ThemeColors) {
     scroll: { flex: 1 },
     tabs: {
       flexDirection: 'row',
-      gap: 14,
+      gap: 18,
       paddingHorizontal: spacing.lg,
     },
     divider: { justifyContent: 'center' },
