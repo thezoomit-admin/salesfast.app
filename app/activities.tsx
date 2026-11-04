@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -17,7 +16,11 @@ import {
 } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
-import { FilterIcon } from '@/components/icons/hugeicons';
+import {
+  FilterIcon,
+  MultiplicationSignIcon,
+  Search02Icon,
+} from '@/components/icons/hugeicons';
 import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ActivitiesSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
@@ -174,10 +177,11 @@ export default function ActivitiesScreen() {
               label={searchOpen ? 'Close search' : 'Search activities'}
               onPress={toggleSearch}
             >
-              <Ionicons
-                name={searchOpen ? 'close' : 'search'}
+              <HugeiconsIcon
+                icon={searchOpen ? MultiplicationSignIcon : Search02Icon}
                 size={22}
                 color={colors.text}
+                strokeWidth={1.5}
               />
             </HeaderIconButton>
             <HeaderIconButton
@@ -223,7 +227,12 @@ export default function ActivitiesScreen() {
           {searching ? (
             <ActivityIndicator size="small" color={colors.brand} />
           ) : (
-            <Ionicons name="search" size={16} color={colors.textMuted} />
+            <HugeiconsIcon
+              icon={Search02Icon}
+              size={16}
+              color={colors.textMuted}
+              strokeWidth={1.5}
+            />
           )}
           <TextInput
             ref={searchRef}
@@ -245,7 +254,12 @@ export default function ActivitiesScreen() {
               accessibilityRole="button"
               accessibilityLabel="Clear search"
             >
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              <HugeiconsIcon
+                icon={MultiplicationSignIcon}
+                size={18}
+                color={colors.textMuted}
+                strokeWidth={1.5}
+              />
             </Pressable>
           ) : null}
         </View>

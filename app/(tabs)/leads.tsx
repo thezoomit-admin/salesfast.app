@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -23,6 +24,10 @@ import {
 } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import {
+  MultiplicationSignIcon,
+  Search02Icon,
+} from '@/components/icons/hugeicons';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
 import { ChipScroll } from '@/components/ui/ChipScroll';
@@ -228,10 +233,11 @@ function LeadsScreen() {
         showBack={false}
         right={
           <HeaderIconButton label="Search leads" onPress={toggleSearch}>
-            <Ionicons
-              name={searchOpen ? 'close' : 'search'}
+            <HugeiconsIcon
+              icon={searchOpen ? MultiplicationSignIcon : Search02Icon}
               size={22}
               color={colors.text}
+              strokeWidth={1.5}
             />
           </HeaderIconButton>
         }
@@ -239,7 +245,12 @@ function LeadsScreen() {
 
       {searchOpen ? (
         <View style={styles.searchWrap}>
-          <Ionicons name="search" size={16} color={colors.textMuted} />
+          <HugeiconsIcon
+            icon={Search02Icon}
+            size={16}
+            color={colors.textMuted}
+            strokeWidth={1.5}
+          />
           <TextInput
             ref={searchRef}
             value={search}
@@ -257,7 +268,12 @@ function LeadsScreen() {
               hitSlop={8}
               accessibilityLabel="Clear search"
             >
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              <HugeiconsIcon
+                icon={MultiplicationSignIcon}
+                size={18}
+                color={colors.textMuted}
+                strokeWidth={1.5}
+              />
             </Pressable>
           ) : null}
         </View>

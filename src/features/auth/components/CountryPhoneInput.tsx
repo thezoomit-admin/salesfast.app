@@ -1,3 +1,4 @@
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useMemo, useState } from 'react';
 import {
@@ -12,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CountryCode } from 'libphonenumber-js';
 
+import { Search02Icon } from '@/components/icons/hugeicons';
 import {
   listCountries,
   DEFAULT_COUNTRY_CODE,
@@ -137,7 +139,12 @@ export function CountryPhoneInput({
           </View>
 
           <View style={styles.searchWrap}>
-            <Ionicons name="search" size={16} color={colors.textMuted} />
+            <HugeiconsIcon
+              icon={Search02Icon}
+              size={16}
+              color={colors.textMuted}
+              strokeWidth={1.5}
+            />
             <TextInput
               value={query}
               onChangeText={setQuery}
