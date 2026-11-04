@@ -178,23 +178,30 @@ const DEMO_RESULT = {
   watchedCount: DEMO_CALLS.length,
 };
 
-function directionIcons(
-  colors: ThemeColors
-): Record<
-  CallSyncDirection,
-  { name: React.ComponentProps<typeof FontAwesome>['name']; color: string }
-> {
-  return {
-    INCOMING: { name: 'arrow-down', color: colors.success },
-    OUTGOING: { name: 'arrow-up', color: colors.brand },
-    MISSED: { name: 'times', color: colors.danger },
-    REJECTED: { name: 'ban', color: colors.danger },
-    UNKNOWN: { name: 'phone', color: colors.textMuted },
-  };
+/** Same Hugeicons + colors as lead details Call History. */
+const KIND_ICON: Record<CallUiKind, HugeIconData> = {
+  incoming: PhoneIncomingIcon,
+  outgoing: PhoneOutgoingIcon,
+  missed: PhoneMissedIcon,
+  failed: CallBlockedIcon,
+};
+
+function callUiKind(direction: CallSyncDirection): CallUiKind {
+  if (direction === 'INCOMING') return 'incoming';
+  if (direction === 'OUTGOING') return 'outgoing';
+  if (direction === 'MISSED') return 'missed';
+  return 'failed';
 }
 
-function formatDuration(sec: number) {
-  if (sec <= 0) return null;
+function kindColor(kind: CallUiKind, colors: ThemeColors) {
+  if (kind === 'incoming') return colors.brand;
+  if (kind === 'outgoing') return colors.success;
+  if (kind === 'missed') return colors.danger;
+  return colors.warning;
+}
+
+function formatDuration(sec: number, kind: CallUiKind) {
+  if (sec <= 0) return kind === 'missed' || kind === 'failed' ? '0s' : '—';
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
@@ -480,47 +487,51 @@ function CallRow({
 }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const icon = directionIcons(colors)[call.direction];
-  const missed = isMissed(call.direction);
-  const duration = formatDuration(call.durationSec);
+  const kind = callUiKind(call.direction);
+  const icon = KIND_ICON[kind];
+  const color = kindColor(kind, colors);
+  const duration = formatDuration(call.durationSec, kind);
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       onPress={onOpenLead}
+      accessibilityRole="button"
+      accessibilityLabel={`Open lead ${call.leadName}`}
     >
-      <View style={[styles.dirIcon, missed && styles.dirIconMissed]}>
-        <FontAwesome name={icon.name} size={13} color={icon.color} />
+      <View style={styles.avatar}>
+        <HugeiconsIcon icon={icon} size={22} color={color} strokeWidth={1.5} />
       </View>
-      <View style={styles.cardCopy}>
-        <Text
-          style={[styles.name, missed && styles.nameMissed]}
-          numberOfLines={1}
-        >
-          {call.leadName}
-        </Text>
-        <Text style={styles.meta} numberOfLines={1}>
-          {formatPhoneDisplay(call.phone)} · {formatDate(call.startedAt)}
-          {duration ? ` · ${duration}` : ''}
-        </Text>
+      <View style={styles.main}>
+        <View style={styles.header}>
+          <View style={styles.left}>
+            <Text style={styles.name} numberOfLines={1}>
+              {call.leadName}
+            </Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.meta}>{duration}</Text>
+              <HugeiconsIcon
+                icon={icon}
+                size={14}
+                color={color}
+                strokeWidth={1.5}
+              />
+              <Text style={styles.meta} numberOfLines={1}>
+                · {formatPhoneDisplay(call.phone)}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.right}>
+            <Text style={styles.time}>{timeOf(call.startedAt)}</Text>
+            {kind === 'missed' ? (
+              <Text style={styles.missed}>Missed</Text>
+            ) : null}
+            {kind === 'failed' ? (
+              <Text style={styles.failed}>Failed</Text>
+            ) : null}
+          </View>
+        </View>
       </View>
-      <Pressable
-        onPress={() => void openPhoneDialer(call.phone)}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={`Call ${call.leadName}`}
-        style={({ pressed }) => [
-          styles.callBtn,
-          missed && styles.callBtnMissed,
-          pressed && styles.pressed,
-        ]}
-      >
-        <FontAwesome
-          name="phone"
-          size={16}
-          color={missed ? colors.white : colors.brand}
-        />
-      </Pressable>
     </Pressable>
   );
 }
@@ -608,38 +619,51 @@ function createStyles(colors: ThemeColors) {
     tabText: { ...typography.caption, color: colors.textSecondary },
     tabTextActive: { color: colors.white },
 
-    list: { padding: spacing.lg, gap: spacing.sm, flexGrow: 1 },
-    card: {
+    list: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.md,
+      flexGrow: 1,
+    },
+    row: {
       flexDirection: 'row',
-      alignItems: 'center',
       gap: spacing.md,
-      backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: spacing.md,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+      alignItems: 'flex-start',
     },
-    dirIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: radii.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surfaceMuted,
-    },
-    dirIconMissed: { backgroundColor: colors.dangerSoft },
-    cardCopy: { flex: 1, gap: 2 },
-    name: { ...typography.subtitle, color: colors.text },
-    nameMissed: { color: colors.danger },
-    meta: { ...typography.caption, color: colors.textMuted },
-    callBtn: {
+    avatar: {
       width: 40,
       height: 40,
-      borderRadius: radii.pill,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.brandSoft,
+      marginTop: 2,
     },
-    callBtnMissed: { backgroundColor: colors.danger },
+    main: { flex: 1, minWidth: 0 },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    left: { flex: 1, minWidth: 0, gap: 2 },
+    right: { alignItems: 'flex-end', gap: 2 },
+    name: { ...typography.body, fontWeight: '600', color: colors.text },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexWrap: 'wrap',
+    },
+    meta: { ...typography.caption, color: colors.textSecondary },
+    time: { ...typography.caption, color: colors.textMuted },
+    missed: {
+      ...typography.caption,
+      color: colors.danger,
+      fontWeight: '700',
+    },
+    failed: {
+      ...typography.caption,
+      color: colors.warning,
+      fontWeight: '700',
+    },
   });
 }
