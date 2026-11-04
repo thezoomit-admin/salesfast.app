@@ -14,8 +14,8 @@ type EmptyTone = 'brand' | 'warning' | 'danger';
 
 export type FollowUpEmptyKind = 'calendar' | 'overdue' | 'upcoming';
 
-/** UI-design only — force empty states. Set false when wiring real data. */
-export const USE_FOLLOWUPS_EMPTY_UI = true;
+/** UI-design only — force empty states. Keep false for real data. */
+export const USE_FOLLOWUPS_EMPTY_UI = false;
 
 const COPY: Record<
   FollowUpEmptyKind,
