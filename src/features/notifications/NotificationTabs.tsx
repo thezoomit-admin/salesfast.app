@@ -1,24 +1,25 @@
-import { type ReactNode, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Fragment, type ReactNode, useMemo } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { CountTabDivider } from '@/components/ui/CountTab';
 import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
 
-import type { NotificationCategory } from './notificationsApi';
+import type { NotificationTab } from './notificationsApi';
 
 type Props = {
-  tabs: { key: NotificationCategory; label: string }[];
-  /** Tabs with no unread show no badge, so neither do unknown counts. */
-  unread?: Record<NotificationCategory, number>;
-  active: NotificationCategory;
-  onChange: (tab: NotificationCategory) => void;
+  tabs: { key: NotificationTab; label: string }[];
+  /** Badges stay hidden until known, so a count never flashes 0 while loading. */
+  counts?: Record<NotificationTab, number>;
+  active: NotificationTab;
+  onChange: (tab: NotificationTab) => void;
   /** Sits at the far end of the row. */
   right?: ReactNode;
 };
 
-/** Underlined tab row on a full-width rule, unread badge beside the label. */
+/** Underlined tab row on a full-width rule, count badge beside the label. */
 export function NotificationTabs({
   tabs,
-  unread,
+  counts,
   active,
   onChange,
   right,
@@ -27,38 +28,58 @@ export function NotificationTabs({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <View accessibilityRole="tablist" style={styles.row}>
-      {tabs.map((tab) => {
-        const selected = tab.key === active;
-        const count = unread?.[tab.key] ?? 0;
-        return (
-          <Pressable
-            key={tab.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            accessibilityLabel={
-              count > 0 ? `${tab.label}, ${count} unread` : tab.label
-            }
-            onPress={() => onChange(tab.key)}
-            style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
-          >
-            <Text
-              style={[styles.label, selected && styles.labelActive]}
-              numberOfLines={1}
-            >
-              {tab.label}
-            </Text>
-            {count > 0 ? (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {count > 99 ? '99+' : count}
+    <View style={styles.row}>
+      {/* Scrolls so every tab stays reachable on narrow phones. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        accessibilityRole="tablist"
+        style={styles.scroll}
+        contentContainerStyle={styles.tabs}
+      >
+        {tabs.map((tab) => {
+          const selected = tab.key === active;
+          const count = counts?.[tab.key];
+          return (
+            <Fragment key={tab.key}>
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                accessibilityLabel={
+                  count != null ? `${tab.label}, ${count}` : tab.label
+                }
+                onPress={() => onChange(tab.key)}
+                style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+              >
+                <Text
+                  style={[styles.label, selected && styles.labelActive]}
+                  numberOfLines={1}
+                >
+                  {tab.label}
                 </Text>
-              </View>
-            ) : null}
-            {selected ? <View style={styles.underline} /> : null}
-          </Pressable>
-        );
-      })}
+                {count != null ? (
+                  <View style={[styles.badge, selected && styles.badgeActive]}>
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        selected && styles.badgeTextActive,
+                      ]}
+                    >
+                      {count > 99 ? '99+' : count}
+                    </Text>
+                  </View>
+                ) : null}
+                {selected ? <View style={styles.underline} /> : null}
+              </Pressable>
+              {tab.key === 'all' ? (
+                <View style={styles.divider}>
+                  <CountTabDivider />
+                </View>
+              ) : null}
+            </Fragment>
+          );
+        })}
+      </ScrollView>
       {right ? <View style={styles.right}>{right}</View> : null}
     </View>
   );
@@ -68,11 +89,16 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
-      gap: spacing.xl,
-      paddingHorizontal: spacing.lg,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
+    scroll: { flex: 1 },
+    tabs: {
+      flexDirection: 'row',
+      gap: 14,
+      paddingHorizontal: spacing.lg,
+    },
+    divider: { justifyContent: 'center' },
     tab: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -81,9 +107,9 @@ function createStyles(colors: ThemeColors) {
     },
     pressed: { opacity: 0.7 },
     right: {
-      flex: 1,
-      alignItems: 'flex-end',
       justifyContent: 'center',
+      paddingLeft: spacing.sm,
+      paddingRight: spacing.lg,
     },
     label: {
       fontSize: 15,
@@ -93,7 +119,7 @@ function createStyles(colors: ThemeColors) {
     },
     labelActive: {
       fontWeight: '600',
-      color: colors.text,
+      color: colors.brand,
     },
     badge: {
       minWidth: 20,
@@ -102,12 +128,18 @@ function createStyles(colors: ThemeColors) {
       borderRadius: radii.pill,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: colors.surfaceMuted,
+    },
+    badgeActive: {
       backgroundColor: colors.brand,
     },
     badgeText: {
       fontSize: 11,
       lineHeight: 14,
       fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    badgeTextActive: {
       color: colors.white,
     },
     underline: {

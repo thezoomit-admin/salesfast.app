@@ -1,12 +1,12 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
-} from "@tanstack/react-query";
-import { type Href, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+} from '@tanstack/react-query';
+import { type Href, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,29 +15,29 @@ import {
   StyleSheet,
   Text,
   View,
-} from "react-native";
+} from 'react-native';
 
-import { getErrorMessage } from "@/api/client";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { ScreenHeader } from "@/components/ui/ScreenHeader";
-import { NotificationsSkeleton } from "@/components/ui/skeletons";
-import { EmptyState, QueryPlaceholder } from "@/components/ui/StateViews";
-import { NotificationCard } from "@/features/notifications/NotificationCard";
-import { NotificationTabs } from "@/features/notifications/NotificationTabs";
+import { getErrorMessage } from '@/api/client';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { NotificationsSkeleton } from '@/components/ui/skeletons';
+import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { NotificationCard } from '@/features/notifications/NotificationCard';
+import { NotificationTabs } from '@/features/notifications/NotificationTabs';
 import {
   type AppNotification,
   dismissNotification,
   fetchNotifications,
-  fetchUnreadByCategory,
+  fetchCategoryCounts,
   markAllNotificationsRead,
   markNotificationRead,
-  type NotificationCategory,
+  type NotificationTab,
   type NotificationState,
   NOTIFICATIONS_KEY,
-  UNREAD_BY_CATEGORY_KEY,
-} from "@/features/notifications/notificationsApi";
-import { spacing, typography, useThemeColors, type ThemeColors } from "@/theme";
-import { formatDayHeading } from "@/utils/dates";
+  CATEGORY_COUNTS_KEY,
+} from '@/features/notifications/notificationsApi';
+import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
+import { formatDayHeading } from '@/utils/dates';
 
 /** Live updates arrive as pushes; this covers phones with push turned off. */
 const REFRESH_MS = 60_000;
@@ -45,28 +45,34 @@ const REFRESH_MS = 60_000;
 const CLOCK_MS = 30_000;
 
 const TABS: {
-  key: NotificationCategory;
+  key: NotificationTab;
   label: string;
   emptyTitle: string;
   emptyMessage: string;
 }[] = [
   {
-    key: "warn",
-    label: "Warn",
-    emptyTitle: "No warnings",
-    emptyMessage: "Follow-ups due within 12 hours will show up here.",
+    key: 'all',
+    label: 'All',
+    emptyTitle: 'No notifications yet',
+    emptyMessage: 'Follow-up alerts and lead updates will show up here.',
   },
   {
-    key: "urgent",
-    label: "Urgent",
-    emptyTitle: "Nothing urgent",
-    emptyMessage: "Overdue follow-ups will show up here.",
+    key: 'warn',
+    label: 'Warn',
+    emptyTitle: 'No warnings',
+    emptyMessage: 'Follow-ups due within 15 minutes will show up here.',
   },
   {
-    key: "info",
-    label: "Info",
-    emptyTitle: "No notifications yet",
-    emptyMessage: "New lead assignments and updates will show up here.",
+    key: 'urgent',
+    label: 'Urgent',
+    emptyTitle: 'Nothing urgent',
+    emptyMessage: 'Overdue follow-ups will show up here.',
+  },
+  {
+    key: 'info',
+    label: 'Info',
+    emptyTitle: 'No notifications yet',
+    emptyMessage: 'New lead assignments and updates will show up here.',
   },
 ];
 
@@ -111,7 +117,7 @@ function NotificationList({
   }, []);
 
   const query = useInfiniteQuery({
-    queryKey: [...NOTIFICATIONS_KEY, "list", tab.key, state],
+    queryKey: [...NOTIFICATIONS_KEY, 'list', tab.key, state],
     queryFn: ({ pageParam }) => fetchNotifications(tab.key, state, pageParam),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
@@ -120,12 +126,12 @@ function NotificationList({
 
   const sections = useMemo(
     () => groupByDay(query.data?.pages.flatMap((p) => p.items) ?? []),
-    [query.data],
+    [query.data]
   );
 
   const refreshAll = useCallback(
     () => queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY }),
-    [queryClient],
+    [queryClient]
   );
 
   const markOne = useMutation({
@@ -143,7 +149,7 @@ function NotificationList({
       const route = routeFor(item);
       if (route) router.push(route);
     },
-    [markOne, router],
+    [markOne, router]
   );
 
   const renderItem = useCallback(
@@ -155,14 +161,14 @@ function NotificationList({
         onLongPress={setDismissing}
       />
     ),
-    [now, onPressItem],
+    [now, onPressItem]
   );
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: DaySection }) => (
       <Text style={styles.sectionTitle}>{section.title}</Text>
     ),
-    [styles],
+    [styles]
   );
 
   if (!query.data) {
@@ -175,7 +181,7 @@ function NotificationList({
     );
   }
 
-  const history = state === "history";
+  const history = state === 'history';
 
   return (
     <>
@@ -206,10 +212,10 @@ function NotificationList({
         }}
         ListEmptyComponent={
           <EmptyState
-            title={history ? "No history yet" : tab.emptyTitle}
+            title={history ? 'No history yet' : tab.emptyTitle}
             message={
               history
-                ? "Alerts for finished follow-ups are kept here."
+                ? 'Alerts for finished follow-ups are kept here.'
                 : tab.emptyMessage
             }
           />
@@ -244,14 +250,15 @@ export default function NotificationsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const queryClient = useQueryClient();
-  const [active, setActive] = useState<NotificationCategory>("warn");
+  const [active, setActive] = useState<NotificationTab>('urgent');
   const [history, setHistory] = useState(false);
 
-  const { data: unread } = useQuery({
-    queryKey: UNREAD_BY_CATEGORY_KEY,
-    queryFn: fetchUnreadByCategory,
+  const { data: counts } = useQuery({
+    queryKey: CATEGORY_COUNTS_KEY,
+    queryFn: fetchCategoryCounts,
     refetchInterval: REFRESH_MS,
   });
+  const unread = counts?.unread;
   const hasUnread = !!unread && unread.warn + unread.urgent + unread.info > 0;
 
   const markAll = useMutation({
@@ -262,8 +269,8 @@ export default function NotificationsScreen() {
 
   const activeTab = TABS.find((t) => t.key === active) ?? TABS[0]!;
   // Info rows never resolve, so only alert tabs have a history.
-  const hasHistory = active !== "info";
-  const state: NotificationState = history && hasHistory ? "history" : "active";
+  const hasHistory = active !== 'info';
+  const state: NotificationState = history && hasHistory ? 'history' : 'active';
 
   return (
     <View style={styles.safe}>
@@ -293,7 +300,7 @@ export default function NotificationsScreen() {
 
       <NotificationTabs
         tabs={TABS}
-        unread={unread}
+        counts={counts?.total}
         active={active}
         onChange={setActive}
         right={
@@ -302,14 +309,14 @@ export default function NotificationsScreen() {
               onPress={() => setHistory((on) => !on)}
               accessibilityRole="button"
               accessibilityLabel="History"
-              accessibilityState={{ selected: state === "history" }}
+              accessibilityState={{ selected: state === 'history' }}
               hitSlop={8}
               style={({ pressed }) => pressed && styles.pressed}
             >
               <Ionicons
                 name="time-outline"
                 size={20}
-                color={state === "history" ? colors.brand : colors.textMuted}
+                color={state === 'history' ? colors.brand : colors.textMuted}
               />
             </Pressable>
           ) : null
@@ -345,12 +352,12 @@ function createStyles(colors: ThemeColors) {
     footer: { paddingVertical: spacing.lg },
     markAll: {
       minHeight: 40,
-      justifyContent: "center",
+      justifyContent: 'center',
     },
     markAllText: {
       fontSize: 14,
       lineHeight: 20,
-      fontWeight: "500",
+      fontWeight: '500',
       color: colors.textSecondary,
     },
     markAllDisabled: { color: colors.textMuted },

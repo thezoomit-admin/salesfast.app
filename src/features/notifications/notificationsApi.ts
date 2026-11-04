@@ -4,6 +4,9 @@ import type { ApiResponse } from '@/types/api';
 /** Inbox tabs; the server sorts each notification into one of these. */
 export type NotificationCategory = 'warn' | 'urgent' | 'info';
 
+/** A category, or every notification at once. */
+export type NotificationTab = 'all' | NotificationCategory;
+
 /** active = still needs attention; history = resolved. */
 export type NotificationState = 'active' | 'history';
 
@@ -35,13 +38,10 @@ export type NotificationPage = {
 
 export const NOTIFICATIONS_KEY = ['notifications'] as const;
 export const UNREAD_COUNT_KEY = ['notifications', 'unread-count'] as const;
-export const UNREAD_BY_CATEGORY_KEY = [
-  'notifications',
-  'unread-by-category',
-] as const;
+export const CATEGORY_COUNTS_KEY = ['notifications', 'category-counts'] as const;
 
 export async function fetchNotifications(
-  category: NotificationCategory,
+  tab: NotificationTab,
   state: NotificationState,
   cursor: string | null,
   limit = 30
@@ -52,7 +52,12 @@ export async function fetchNotifications(
       meta: { nextCursor?: string | null };
     }>
   >('/notifications', {
-    params: { category, state, limit, ...(cursor ? { cursor } : {}) },
+    params: {
+      state,
+      limit,
+      ...(tab === 'all' ? {} : { category: tab }),
+      ...(cursor ? { cursor } : {}),
+    },
   });
   const payload = data.data;
   return {
@@ -68,11 +73,20 @@ export async function fetchUnreadCount() {
   return data.data?.total ?? 0;
 }
 
-export async function fetchUnreadByCategory() {
+/** Per tab: everything it lists (`total`) and how much of that is `unread`. */
+export async function fetchCategoryCounts() {
   const { data } = await api.get<
-    ApiResponse<{ byCategory: Record<NotificationCategory, number> }>
+    ApiResponse<{
+      byCategory: Record<NotificationCategory, number>;
+      totalByCategory: Record<NotificationCategory, number>;
+    }>
   >('/notifications/unread-count');
-  return data.data?.byCategory ?? { warn: 0, urgent: 0, info: 0 };
+  const none = { warn: 0, urgent: 0, info: 0 };
+  const total = data.data?.totalByCategory ?? none;
+  return {
+    unread: data.data?.byCategory ?? none,
+    total: { ...total, all: total.warn + total.urgent + total.info },
+  };
 }
 
 export async function markNotificationRead(id: string) {
