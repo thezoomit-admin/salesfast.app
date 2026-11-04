@@ -31,6 +31,7 @@ export function EmptyState({
   message,
   icon = 'file-tray-outline',
   iconElement,
+  iconBackgroundColor,
   actionLabel,
   onAction,
 }: {
@@ -39,6 +40,8 @@ export function EmptyState({
   icon?: ComponentProps<typeof Ionicons>['name'];
   /** Prefer this over Ionicons `icon` when set (e.g. Hugeicons). */
   iconElement?: ReactNode;
+  /** Soft well behind the icon (defaults to brand tint). */
+  iconBackgroundColor?: string;
   actionLabel?: string;
   onAction?: () => void;
 }) {
@@ -46,7 +49,14 @@ export function EmptyState({
   const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.empty}>
-      <View style={styles.emptyIcon}>
+      <View
+        style={[
+          styles.emptyIcon,
+          iconBackgroundColor
+            ? { backgroundColor: iconBackgroundColor }
+            : null,
+        ]}
+      >
         {iconElement ?? (
           <Ionicons name={icon} size={28} color={colors.brand} />
         )}

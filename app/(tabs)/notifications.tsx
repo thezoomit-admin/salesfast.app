@@ -1,3 +1,4 @@
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   useInfiniteQuery,
@@ -11,6 +12,7 @@ import {
   useNavigation,
   useRouter,
 } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,6 +25,13 @@ import {
 } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import {
+  Bookmark02Icon,
+  CalendarClockIcon,
+  ClockAlertIcon,
+  Notification01Icon,
+  UserAdd01Icon,
+} from '@/components/icons/hugeicons';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { NotificationsSkeleton } from '@/components/ui/skeletons';
@@ -44,6 +53,9 @@ import {
 import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 import { formatDayHeading } from '@/utils/dates';
 
+type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
+type EmptyTone = 'brand' | 'warning' | 'danger';
+
 /** Live updates arrive as pushes; this covers phones with push turned off. */
 const REFRESH_MS = 60_000;
 /** How often "Due in N min" re-renders. */
@@ -57,34 +69,93 @@ const TABS: {
   label: string;
   emptyTitle: string;
   emptyMessage: string;
+  emptyIcon: HugeIconData;
+  emptyTone: EmptyTone;
 }[] = [
   {
     key: 'all',
     label: 'All',
-    emptyTitle: 'No notifications yet',
-    emptyMessage: 'Follow-up alerts and lead updates will show up here.',
+    emptyTitle: "You're all caught up",
+    emptyMessage:
+      "Follow-up reminders and lead updates will appear here when there's something that needs your attention.",
+    emptyIcon: Notification01Icon,
+    emptyTone: 'brand',
   },
   {
     key: 'warn',
     label: 'Warn',
-    emptyTitle: 'No warnings',
-    emptyMessage: 'Follow-ups due within 15 minutes will show up here.',
+    emptyTitle: 'No upcoming deadlines',
+    emptyMessage:
+      "We'll flag follow-ups due in the next 15 minutes so you can act before they slip.",
+    emptyIcon: CalendarClockIcon,
+    emptyTone: 'warning',
   },
   {
     key: 'urgent',
     label: 'Urgent',
-    emptyTitle: 'Nothing urgent',
-    emptyMessage: 'Overdue follow-ups will show up here.',
+    emptyTitle: 'Nothing overdue',
+    emptyMessage:
+      'Overdue follow-ups land here first — clear this list to stay on top of your pipeline.',
+    emptyIcon: ClockAlertIcon,
+    emptyTone: 'danger',
   },
   {
     key: 'info',
     label: 'Info',
-    emptyTitle: 'No notifications yet',
-    emptyMessage: 'New lead assignments and updates will show up here.',
+    emptyTitle: 'No new lead updates',
+    emptyMessage:
+      'New assignments, reassignments, and CRM updates will show up in this tab.',
+    emptyIcon: UserAdd01Icon,
+    emptyTone: 'brand',
   },
 ];
 
+const HISTORY_EMPTY = {
+  title: 'No resolved alerts yet',
+  message:
+    'Completed, rescheduled, and cleared follow-up alerts are kept here for reference.',
+  icon: Bookmark02Icon as HugeIconData,
+  tone: 'brand' as EmptyTone,
+};
+
+function emptyToneColors(colors: ThemeColors, tone: EmptyTone) {
+  if (tone === 'warning') return { fg: colors.warning, bg: colors.warningSoft };
+  if (tone === 'danger') return { fg: colors.danger, bg: colors.dangerSoft };
+  return { fg: colors.brand, bg: colors.primary50 };
+}
+
 type DaySection = { title: string; data: AppNotification[] };
+
+function NotificationEmpty({
+  title,
+  message,
+  icon,
+  tone,
+}: {
+  title: string;
+  message: string;
+  icon: HugeIconData;
+  tone: EmptyTone;
+}) {
+  const colors = useThemeColors();
+  const tint = emptyToneColors(colors, tone);
+
+  return (
+    <EmptyState
+      title={title}
+      message={message}
+      iconBackgroundColor={tint.bg}
+      iconElement={
+        <HugeiconsIcon
+          icon={icon}
+          size={28}
+          color={tint.fg}
+          strokeWidth={1.5}
+        />
+      }
+    />
+  );
+}
 
 /** `items` arrive newest first, so each day is one contiguous run. */
 function groupByDay(items: AppNotification[]) {
@@ -237,13 +308,11 @@ function NotificationList({
           }
         }}
         ListEmptyComponent={
-          <EmptyState
-            title={history ? 'No history yet' : tab.emptyTitle}
-            message={
-              history
-                ? 'Alerts for finished follow-ups are kept here.'
-                : tab.emptyMessage
-            }
+          <NotificationEmpty
+            title={history ? HISTORY_EMPTY.title : tab.emptyTitle}
+            message={history ? HISTORY_EMPTY.message : tab.emptyMessage}
+            icon={history ? HISTORY_EMPTY.icon : tab.emptyIcon}
+            tone={history ? HISTORY_EMPTY.tone : tab.emptyTone}
           />
         }
         ListFooterComponent={
