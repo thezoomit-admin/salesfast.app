@@ -49,6 +49,9 @@ const REFRESH_MS = 60_000;
 /** How often "Due in N min" re-renders. */
 const CLOCK_MS = 30_000;
 
+/** UI-design only — force empty state. Set false when wiring real data. */
+const USE_NOTIFICATIONS_EMPTY_UI = true;
+
 const TABS: {
   key: NotificationTab;
   label: string;
@@ -139,10 +142,10 @@ function NotificationList({
     refetchInterval: live ? REFRESH_MS : false,
   });
 
-  const sections = useMemo(
-    () => groupByDay(query.data?.pages.flatMap((p) => p.items) ?? []),
-    [query.data]
-  );
+  const sections = useMemo(() => {
+    if (USE_NOTIFICATIONS_EMPTY_UI) return [];
+    return groupByDay(query.data?.pages.flatMap((p) => p.items) ?? []);
+  }, [query.data]);
 
   const refreshAll = useCallback(
     () => queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY }),
@@ -186,7 +189,7 @@ function NotificationList({
     [styles]
   );
 
-  if (!query.data) {
+  if (!query.data && !USE_NOTIFICATIONS_EMPTY_UI) {
     return (
       <QueryPlaceholder
         query={query}
@@ -212,16 +215,24 @@ function NotificationList({
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={query.isRefetching && !query.isFetchingNextPage}
+            refreshing={
+              !USE_NOTIFICATIONS_EMPTY_UI &&
+              query.isRefetching &&
+              !query.isFetchingNextPage
+            }
             onRefresh={() => {
-              void refreshAll();
+              if (!USE_NOTIFICATIONS_EMPTY_UI) void refreshAll();
             }}
             tintColor={colors.brand}
           />
         }
         onEndReachedThreshold={0.4}
         onEndReached={() => {
-          if (query.hasNextPage && !query.isFetchingNextPage) {
+          if (
+            !USE_NOTIFICATIONS_EMPTY_UI &&
+            query.hasNextPage &&
+            !query.isFetchingNextPage
+          ) {
             void query.fetchNextPage();
           }
         }}
