@@ -45,3 +45,7 @@ google-services.json
 
 # Gradle build output of local native modules
 modules/*/android/build/
+
+# FCM V1 service account private key: upload to Expo, never commit or bundle
+fcm-service-account.json
+*firebase-adminsdk*.json
