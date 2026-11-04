@@ -603,13 +603,12 @@ function CallsScreen() {
                 <DayGroupHeader label={section.title} />
               )}
               renderItem={({ item, index, section }) => {
-                const isFirstOverall =
-                  index === 0 && section.key === sections[0]?.key;
+                const isFirstInGroup = index === 0;
                 const isLastInGroup = index === section.data.length - 1;
                 return (
                   <CallRow
                     call={item}
-                    isFirst={isFirstOverall}
+                    isFirst={isFirstInGroup}
                     isLast={isLastInGroup}
                     onOpenLead={() => router.push(`/leads/${item.leadId}`)}
                   />
@@ -889,6 +888,7 @@ function createStyles(colors: ThemeColors) {
     pillRow: {
       paddingHorizontal: spacing.lg,
       gap: spacing.sm,
+      paddingTop: spacing.md,
       paddingBottom: spacing.sm,
       alignItems: 'center',
     },
