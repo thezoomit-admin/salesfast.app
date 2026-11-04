@@ -1,27 +1,26 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
+import { spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 import { SkeletonBone, SkeletonPulse } from './primitives';
 
-/** Mirrors Hisab-style notification list rows. */
-export function NotificationsSkeleton({ rows = 6 }: { rows?: number }) {
+/** Mirrors the notification inbox rows. */
+export function NotificationsSkeleton({ rows = 7 }: { rows?: number }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <SkeletonPulse style={styles.root}>
+      <SkeletonBone width={64} height={10} style={styles.section} />
       {Array.from({ length: rows }, (_, i) => (
-        <View key={i} style={styles.card}>
-          <SkeletonBone width={44} height={44} radius={radii.md} />
+        <View key={i} style={styles.row}>
+          <SkeletonBone width={40} height={40} radius={20} />
           <View style={styles.body}>
-            <SkeletonBone width="68%" height={14} />
-            <SkeletonBone width="92%" height={12} />
-            <SkeletonBone width="80%" height={12} />
-            <SkeletonBone width={120} height={10} style={styles.time} />
+            <SkeletonBone width="72%" height={13} />
+            <SkeletonBone width="54%" height={10} />
           </View>
-          <View style={styles.dotSpacer} />
+          <SkeletonBone width={48} height={10} />
         </View>
       ))}
     </SkeletonPulse>
@@ -32,22 +31,16 @@ function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: {
       paddingHorizontal: spacing.lg,
-      paddingTop: 12,
     },
-    card: {
+    section: { marginTop: spacing.lg, marginBottom: spacing.xs },
+    row: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      backgroundColor: colors.surface,
-      borderRadius: radii.md,
-      paddingHorizontal: 14,
+      alignItems: 'center',
       paddingVertical: 14,
-      marginBottom: 10,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
       gap: spacing.md,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
     },
-    body: { flex: 1, gap: 6, paddingRight: spacing.sm },
-    time: { marginTop: 2 },
-    dotSpacer: { width: 10 },
+    body: { flex: 1, gap: spacing.sm },
   });
 }

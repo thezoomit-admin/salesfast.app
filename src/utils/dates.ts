@@ -3,6 +3,7 @@
 import { differenceInCalendarDays } from 'date-fns/differenceInCalendarDays';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
+import { isTomorrow } from 'date-fns/isTomorrow';
 import { isYesterday } from 'date-fns/isYesterday';
 import { parseISO } from 'date-fns/parseISO';
 
@@ -36,6 +37,33 @@ export function formatCalendarDate(value?: string | Date | null) {
   const d = parseDate(value);
   if (!d) return '—';
   return format(d, 'dd MMM yyyy');
+}
+
+/** "09:41 AM". */
+export function formatClockTime(value?: string | Date | null) {
+  const d = parseDate(value);
+  if (!d) return '—';
+  return format(d, 'hh:mm a');
+}
+
+/** List section heading — "Today", "Yesterday", "27 November 2026". */
+export function formatDayHeading(value?: string | Date | null) {
+  const d = parseDate(value);
+  if (!d) return '—';
+  if (isToday(d)) return 'Today';
+  if (isYesterday(d)) return 'Yesterday';
+  return format(d, 'd MMMM yyyy');
+}
+
+/** "Today, 29th November", "Tomorrow, 30th November", "27th November". */
+export function formatDueDay(value?: string | Date | null) {
+  const d = parseDate(value);
+  if (!d) return '—';
+  const day = format(d, 'do MMMM');
+  if (isToday(d)) return `Today, ${day}`;
+  if (isTomorrow(d)) return `Tomorrow, ${day}`;
+  if (isYesterday(d)) return `Yesterday, ${day}`;
+  return day;
 }
 
 /** Compact relative time — "Just now", "5m ago", "2h ago", "3d ago". */
