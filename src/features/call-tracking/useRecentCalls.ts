@@ -8,8 +8,8 @@ import {
 } from 'android-call-log';
 
 import { getCallMatchDirectory, type CallSyncDirection } from './callSyncApi';
+import { keepLeadCalls } from './leadCallFilter';
 import { mapAndroidCallType } from './mapCallDirection';
-import { phoneMatchKey } from './phoneMatch';
 
 export type RecentCall = {
   key: string;
@@ -17,8 +17,8 @@ export type RecentCall = {
   direction: CallSyncDirection;
   startedAt: Date;
   durationSec: number;
-  leadId: number | null;
-  leadName: string | null;
+  leadId: number;
+  leadName: string;
 };
 
 export type RecentCallsResult =
@@ -28,7 +28,7 @@ export type RecentCallsResult =
 
 export const RECENT_CALLS_KEY = ['device-recent-calls'] as const;
 
-/** Rows are read on-device for display only — nothing here is uploaded. */
+/** Lead calls only — personal calls are dropped before they reach the screen. */
 async function loadRecentCalls(): Promise<RecentCallsResult> {
   if (Platform.OS !== 'android' || !isCallLogModuleAvailable()) {
     return { state: 'unsupported' };
@@ -38,26 +38,20 @@ async function loadRecentCalls(): Promise<RecentCallsResult> {
   }
 
   const [rows, directory] = await Promise.all([
-    getRecentCalls(150, 0),
+    getRecentCalls(300, 0),
     getCallMatchDirectory(),
   ]);
 
-  const byKey = new Map(directory.entries.map((e) => [e.phoneKey, e]));
-
-  const calls = rows
-    .map<RecentCall>((row) => {
-      const key = phoneMatchKey(row.number);
-      const match = key ? byKey.get(key) : undefined;
-      return {
-        key: `${row.id}:${row.dateMs}`,
-        phone: row.number,
-        direction: mapAndroidCallType(row.type),
-        startedAt: new Date(row.dateMs),
-        durationSec: Math.max(0, Number(row.durationSec) || 0),
-        leadId: match?.leadId ?? null,
-        leadName: match?.leadName ?? null,
-      };
-    })
+  const calls = keepLeadCalls(rows, directory.entries)
+    .map<RecentCall>(({ row, lead }) => ({
+      key: `${row.id}:${row.dateMs}`,
+      phone: row.number,
+      direction: mapAndroidCallType(row.type),
+      startedAt: new Date(row.dateMs),
+      durationSec: Math.max(0, Number(row.durationSec) || 0),
+      leadId: lead.leadId,
+      leadName: lead.leadName,
+    }))
     .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
 
   return { state: 'ok', calls, watchedCount: directory.count };

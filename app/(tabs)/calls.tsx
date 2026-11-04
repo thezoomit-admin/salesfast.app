@@ -79,12 +79,11 @@ const SYNC_BANNER: Record<
   },
 };
 
-type FilterKey = 'leads' | 'missed' | 'others';
+type FilterKey = 'leads' | 'missed';
 
 const FILTERS: readonly (readonly [FilterKey, string])[] = [
   ['leads', 'Lead calls'],
   ['missed', 'Missed'],
-  ['others', 'Unknown'],
 ];
 
 function directionIcons(
@@ -135,11 +134,8 @@ function CallsScreen() {
 
   const visible = useMemo(() => {
     if (!data) return [];
-    return data.calls.filter((c) => {
-      if (filter === 'leads') return c.leadId != null;
-      if (filter === 'missed') return c.leadId != null && isMissed(c.direction);
-      return c.leadId == null;
-    });
+    if (filter === 'missed') return data.calls.filter((c) => isMissed(c.direction));
+    return data.calls;
   }, [data, filter]);
 
   // Missed lead calls in the 24h before the call log was last read.
@@ -148,7 +144,6 @@ function CallsScreen() {
     () =>
       data?.calls.filter(
         (c) =>
-          c.leadId != null &&
           isMissed(c.direction) &&
           loadedAt - c.startedAt.getTime() < 24 * 60 * 60 * 1000
       ).length ?? 0,
@@ -349,27 +344,15 @@ function CallsScreen() {
             ListEmptyComponent={
               <EmptyState
                 title={
-                  filter === 'missed'
-                    ? 'No missed lead calls'
-                    : filter === 'others'
-                      ? 'No unknown numbers'
-                      : 'No lead calls yet'
+                  filter === 'missed' ? 'No missed lead calls' : 'No lead calls yet'
                 }
-                message={
-                  filter === 'others'
-                    ? 'Calls with numbers that are not in your leads show here. They are never uploaded.'
-                    : `Watching ${data?.watchedCount ?? 0} lead numbers.`
-                }
+                message={`Watching ${data?.watchedCount ?? 0} lead numbers.`}
               />
             }
             renderItem={({ item }) => (
               <CallRow
                 call={item}
-                onOpenLead={
-                  item.leadId != null
-                    ? () => router.push(`/leads/${item.leadId}`)
-                    : undefined
-                }
+                onOpenLead={() => router.push(`/leads/${item.leadId}`)}
               />
             )}
           />
@@ -386,7 +369,7 @@ function CallRow({
   onOpenLead,
 }: {
   call: RecentCall;
-  onOpenLead?: () => void;
+  onOpenLead: () => void;
 }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -396,9 +379,8 @@ function CallRow({
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && onOpenLead && styles.pressed]}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
       onPress={onOpenLead}
-      disabled={!onOpenLead}
     >
       <View style={[styles.dirIcon, missed && styles.dirIconMissed]}>
         <FontAwesome name={icon.name} size={13} color={icon.color} />
@@ -408,11 +390,10 @@ function CallRow({
           style={[styles.name, missed && styles.nameMissed]}
           numberOfLines={1}
         >
-          {call.leadName || formatPhoneDisplay(call.phone)}
+          {call.leadName}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
-          {call.leadName ? `${formatPhoneDisplay(call.phone)} · ` : ''}
-          {formatDate(call.startedAt)}
+          {formatPhoneDisplay(call.phone)} · {formatDate(call.startedAt)}
           {duration ? ` · ${duration}` : ''}
         </Text>
       </View>
@@ -420,7 +401,7 @@ function CallRow({
         onPress={() => void openPhoneDialer(call.phone)}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel={`Call ${call.leadName || call.phone}`}
+        accessibilityLabel={`Call ${call.leadName}`}
         style={({ pressed }) => [
           styles.callBtn,
           missed && styles.callBtnMissed,
