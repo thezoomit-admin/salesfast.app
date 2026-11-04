@@ -28,6 +28,7 @@ import {
   MultiplicationSignIcon,
   Search02Icon,
 } from '@/components/icons/hugeicons';
+import { LeadEmpty } from '@/components/leads/LeadEmpty';
 import { LeadFilterPills } from '@/components/leads/LeadFilterPills';
 import { LeadFilterSheet } from '@/components/leads/LeadFilterSheet';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
@@ -40,7 +41,7 @@ import {
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
-import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { QueryPlaceholder } from '@/components/ui/StateViews';
 import {
   NO_LEAD_FILTERS,
   leadFilterCount,
@@ -371,32 +372,26 @@ function LeadsScreen() {
           onRefresh={() => leads.refetch()}
           onEndReached={() => {
             if (leads.hasNextPage && !leads.isFetchingNextPage) {
-              leads.fetchNextPage();
+              void leads.fetchNextPage();
             }
           }}
           onEndReachedThreshold={0.4}
           onScroll={onScroll}
           scrollEventThrottle={16}
           ListEmptyComponent={
-            pickedFilters > 0 ? (
-              <EmptyState
-                icon="search-outline"
-                title="No matching leads"
-                message="Try a different search, tab or filter."
-                actionLabel="Clear filters"
-                onAction={clearFilters}
-              />
-            ) : tab === 'unread' && !debouncedSearch ? (
-              <EmptyState
-                title="All caught up"
-                message="Every lead assigned to you has been opened."
-              />
-            ) : (
-              <EmptyState
-                title="No leads found"
-                message="Try a different search or tab."
-              />
-            )
+            <LeadEmpty
+              kind={
+                pickedFilters > 0 || debouncedSearch.trim()
+                  ? 'filtered'
+                  : tab === 'unread'
+                    ? 'unread'
+                    : 'all'
+              }
+              onClearFilters={() => {
+                clearFilters();
+                setSearch('');
+              }}
+            />
           }
           ListFooterComponent={
             leads.isFetchingNextPage ? (

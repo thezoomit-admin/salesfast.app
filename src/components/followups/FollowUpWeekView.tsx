@@ -18,10 +18,7 @@ import {
   useMinuteClock,
   type DayFollowUp,
 } from '@/components/followups/followUpCalendar';
-import {
-  FollowUpEmpty,
-  USE_FOLLOWUPS_EMPTY_UI,
-} from '@/components/followups/FollowUpEmpty';
+import { FollowUpEmpty } from '@/components/followups/FollowUpEmpty';
 import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
@@ -80,9 +77,7 @@ function FollowUpWeekViewImpl({
   const now = useMinuteClock();
   const weekStrip = useRef<WeekStripHandle>(null);
 
-  const items = USE_FOLLOWUPS_EMPTY_UI
-    ? NO_FOLLOW_UPS
-    : (byDay.get(dayKey(selected)) ?? NO_FOLLOW_UPS);
+  const items = byDay.get(dayKey(selected)) ?? NO_FOLLOW_UPS;
   const hours = useMemo(() => {
     let first = DAY_START_HOUR;
     let last = DAY_END_HOUR;
@@ -93,9 +88,8 @@ function FollowUpWeekViewImpl({
     return Array.from({ length: last - first + 1 }, (_, i) => first + i);
   }, [items]);
 
-  const showNow = isToday(selected) && !USE_FOLLOWUPS_EMPTY_UI;
-  const dayEmpty =
-    USE_FOLLOWUPS_EMPTY_UI || (!loading && items.length === 0);
+  const showNow = isToday(selected);
+  const dayEmpty = !loading && items.length === 0;
 
   return (
     <View style={styles.root}>
@@ -128,16 +122,13 @@ function FollowUpWeekViewImpl({
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={!USE_FOLLOWUPS_EMPTY_UI && refreshing}
-            onRefresh={onRefresh}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {loading && items.length === 0 && !USE_FOLLOWUPS_EMPTY_UI ? (
+        {loading && items.length === 0 ? (
           <ActivityIndicator style={styles.loading} color={colors.textMuted} />
         ) : null}
-        {errorMessage && items.length === 0 && !USE_FOLLOWUPS_EMPTY_UI ? (
+        {errorMessage && items.length === 0 ? (
           <Text style={styles.error}>{errorMessage}</Text>
         ) : null}
 
