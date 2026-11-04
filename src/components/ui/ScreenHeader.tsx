@@ -204,7 +204,7 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'center',
       backgroundColor: colors.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.primary50,
+      borderBottomColor: colors.border,
     },
     centerSlot: {
       position: 'absolute',

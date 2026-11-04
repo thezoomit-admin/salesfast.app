@@ -463,9 +463,10 @@ function CallsScreen() {
                 message={`Watching ${data?.watchedCount ?? 0} lead numbers.`}
               />
             }
-            renderItem={({ item }) => (
+            renderItem={({ item, index }) => (
               <CallRow
                 call={item}
+                isFirst={index === 0}
                 onOpenLead={() => router.push(`/leads/${item.leadId}`)}
               />
             )}
@@ -480,9 +481,11 @@ export default memo(CallsScreen);
 
 function CallRow({
   call,
+  isFirst,
   onOpenLead,
 }: {
   call: RecentCall;
+  isFirst: boolean;
   onOpenLead: () => void;
 }) {
   const colors = useThemeColors();
@@ -494,7 +497,11 @@ function CallRow({
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        isFirst && styles.rowFirst,
+        pressed && styles.pressed,
+      ]}
       onPress={onOpenLead}
       accessibilityRole="button"
       accessibilityLabel={`Open lead ${call.leadName}`}
@@ -538,7 +545,7 @@ function CallRow({
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background },
+    safe: { flex: 1, backgroundColor: colors.surface },
     flex: { flex: 1 },
     toolbar: {
       paddingHorizontal: spacing.lg,
@@ -620,19 +627,26 @@ function createStyles(colors: ThemeColors) {
     tabTextActive: { color: colors.white },
 
     list: {
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
+      paddingLeft: spacing.md,
+      paddingRight: spacing.lg,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.lg,
       flexGrow: 1,
     },
     row: {
       flexDirection: 'row',
-      gap: spacing.md,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.sm,
+      gap: spacing.sm,
+      paddingVertical: 10,
       alignItems: 'flex-start',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    rowFirst: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
     },
     avatar: {
-      width: 40,
+      width: 28,
       height: 40,
       alignItems: 'center',
       justifyContent: 'center',
