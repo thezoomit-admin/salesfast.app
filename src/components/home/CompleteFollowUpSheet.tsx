@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -32,7 +32,12 @@ import {
   formatFollowupDisplay,
   serializeActivityFlow,
 } from '@/features/leads/addNoteLogic';
-import { addLeadNote, noteChannelsQuery } from '@/features/leads/leadsApi';
+import {
+  addLeadNote,
+  FOLLOW_UP_BUCKET_KEY,
+  noteChannelsQuery,
+  type FollowUpBucketPage,
+} from '@/features/leads/leadsApi';
 import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import type { FollowUpOutcome, MobileDashboard, MyFollowUp } from '@/types/api';
 
@@ -107,6 +112,21 @@ function markDoneInCaches(
           ),
         }
       : data
+  );
+  // Overdue / Upcoming only list open follow-ups, so it leaves them.
+  client.setQueriesData<InfiniteData<FollowUpBucketPage>>(
+    { queryKey: FOLLOW_UP_BUCKET_KEY },
+    (data) =>
+      data?.pages.some((p) => p.items.some((f) => f.id === vars.followUpId))
+        ? {
+            ...data,
+            pages: data.pages.map((p) => ({
+              ...p,
+              total: p.total - 1,
+              items: p.items.filter((f) => f.id !== vars.followUpId),
+            })),
+          }
+        : data
   );
   client.setQueryData<MobileDashboard>(dashboardQuery.queryKey, (data) =>
     data

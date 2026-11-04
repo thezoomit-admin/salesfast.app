@@ -357,6 +357,34 @@ export function followUpMonthKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/** Follow-ups list tabs: what needs doing across all dates. */
+export type FollowUpBucket = 'overdue' | 'upcoming';
+
+export type FollowUpBucketPage = {
+  items: MyFollowUp[];
+  nextCursor: string | null;
+  /** The whole bucket, not just this page. */
+  total: number;
+};
+
+export const FOLLOW_UP_BUCKET_KEY = ['my-follow-ups', 'bucket'] as const;
+
+/** Never fresh: rows change bucket as time passes, not only on a write. */
+export const followUpBucketQuery = (bucket: FollowUpBucket) =>
+  infiniteQueryOptions({
+    queryKey: [...FOLLOW_UP_BUCKET_KEY, bucket],
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const { data } = await api.get<ApiResponse<FollowUpBucketPage>>(
+        '/crm/mobile/dashboard/follow-ups',
+        { params: { bucket, cursor: pageParam ?? undefined } }
+      );
+      return data.data;
+    },
+    getNextPageParam: (last) => last.nextCursor,
+    staleTime: 0,
+  });
+
 /** My follow-ups due in `month` (`yyyy-MM`, local time) — Pending, Done and Missed. */
 export const followUpMonthQuery = (month: string) =>
   queryOptions({

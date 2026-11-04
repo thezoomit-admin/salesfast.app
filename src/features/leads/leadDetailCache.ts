@@ -49,7 +49,9 @@ export function leadRowOfFollowUp(f: MyFollowUp): LeadListItem {
 }
 
 function followUpLeadRows(data: unknown): LeadListItem[] {
-  const items = (data as { items?: unknown } | null)?.items;
+  const list = data as { items?: unknown; pages?: { items?: unknown[] }[] } | null;
+  // Month caches hold `items`; the Overdue / Upcoming lists hold `pages`.
+  const items = list?.pages ? list.pages.flatMap((p) => p?.items ?? []) : list?.items;
   if (!Array.isArray(items)) return [];
   return items
     .filter((f): f is MyFollowUp => !!f && typeof f === 'object' && !!(f as MyFollowUp).lead)
