@@ -1,6 +1,15 @@
 import { api } from '@/api/client';
 import type { ApiResponse } from '@/types/api';
 
+/** Inbox tabs; the server sorts each notification into one of these. */
+export type NotificationCategory = 'warn' | 'urgent' | 'info';
+
+/** A category, or every notification at once. */
+export type NotificationTab = 'all' | NotificationCategory;
+
+/** active = still needs attention; history = resolved. */
+export type NotificationState = 'active' | 'history';
+
 /** Row shape returned by GET /notifications (NotificationService.toClient). */
 export type AppNotification = {
   _id: string;
@@ -10,36 +19,50 @@ export type AppNotification = {
   createdAt: string;
   /** Route inside this app — `/leads/<id>` or `/notifications`. */
   mobileUrl?: string;
+  /** Set once the follow-up behind an alert no longer needs it. */
+  resolvedAt?: string | null;
+  resolution?: string | null;
   metadata?: {
     crmType?: string;
     leadId?: number;
+    /** ISO time, on follow-up alerts. */
+    dueAt?: string;
     [key: string]: unknown;
   };
 };
 
 export type NotificationPage = {
   items: AppNotification[];
-  page: number;
-  lastPage: number;
-  unread: number;
+  nextCursor: string | null;
 };
 
 export const NOTIFICATIONS_KEY = ['notifications'] as const;
 export const UNREAD_COUNT_KEY = ['notifications', 'unread-count'] as const;
+export const UNREAD_BY_TAB_KEY = ['notifications', 'unread-by-tab'] as const;
 
-export async function fetchNotifications(page = 1, limit = 30) {
+export async function fetchNotifications(
+  tab: NotificationTab,
+  state: NotificationState,
+  cursor: string | null,
+  limit = 30
+) {
   const { data } = await api.get<
     ApiResponse<{
       data: AppNotification[];
-      meta: { page: number; last_page: number; unread: number };
+      meta: { nextCursor?: string | null };
     }>
-  >('/notifications', { params: { page, limit } });
+  >('/notifications', {
+    params: {
+      state,
+      limit,
+      ...(tab === 'all' ? {} : { category: tab }),
+      ...(cursor ? { cursor } : {}),
+    },
+  });
   const payload = data.data;
   return {
     items: payload?.data ?? [],
-    page: payload?.meta?.page ?? page,
-    lastPage: payload?.meta?.last_page ?? page,
-    unread: payload?.meta?.unread ?? 0,
+    nextCursor: payload?.meta?.nextCursor ?? null,
   } satisfies NotificationPage;
 }
 
@@ -50,8 +73,20 @@ export async function fetchUnreadCount() {
   return data.data?.total ?? 0;
 }
 
+export async function fetchUnreadByTab() {
+  const { data } = await api.get<
+    ApiResponse<{ byCategory: Record<NotificationCategory, number> }>
+  >('/notifications/unread-count');
+  const unread = data.data?.byCategory ?? { warn: 0, urgent: 0, info: 0 };
+  return { ...unread, all: unread.warn + unread.urgent + unread.info };
+}
+
 export async function markNotificationRead(id: string) {
   await api.patch(`/notifications/${encodeURIComponent(id)}/read`);
+}
+
+export async function dismissNotification(id: string) {
+  await api.patch(`/notifications/${encodeURIComponent(id)}/dismiss`);
 }
 
 export async function markAllNotificationsRead() {

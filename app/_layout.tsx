@@ -91,11 +91,11 @@ function ThemedStack() {
         {/* Folder route: Overview / History / Calls / Views under leads/[id]/ */}
         <Stack.Screen name="leads/[id]" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="leads/new" />
-        <Stack.Screen name="notifications" />
         <Stack.Screen name="activities" />
         <Stack.Screen name="call-sync/setup" />
         <Stack.Screen name="settings/edit" />
         <Stack.Screen name="settings/about" />
+        <Stack.Screen name="settings/notifications" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>

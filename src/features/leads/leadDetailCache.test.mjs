@@ -83,6 +83,15 @@ describe('findListLead', () => {
     assert.equal(findListLead(c, 2)?.priority, 'HIGH');
   });
 
+  it('finds a lead in the paged Overdue / Upcoming lists', () => {
+    const c = newClient();
+    c.setQueryData(['my-follow-ups', 'bucket', 'overdue'], {
+      pages: [{ items: [followUp(7, 42, '2026-01-01T00:00:00Z', 'HIGH')], total: 1 }],
+      pageParams: [null],
+    });
+    assert.equal(findListLead(c, 42)?.buyerPersona.fullName, 'Lead 42');
+  });
+
   it('returns undefined for an unknown lead or malformed cache data', () => {
     const c = newClient();
     seedLists(c);

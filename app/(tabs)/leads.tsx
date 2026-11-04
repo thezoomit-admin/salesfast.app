@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -23,17 +24,32 @@ import {
 } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import {
+  MultiplicationSignIcon,
+  Search02Icon,
+} from '@/components/icons/hugeicons';
+import { LeadEmpty } from '@/components/leads/LeadEmpty';
+import { LeadFilterPills } from '@/components/leads/LeadFilterPills';
+import { LeadFilterSheet } from '@/components/leads/LeadFilterSheet';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
 import { ChipScroll } from '@/components/ui/ChipScroll';
 import { CountTab, CountTabDivider } from '@/components/ui/CountTab';
 import {
+  HeaderFilterButton,
   HeaderIconButton,
   ScreenHeader,
 } from '@/components/ui/ScreenHeader';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
-import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { QueryPlaceholder } from '@/components/ui/StateViews';
 import {
+  NO_LEAD_FILTERS,
+  leadFilterCount,
+  leadFilterPills,
+  type LeadFilters,
+} from '@/features/leads/leadFilters';
+import {
+  leadSourcesQuery,
   leadStatusesQuery,
   leadTabCountsQuery,
   myLeadsQuery,
@@ -67,6 +83,8 @@ function LeadsScreen() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<LeadListTab>('all');
+  const [filters, setFilters] = useState<LeadFilters>(NO_LEAD_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
   const debouncedSearch = useDebounced(search);
   const queryClient = useQueryClient();
 
@@ -79,14 +97,27 @@ function LeadsScreen() {
 
   const statuses = useQuery(leadStatusesQuery);
   const counts = useQuery({
-    ...leadTabCountsQuery(debouncedSearch),
+    ...leadTabCountsQuery(debouncedSearch, filters),
     placeholderData: keepPreviousData,
   });
+  // Only the filter needs these: the sheet, and the pills naming a source.
+  const sources = useQuery({
+    ...leadSourcesQuery,
+    enabled: filterOpen || filters.sourceIds.length > 0,
+  });
+  const sourceList = useMemo(() => sources.data ?? [], [sources.data]);
+  const filterPills = useMemo(
+    () => leadFilterPills(filters, sourceList),
+    [filters, sourceList]
+  );
+  const pickedFilters = leadFilterCount(filters);
+  const closeFilter = useCallback(() => setFilterOpen(false), []);
+  const clearFilters = useCallback(() => setFilters(NO_LEAD_FILTERS), []);
 
   // A new search keeps the tab's current rows on screen; a tab with nothing
   // cached shows the skeleton, never another tab's leads.
   const leads = useInfiniteQuery({
-    ...myLeadsQuery(debouncedSearch, tab),
+    ...myLeadsQuery(debouncedSearch, tab, filters),
     placeholderData: (prev, prevQuery) =>
       prevQuery?.queryKey[1] === tab ? prev : undefined,
   });
@@ -126,8 +157,10 @@ function LeadsScreen() {
   // Finger down on a tab starts its request ahead of the tap (covers search).
   const prefetchTab = useCallback(
     (t: LeadListTab) =>
-      void queryClient.prefetchInfiniteQuery(myLeadsQuery(debouncedSearch, t)),
-    [queryClient, debouncedSearch]
+      void queryClient.prefetchInfiniteQuery(
+        myLeadsQuery(debouncedSearch, t, filters)
+      ),
+    [queryClient, debouncedSearch, filters]
   );
   const { openLead, prefetchLead } = useLeadRowHandlers(items);
   const { openPriority, openHistory, sheets } = useLeadCardSheets();
@@ -227,19 +260,32 @@ function LeadsScreen() {
         title="Leads"
         showBack={false}
         right={
-          <HeaderIconButton label="Search leads" onPress={toggleSearch}>
-            <Ionicons
-              name={searchOpen ? 'close' : 'search'}
-              size={22}
-              color={colors.text}
+          <>
+            <HeaderIconButton label="Search leads" onPress={toggleSearch}>
+              <HugeiconsIcon
+                icon={searchOpen ? MultiplicationSignIcon : Search02Icon}
+                size={22}
+                color={colors.text}
+                strokeWidth={1.5}
+              />
+            </HeaderIconButton>
+            <HeaderFilterButton
+              label="Filter leads"
+              count={pickedFilters}
+              onPress={() => setFilterOpen(true)}
             />
-          </HeaderIconButton>
+          </>
         }
       />
 
       {searchOpen ? (
         <View style={styles.searchWrap}>
-          <Ionicons name="search" size={16} color={colors.textMuted} />
+          <HugeiconsIcon
+            icon={Search02Icon}
+            size={16}
+            color={colors.textMuted}
+            strokeWidth={1.5}
+          />
           <TextInput
             ref={searchRef}
             value={search}
@@ -257,7 +303,12 @@ function LeadsScreen() {
               hitSlop={8}
               accessibilityLabel="Clear search"
             >
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              <HugeiconsIcon
+                icon={MultiplicationSignIcon}
+                size={18}
+                color={colors.textMuted}
+                strokeWidth={1.5}
+              />
             </Pressable>
           ) : null}
         </View>
@@ -295,6 +346,14 @@ function LeadsScreen() {
         {statusTabs.map(renderStatusTab)}
       </ChipScroll>
 
+      {filterPills.length > 0 ? (
+        <LeadFilterPills
+          pills={filterPills}
+          onChange={setFilters}
+          onClear={clearFilters}
+        />
+      ) : null}
+
       {!leads.data ? (
         <QueryPlaceholder
           query={leads}
@@ -303,8 +362,8 @@ function LeadsScreen() {
         />
       ) : (
         <FlatList
-          // New tab starts at the top instead of the old tab's scroll offset.
-          key={String(tab)}
+          // New tab or filter starts at the top, not the old scroll offset.
+          key={JSON.stringify([tab, filters])}
           data={items}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
@@ -313,24 +372,26 @@ function LeadsScreen() {
           onRefresh={() => leads.refetch()}
           onEndReached={() => {
             if (leads.hasNextPage && !leads.isFetchingNextPage) {
-              leads.fetchNextPage();
+              void leads.fetchNextPage();
             }
           }}
           onEndReachedThreshold={0.4}
           onScroll={onScroll}
           scrollEventThrottle={16}
           ListEmptyComponent={
-            tab === 'unread' && !debouncedSearch ? (
-              <EmptyState
-                title="All caught up"
-                message="Every lead assigned to you has been opened."
-              />
-            ) : (
-              <EmptyState
-                title="No leads found"
-                message="Try a different search or tab."
-              />
-            )
+            <LeadEmpty
+              kind={
+                pickedFilters > 0 || debouncedSearch.trim()
+                  ? 'filtered'
+                  : tab === 'unread'
+                    ? 'unread'
+                    : 'all'
+              }
+              onClearFilters={() => {
+                clearFilters();
+                setSearch('');
+              }}
+            />
           }
           ListFooterComponent={
             leads.isFetchingNextPage ? (
@@ -384,6 +445,15 @@ function LeadsScreen() {
       </Animated.View>
 
       {sheets}
+
+      <LeadFilterSheet
+        open={filterOpen}
+        value={filters}
+        sources={sourceList}
+        sourcesLoading={sources.isLoading}
+        onApply={setFilters}
+        onClose={closeFilter}
+      />
     </View>
   );
 }

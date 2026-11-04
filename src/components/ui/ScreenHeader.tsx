@@ -1,10 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FilterIcon } from '@/components/icons/hugeicons';
 import { radii, typography, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
@@ -194,17 +196,53 @@ export function HeaderIconButton({
   );
 }
 
+/** Funnel button with a count of the picks in force. */
+export function HeaderFilterButton({
+  onPress,
+  label,
+  count,
+}: {
+  onPress: () => void;
+  /** What it filters, e.g. "Filter leads". */
+  label: string;
+  count: number;
+}) {
+  const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  return (
+    <View style={styles.filterButton}>
+      <HeaderIconButton
+        label={count ? `${label}, ${count} selected` : label}
+        onPress={onPress}
+      >
+        <View style={styles.filterIconWrap}>
+          <HugeiconsIcon
+            icon={FilterIcon}
+            size={22}
+            color={count ? colors.brand : colors.text}
+            strokeWidth={1.5}
+          />
+          {count ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{count}</Text>
+            </View>
+          ) : null}
+        </View>
+      </HeaderIconButton>
+    </View>
+  );
+}
+
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     wrap: {
       minHeight: 48,
-      marginBottom: 12,
       paddingHorizontal: 16,
       paddingBottom: 8,
       justifyContent: 'center',
       backgroundColor: colors.surface,
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.primary50,
+      borderBottomColor: colors.border,
     },
     centerSlot: {
       position: 'absolute',
@@ -250,6 +288,33 @@ function createStyles(colors: ThemeColors) {
       height: 40,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    filterButton: { marginLeft: -8 },
+    filterIconWrap: {
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filterBadge: {
+      position: 'absolute',
+      top: -4,
+      right: -8,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 4,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.brand,
+      borderWidth: 1.5,
+      borderColor: colors.surface,
+    },
+    filterBadgeText: {
+      fontSize: 9,
+      lineHeight: 11,
+      fontWeight: '700',
+      color: colors.white,
     },
     titleBtn: {
       flexDirection: 'row',

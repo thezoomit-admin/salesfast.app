@@ -4,8 +4,13 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
+  followUpKind,
+  followUpState,
+  followUpTypeLabel,
+  followupTypeIcon,
   initials,
   isClosedState,
+  type FollowUpKind,
   type FollowUpState,
   type KindTone,
 } from '@/components/followups/followUpCalendar';
@@ -16,6 +21,7 @@ import {
   ClockAlertIcon,
   MoreVerticalIcon,
 } from '@/components/icons/hugeicons';
+import type { MyFollowUp } from '@/types/api';
 import { useTheme, type ThemeColors } from '@/theme';
 
 type Props = {
@@ -149,6 +155,45 @@ export function FollowUpCard({
         </View>
       </View>
     </Pressable>
+  );
+}
+
+/** A `MyFollowUp` row as a card: the timeline and the Overdue / Upcoming lists. */
+export function FollowUpItemCard({
+  item,
+  due,
+  now,
+  tones,
+  onOpen,
+  onPressIn,
+  onMore,
+  onComplete,
+}: {
+  item: MyFollowUp;
+  due: Date;
+  now: Date;
+  tones: Record<FollowUpKind, KindTone>;
+  onOpen: (item: MyFollowUp) => void;
+  onPressIn: (item: MyFollowUp) => void;
+  onMore: (item: MyFollowUp) => void;
+  onComplete: (item: MyFollowUp) => void;
+}) {
+  const done = item.status === 'DONE';
+  return (
+    <FollowUpCard
+      name={item.lead.name}
+      label={followUpTypeLabel(item.type)}
+      labelIcon={followupTypeIcon(item.type)}
+      due={due}
+      state={followUpState(item, due, now)}
+      tone={tones[followUpKind(item.type)]}
+      // Done: what happened; open: what it was scheduled for.
+      note={done ? (item.outcomeNote ?? item.agenda) : item.agenda}
+      onPress={() => onOpen(item)}
+      onPressIn={() => onPressIn(item)}
+      onMore={done ? undefined : () => onMore(item)}
+      onComplete={done ? undefined : () => onComplete(item)}
+    />
   );
 }
 

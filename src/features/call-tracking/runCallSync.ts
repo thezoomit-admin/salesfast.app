@@ -13,8 +13,8 @@ import {
   uploadMatchedCalls,
   type CallSyncUploadItem,
 } from './callSyncApi';
+import { keepLeadCalls } from './leadCallFilter';
 import { mapAndroidCallType } from './mapCallDirection';
-import { phoneMatchKey } from './phoneMatch';
 import {
   loadCallSyncPrefs,
   saveCallSyncPrefs,
@@ -94,12 +94,9 @@ export async function runCallSync(options?: {
   // Native module caps at 300 rows; unmatched personal numbers are never uploaded.
   const rows = await getRecentCalls(300, 0);
   const directory = await getCallMatchDirectory({ fresh: options?.force });
-  const keySet = new Set(directory.entries.map((e) => e.phoneKey));
 
   const payload: CallSyncUploadItem[] = [];
-  for (const row of rows) {
-    const key = phoneMatchKey(row.number);
-    if (!key || !keySet.has(key)) continue;
+  for (const { row } of keepLeadCalls(rows, directory.entries)) {
     const deviceCallId = `android:${row.id}:${row.dateMs}:${row.type}`;
     if (!options?.force && confirmedCallIds.has(deviceCallId)) continue;
     payload.push({

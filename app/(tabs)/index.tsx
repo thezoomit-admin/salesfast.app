@@ -9,12 +9,12 @@ import { getErrorMessage } from '@/api/client';
 import { HomeDashboard } from '@/components/home/HomeDashboard';
 import { Message01Icon } from '@/components/icons/hugeicons';
 import { Screen } from '@/components/ui/Screen';
+import { SettingsIconButton } from '@/components/ui/SettingsIconButton';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
-import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { markFirstContent } from '@/lib/perfMonitor';
 import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
@@ -89,7 +89,11 @@ function HomeScreen() {
               strokeWidth={1.8}
             />
           </Pressable>
-          <NotificationBell circle />
+          <SettingsIconButton
+            size={20}
+            color={colors.text}
+            style={styles.headerIconBtn}
+          />
         </View>
       </View>
     </View>

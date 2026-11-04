@@ -104,7 +104,7 @@ export default function CallSyncSetupScreen() {
     >
       <Text style={styles.body}>
         Match phone calls with your CRM leads and save activities automatically.
-        Personal calls that do not match an authorized lead are never uploaded.
+        Calls that do not match a CRM lead are never shown in the app or uploaded.
       </Text>
 
       <View style={styles.card}>
@@ -119,7 +119,8 @@ export default function CallSyncSetupScreen() {
         <Text style={styles.bullet}>• Only calls that match your CRM leads</Text>
         <Text style={styles.bullet}>• No call audio, SMS, or contacts access</Text>
         <Text style={styles.bullet}>
-          • Recent call history is scanned; only numbers that match CRM leads upload
+          • Recent call history is checked on this phone; only numbers that match
+          CRM leads are shown or uploaded
         </Text>
       </View>
 

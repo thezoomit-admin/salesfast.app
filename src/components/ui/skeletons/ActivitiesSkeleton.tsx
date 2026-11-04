@@ -1,52 +1,52 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
+import { spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 import { SkeletonBone, SkeletonPulse } from './primitives';
 
-/** Mirrors activity note cards. */
+/** Mirrors a day panel of activity rows. */
 export function ActivitiesSkeleton({ rows = 5 }: { rows?: number }) {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
     <SkeletonPulse style={styles.root}>
-      {Array.from({ length: rows }, (_, i) => (
-        <View key={i} style={styles.card}>
-          <View style={styles.row}>
-            <SkeletonBone width="48%" height={14} />
-            <SkeletonBone width={56} height={12} />
+      <View style={styles.panel}>
+        <SkeletonBone width="30%" height={16} />
+        {Array.from({ length: rows }, (_, i) => (
+          <View key={i} style={styles.row}>
+            <SkeletonBone width={36} height={36} radius={18} />
+            <View style={styles.content}>
+              <View style={styles.top}>
+                <SkeletonBone width="48%" height={14} />
+                <SkeletonBone width={48} height={10} />
+              </View>
+              <SkeletonBone width="92%" height={12} />
+              <SkeletonBone width={76} height={20} radius={10} />
+            </View>
           </View>
-          <SkeletonBone width="92%" height={12} />
-          <SkeletonBone width="70%" height={12} />
-          <SkeletonBone width="40%" height={10} style={styles.meta} />
-        </View>
-      ))}
+        ))}
+      </View>
     </SkeletonPulse>
   );
 }
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    root: {
-      padding: spacing.lg,
-      gap: spacing.md,
-    },
-    card: {
+    root: { paddingHorizontal: spacing.lg },
+    panel: {
       backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: spacing.lg,
-      gap: spacing.sm,
+      borderRadius: 18,
+      padding: 14,
+      gap: 18,
     },
-    row: {
+    row: { flexDirection: 'row', gap: 12 },
+    content: { flex: 1, gap: 8 },
+    top: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 4,
     },
-    meta: { marginTop: 4 },
   });
 }

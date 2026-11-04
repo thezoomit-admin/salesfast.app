@@ -250,7 +250,8 @@ export function FollowUpCalendarSheet({ open, selected, onSelect, onClose }: Pro
                   }}
                   style={styles.cell}
                 >
-                  <View style={[styles.day, active && styles.dayActive]}>
+                  {/* Stays a real view so Android keeps borderRadius when selected. */}
+                  <View collapsable={false} style={[styles.day, active && styles.dayActive]}>
                     <Text
                       style={[
                         styles.dayText,
