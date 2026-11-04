@@ -1,4 +1,4 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { HugeiconsIcon } from '@hugeicons/react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -7,6 +7,12 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import {
+  CallBlockedIcon,
+  PhoneIncomingIcon,
+  PhoneMissedIcon,
+  PhoneOutgoingIcon,
+} from '@/components/icons/hugeicons';
 import { Button } from '@/components/ui/Button';
 import {
   HeaderIconButton,
@@ -24,6 +30,7 @@ import {
   useRecentCalls,
   type RecentCall,
 } from '@/features/call-tracking/useRecentCalls';
+import { timeOf } from '@/features/leads/dayGroups';
 import type { CallSyncStatus } from '@/features/call-tracking/syncPreferences';
 import {
   lightColors,
@@ -33,10 +40,11 @@ import {
   useThemeColors,
   type ThemeColors,
 } from '@/theme';
-import { formatDate } from '@/utils/dates';
-import { formatPhoneDisplay, openPhoneDialer } from '@/utils/phone';
+import { formatPhoneDisplay } from '@/utils/phone';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
+type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
+type CallUiKind = 'incoming' | 'outgoing' | 'missed' | 'failed';
 
 const SYNC_BANNER: Record<
   CallSyncStatus,
@@ -86,6 +94,90 @@ const FILTERS: readonly (readonly [FilterKey, string])[] = [
   ['missed', 'Missed'],
 ];
 
+/** UI-design only — set false / delete when real call data is ready. */
+const USE_CALLS_DEMO = true;
+
+const DEMO_CALLS: RecentCall[] = [
+  {
+    key: 'demo-1',
+    phone: '+8801712345678',
+    direction: 'MISSED',
+    startedAt: new Date(Date.now() - 12 * 60 * 1000),
+    durationSec: 0,
+    leadId: 101,
+    leadName: 'Rahim Electronics',
+  },
+  {
+    key: 'demo-2',
+    phone: '+8801811223344',
+    direction: 'OUTGOING',
+    startedAt: new Date(Date.now() - 45 * 60 * 1000),
+    durationSec: 187,
+    leadId: 102,
+    leadName: 'Nusrat Fashion House',
+  },
+  {
+    key: 'demo-3',
+    phone: '+8801919988776',
+    direction: 'INCOMING',
+    startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    durationSec: 64,
+    leadId: 103,
+    leadName: 'Karim Trading Co.',
+  },
+  {
+    key: 'demo-4',
+    phone: '+8801612340001',
+    direction: 'REJECTED',
+    startedAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
+    durationSec: 0,
+    leadId: 104,
+    leadName: 'Green Leaf Agro',
+  },
+  {
+    key: 'demo-5',
+    phone: '+8801555667788',
+    direction: 'OUTGOING',
+    startedAt: new Date(Date.now() - 26 * 60 * 60 * 1000),
+    durationSec: 9,
+    leadId: 105,
+    leadName: 'Sultana Pharma',
+  },
+  {
+    key: 'demo-6',
+    phone: '+8801700112233',
+    direction: 'MISSED',
+    startedAt: new Date(Date.now() - 28 * 60 * 60 * 1000),
+    durationSec: 0,
+    leadId: 106,
+    leadName: 'Bay View Properties',
+  },
+  {
+    key: 'demo-7',
+    phone: '+8801888776655',
+    direction: 'INCOMING',
+    startedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    durationSec: 412,
+    leadId: 107,
+    leadName: 'Dhaka Soft Solutions',
+  },
+  {
+    key: 'demo-8',
+    phone: '+8801300987654',
+    direction: 'UNKNOWN',
+    startedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+    durationSec: 22,
+    leadId: 108,
+    leadName: 'Metro Logistics',
+  },
+];
+
+const DEMO_RESULT = {
+  state: 'ok' as const,
+  calls: DEMO_CALLS,
+  watchedCount: DEMO_CALLS.length,
+};
+
 function directionIcons(
   colors: ThemeColors
 ): Record<
@@ -118,19 +210,25 @@ function CallsScreen() {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
-  const setupDone = Boolean(callSync.prefs?.consentedAt && callSync.prefs?.enabled);
-  const calls = useRecentCalls(setupDone);
+  const setupDone =
+    USE_CALLS_DEMO ||
+    Boolean(callSync.prefs?.consentedAt && callSync.prefs?.enabled);
+  const calls = useRecentCalls(setupDone && !USE_CALLS_DEMO);
 
   const refreshSync = callSync.refresh;
   const refetchCalls = calls.refetch;
   useFocusEffect(
     useCallback(() => {
       void refreshSync();
-      if (setupDone) void refetchCalls();
+      if (setupDone && !USE_CALLS_DEMO) void refetchCalls();
     }, [refreshSync, setupDone, refetchCalls])
   );
 
-  const data = calls.data?.state === 'ok' ? calls.data : null;
+  const data = USE_CALLS_DEMO
+    ? DEMO_RESULT
+    : calls.data?.state === 'ok'
+      ? calls.data
+      : null;
 
   const visible = useMemo(() => {
     if (!data) return [];
@@ -139,7 +237,7 @@ function CallsScreen() {
   }, [data, filter]);
 
   // Missed lead calls in the 24h before the call log was last read.
-  const loadedAt = calls.dataUpdatedAt;
+  const loadedAt = USE_CALLS_DEMO ? Date.now() : calls.dataUpdatedAt;
   const missedCount = useMemo(
     () =>
       data?.calls.filter(
@@ -260,7 +358,7 @@ function CallsScreen() {
     </View>
   );
 
-  if (callSync.loading && !callSync.prefs) {
+  if (!USE_CALLS_DEMO && callSync.loading && !callSync.prefs) {
     return (
       <View style={styles.safe}>
         {pageHeader}
@@ -288,24 +386,31 @@ function CallsScreen() {
     );
   }
 
+  const showList =
+    USE_CALLS_DEMO ||
+    (!calls.isLoading &&
+      !calls.isError &&
+      calls.data?.state !== 'unsupported' &&
+      calls.data?.state !== 'no_permission');
+
   return (
     <View style={styles.safe}>
       {pageHeader}
       {toolbar}
 
-      {calls.isLoading ? (
+      {!USE_CALLS_DEMO && calls.isLoading ? (
         <CallsSkeleton />
-      ) : calls.isError ? (
+      ) : !USE_CALLS_DEMO && calls.isError ? (
         <ErrorState
           message={getErrorMessage(calls.error)}
           onRetry={() => calls.refetch()}
         />
-      ) : calls.data?.state === 'unsupported' ? (
+      ) : !USE_CALLS_DEMO && calls.data?.state === 'unsupported' ? (
         <EmptyState
           title="Call history not available"
           message="Call history is shown in the SalesFast Android app (development or production build). Expo Go and web cannot read it."
         />
-      ) : calls.data?.state === 'no_permission' ? (
+      ) : !USE_CALLS_DEMO && calls.data?.state === 'no_permission' ? (
         <View style={styles.flex}>
           <EmptyState
             title="Permission needed"
@@ -315,7 +420,7 @@ function CallsScreen() {
             <Button title="Allow access" onPress={grantPermission} />
           </View>
         </View>
-      ) : (
+      ) : showList ? (
         <>
           <View style={styles.tabs}>
             {FILTERS.map(([key, label]) => {
@@ -339,8 +444,10 @@ function CallsScreen() {
             data={visible}
             keyExtractor={(item) => item.key}
             contentContainerStyle={styles.list}
-            refreshing={calls.isRefetching}
-            onRefresh={() => calls.refetch()}
+            refreshing={!USE_CALLS_DEMO && calls.isRefetching}
+            onRefresh={() => {
+              if (!USE_CALLS_DEMO) void calls.refetch();
+            }}
             ListEmptyComponent={
               <EmptyState
                 title={
@@ -357,7 +464,7 @@ function CallsScreen() {
             )}
           />
         </>
-      )}
+      ) : null}
     </View>
   );
 }

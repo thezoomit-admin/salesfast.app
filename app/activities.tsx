@@ -1,29 +1,112 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import { ChipScroll } from '@/components/ui/ChipScroll';
+import { CountTab, CountTabDivider } from '@/components/ui/CountTab';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ActivitiesSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { ActivityRow } from '@/features/activities/ActivityRow';
+import {
+  describeActivity,
+  type ActivityFilter,
+} from '@/features/activities/activityDisplay';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
-import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
-import { formatDateTime } from '@/utils/dates';
+import { groupByDay } from '@/features/leads/dayGroups';
+import { spacing, useTheme, type ThemeColors } from '@/theme';
+
+const FILTERS: {
+  key: ActivityFilter;
+  label: string;
+  emptyTitle: string;
+  emptyMessage: string;
+}[] = [
+  {
+    key: 'all',
+    label: 'All',
+    emptyTitle: 'No recent activities',
+    emptyMessage: 'Notes you add on leads will show up here.',
+  },
+  {
+    key: 'call',
+    label: 'Calls',
+    emptyTitle: 'No recent calls',
+    emptyMessage: 'Calls with your leads will show up here.',
+  },
+  {
+    key: 'whatsapp',
+    label: 'WhatsApp',
+    emptyTitle: 'No recent WhatsApp notes',
+    emptyMessage: 'Notes logged on the WhatsApp channel will show up here.',
+  },
+  {
+    key: 'note',
+    label: 'Notes',
+    emptyTitle: 'No recent notes',
+    emptyMessage: 'Notes you add on leads will show up here.',
+  },
+];
 
 export default function ActivitiesScreen() {
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, resolved } = useTheme();
+  const pageWash = resolved === 'dark' ? colors.background : '#EEF1F4';
+  const styles = useMemo(() => createStyles(colors, pageWash), [colors, pageWash]);
   const router = useRouter();
   const query = useQuery(dashboardQuery);
+  const [filter, setFilter] = useState<ActivityFilter>('all');
+
+  const activities = useMemo(
+    () =>
+      (query.data?.recentNotes ?? []).map((note) => ({
+        note,
+        view: describeActivity(note),
+      })),
+    [query.data]
+  );
+
+  const days = useMemo(
+    () =>
+      groupByDay(
+        activities.filter((a) => filter === 'all' || a.view.filter === filter),
+        (a) => a.note.createdAt
+      ),
+    [activities, filter]
+  );
+
+  const onOpen = useCallback(
+    (leadId: number) => router.push(`/leads/${leadId}`),
+    [router]
+  );
+
+  const countOf = (key: ActivityFilter) => {
+    if (!query.data) return undefined;
+    if (key === 'all') return activities.length;
+    return activities.filter((a) => a.view.filter === key).length;
+  };
+
+  const activeFilter = FILTERS.find((f) => f.key === filter) ?? FILTERS[0]!;
 
   return (
     <View style={styles.safe}>
-      <ScreenHeader title="Activities" />
-      <Text style={styles.subtitle}>
-        Recent notes from your assigned leads. Matched calls sync from the Android
-        build.
-      </Text>
+      <View style={styles.top}>
+        <ScreenHeader title="Activities" />
+        <ChipScroll style={styles.tabs} contentContainerStyle={styles.tabsContent}>
+          {FILTERS.map((f) => (
+            <View key={f.key} style={styles.tabSlot}>
+              <CountTab
+                label={f.label}
+                count={countOf(f.key)}
+                active={filter === f.key}
+                onPress={() => setFilter(f.key)}
+              />
+              {f.key === 'all' ? <CountTabDivider /> : null}
+            </View>
+          ))}
+        </ChipScroll>
+      </View>
 
       {!query.data ? (
         <QueryPlaceholder
@@ -33,35 +116,46 @@ export default function ActivitiesScreen() {
         />
       ) : (
         <FlatList
-          data={query.data.recentNotes}
-          keyExtractor={(item) => String(item.id)}
+          // A new tab starts at the top instead of the old tab's scroll offset.
+          key={filter}
+          data={days}
+          keyExtractor={(day) => day.key}
           contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
           refreshing={query.isRefetching}
           onRefresh={() => query.refetch()}
           ListEmptyComponent={
             <EmptyState
-              title="No recent activities"
-              message="Notes you add on leads will show up here."
+              title={activeFilter.emptyTitle}
+              message={activeFilter.emptyMessage}
             />
           }
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.card}
-              onPress={() => router.push(`/leads/${item.leadId}`)}
-            >
-              <View style={styles.row}>
-                <Text style={styles.lead}>{item.leadName}</Text>
-                <Text style={styles.channel}>
-                  {item.channel?.name || 'Note'}
-                </Text>
+          ListFooterComponent={
+            days.length > 0 ? (
+              <Text style={styles.footer}>
+                Latest activity from your assigned leads
+              </Text>
+            ) : undefined
+          }
+          renderItem={({ item: day }) => (
+            <View style={styles.panel}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>{day.label}</Text>
+                <Text style={styles.panelCount}>{day.items.length}</Text>
               </View>
-              <Text style={styles.note} numberOfLines={3}>
-                {item.note}
-              </Text>
-              <Text style={styles.meta}>
-                {item.addedByName || 'Agent'} · {formatDateTime(item.createdAt)}
-              </Text>
-            </Pressable>
+              {day.items.map(({ note, view }, i) => (
+                <ActivityRow
+                  key={note.id}
+                  leadId={note.leadId}
+                  leadName={note.leadName}
+                  addedByName={note.addedByName}
+                  createdAt={note.createdAt}
+                  view={view}
+                  last={i === day.items.length - 1}
+                  onOpen={onOpen}
+                />
+              ))}
+            </View>
           )}
         />
       )}
@@ -69,28 +163,51 @@ export default function ActivitiesScreen() {
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, pageWash: string) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background },
-    subtitle: {
-      ...typography.body,
-      color: colors.textSecondary,
+    safe: { flex: 1, backgroundColor: pageWash },
+    top: { backgroundColor: colors.surface },
+    tabs: { marginBottom: spacing.sm },
+    tabsContent: { gap: spacing.md },
+    tabSlot: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    list: {
+      flexGrow: 1,
+      gap: spacing.md,
       paddingHorizontal: spacing.lg,
-      marginBottom: spacing.md,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.xxl,
     },
-    list: { padding: spacing.lg, gap: spacing.md, flexGrow: 1 },
-    card: {
+    panel: {
       backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: spacing.lg,
+      borderRadius: 18,
+      padding: 14,
+      gap: 12,
+    },
+    panelHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       gap: spacing.sm,
     },
-    row: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.md },
-    lead: { ...typography.subtitle, color: colors.text, flex: 1 },
-    channel: { ...typography.caption, color: colors.brand },
-    note: { ...typography.body, color: colors.textSecondary },
-    meta: { ...typography.caption, color: colors.textMuted },
+    panelTitle: {
+      flex: 1,
+      fontSize: 17,
+      lineHeight: 22,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    panelCount: {
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: '500',
+      color: colors.textMuted,
+    },
+    footer: {
+      fontSize: 12,
+      lineHeight: 16,
+      textAlign: 'center',
+      color: colors.textMuted,
+      paddingVertical: spacing.sm,
+    },
   });
 }
