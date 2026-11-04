@@ -70,10 +70,6 @@ function FollowUpsScreen() {
   const onMore = useCallback((f: MyFollowUp) => openMenu(targetOf(f)), [openMenu]);
   const onComplete = useCallback((f: MyFollowUp) => openComplete(targetOf(f)), [openComplete]);
 
-  const shiftWeek = useCallback(
-    (delta: number) => setSelected((d) => addDays(d, delta * 7)),
-    []
-  );
   const openPicker = useCallback(() => setPickerOpen(true), []);
   const refresh = useCallback(() => void data.refetch(), [data]);
 
@@ -87,7 +83,6 @@ function FollowUpsScreen() {
         refreshing={data.refreshing}
         onRefresh={refresh}
         onSelect={setSelected}
-        onShiftWeek={shiftWeek}
         onPickDate={openPicker}
         onOpen={onOpen}
         onPressIn={onPressIn}

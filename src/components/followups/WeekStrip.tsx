@@ -6,7 +6,16 @@ import { format } from 'date-fns/format';
 import { isSameDay } from 'date-fns/isSameDay';
 import { isToday } from 'date-fns/isToday';
 import { startOfWeek } from 'date-fns/startOfWeek';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from 'react';
 import {
   FlatList,
   Pressable,
@@ -37,18 +46,26 @@ const WEEK_PAGES = Array.from({ length: WEEKS_EACH_SIDE * 2 + 1 }, (_, i) => i);
 
 type Styles = ReturnType<typeof createStyles>;
 
+/** Lets the screen header browse weeks without touching the selection. */
+export type WeekStripHandle = {
+  shiftWeek: (delta: number) => void;
+};
+
 type Props = {
   selected: Date;
   onSelect: (day: Date) => void;
+  ref?: Ref<WeekStripHandle>;
 };
+
+const clampPage = (page: number) => Math.min(Math.max(page, 0), WEEK_PAGES.length - 1);
 
 /** Module-level so useQueries memoizes the merged rows between renders. */
 function combineItems(results: UseQueryResult<{ items: MyFollowUp[] }>[]) {
   return results.flatMap((r) => r.data?.items ?? []);
 }
 
-/** One week per page; swiping only browses — tapping a day selects it. */
-function WeekStripImpl({ selected, onSelect }: Props) {
+/** One week per page; swiping and header arrows only browse — tapping a day selects it. */
+function WeekStripImpl({ selected, onSelect, ref }: Props) {
   const { colors, resolved } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const tones = useMemo(() => kindTones(resolved === 'dark'), [resolved]);
@@ -57,24 +74,43 @@ function WeekStripImpl({ selected, onSelect }: Props) {
   const [width, setWidth] = useState(0);
   const listRef = useRef<FlatList<number>>(null);
 
-  const selectedPage = Math.min(
-    Math.max(WEEKS_EACH_SIDE + differenceInCalendarWeeks(selected, anchor), 0),
-    WEEK_PAGES.length - 1
-  );
+  const selectedPage = clampPage(WEEKS_EACH_SIDE + differenceInCalendarWeeks(selected, anchor));
   const shownPage = useRef(selectedPage);
+  const swiping = useRef(false);
 
-  // Header arrows / calendar picks bring the selected week back into view.
+  const scrollToPage = useCallback((page: number) => {
+    swiping.current = false;
+    shownPage.current = page;
+    listRef.current?.scrollToIndex({ index: page, animated: true });
+  }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      shiftWeek(delta) {
+        if (listRef.current) scrollToPage(clampPage(shownPage.current + delta));
+      },
+    }),
+    [scrollToPage]
+  );
+
+  // Calendar picks bring the selected week back into view.
   useEffect(() => {
     if (!width || shownPage.current === selectedPage) return;
-    shownPage.current = selectedPage;
-    listRef.current?.scrollToIndex({ index: selectedPage, animated: true });
+    scrollToPage(selectedPage);
     // Re-run on every new selection, even within the same week.
-  }, [selected, selectedPage, width]);
+  }, [scrollToPage, selected, selectedPage, width]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
 
+  const onSwipeStart = () => {
+    swiping.current = true;
+  };
+
+  // Android also fires this when a quick arrow tap cancels a scroll half way;
+  // only a finger swipe may move shownPage, scrollToPage already set the rest.
   const onSwipeEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    shownPage.current = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (swiping.current) shownPage.current = Math.round(e.nativeEvent.contentOffset.x / width);
   };
 
   const renderWeek = useCallback(
@@ -107,6 +143,7 @@ function WeekStripImpl({ selected, onSelect }: Props) {
           showsHorizontalScrollIndicator={false}
           initialScrollIndex={selectedPage}
           getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+          onScrollBeginDrag={onSwipeStart}
           onMomentumScrollEnd={onSwipeEnd}
           initialNumToRender={1}
           windowSize={3}
@@ -164,8 +201,9 @@ const WeekPage = memo(function WeekPage({
             <Text style={[styles.name, active && styles.nameActive]}>
               {format(day, 'EEE')}
             </Text>
-            <View style={[styles.bar, active && styles.barActive]} />
-            <View style={[styles.date, active && styles.dateActive]}>
+            {/* collapsable: see the note on styles.date. */}
+            <View collapsable={false} style={[styles.bar, active && styles.barActive]} />
+            <View collapsable={false} style={[styles.date, active && styles.dateActive]}>
               <Text
                 style={[
                   styles.dateText,
@@ -199,6 +237,9 @@ function createStyles(colors: ThemeColors) {
     nameActive: { color: colors.brand, fontWeight: '600' },
     bar: { width: 44, height: 2, borderRadius: 1, marginTop: 6, marginBottom: 10 },
     barActive: { backgroundColor: colors.brand },
+    // Without a background Android flattens this view away. Selecting the day
+    // then creates it from the last prop change alone (backgroundColor), which
+    // drops borderRadius, so it must stay a real view (collapsable={false}).
     date: {
       width: 40,
       height: 40,

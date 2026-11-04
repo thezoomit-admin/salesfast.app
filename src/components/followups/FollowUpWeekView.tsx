@@ -1,7 +1,7 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -27,7 +27,7 @@ import {
   ArrowRight01Icon,
 } from '@/components/icons/hugeicons';
 import { FollowUpCard } from '@/components/followups/FollowUpCard';
-import { WeekStrip } from '@/components/followups/WeekStrip';
+import { WeekStrip, type WeekStripHandle } from '@/components/followups/WeekStrip';
 import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
 import type { MyFollowUp } from '@/types/api';
 import { useTheme, type ThemeColors } from '@/theme';
@@ -46,7 +46,6 @@ type Props = {
   refreshing: boolean;
   onRefresh: () => void;
   onSelect: (day: Date) => void;
-  onShiftWeek: (delta: number) => void;
   onPickDate: () => void;
   onOpen: (item: MyFollowUp) => void;
   onPressIn: (item: MyFollowUp) => void;
@@ -66,7 +65,6 @@ function FollowUpWeekViewImpl({
   refreshing,
   onRefresh,
   onSelect,
-  onShiftWeek,
   onPickDate,
   onOpen,
   onPressIn,
@@ -78,6 +76,7 @@ function FollowUpWeekViewImpl({
   const styles = useMemo(() => createStyles(colors), [colors]);
   const tones = useMemo(() => kindTones(isDark), [isDark]);
   const now = useMinuteClock();
+  const weekStrip = useRef<WeekStripHandle>(null);
 
   const items = byDay.get(dayKey(selected)) ?? NO_FOLLOW_UPS;
   const hours = useMemo(() => {
@@ -100,10 +99,10 @@ function FollowUpWeekViewImpl({
         onTitlePress={onPickDate}
         right={
           <>
-            <HeaderIconButton label="Previous week" onPress={() => onShiftWeek(-1)}>
+            <HeaderIconButton label="Previous week" onPress={() => weekStrip.current?.shiftWeek(-1)}>
               <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={colors.text} />
             </HeaderIconButton>
-            <HeaderIconButton label="Next week" onPress={() => onShiftWeek(1)}>
+            <HeaderIconButton label="Next week" onPress={() => weekStrip.current?.shiftWeek(1)}>
               <HugeiconsIcon icon={ArrowRight01Icon} size={22} color={colors.text} />
             </HeaderIconButton>
           </>
@@ -111,7 +110,7 @@ function FollowUpWeekViewImpl({
       />
 
       <View style={styles.weekStrip}>
-        <WeekStrip selected={selected} onSelect={onSelect} />
+        <WeekStrip ref={weekStrip} selected={selected} onSelect={onSelect} />
       </View>
 
       <ScrollView
