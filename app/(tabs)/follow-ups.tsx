@@ -78,6 +78,10 @@ function FollowUpsScreen() {
     ...followUpBucketQuery('overdue'),
     select: bucketTotal,
   });
+  const { data: upcomingCount } = useInfiniteQuery({
+    ...followUpBucketQuery('upcoming'),
+    select: bucketTotal,
+  });
 
   // Rows cross from Upcoming to Overdue with time, not only after a write.
   useFocusEffect(
@@ -107,8 +111,15 @@ function FollowUpsScreen() {
   const refresh = useCallback(() => void data.refetch(), [data]);
 
   const tabs = useMemo(
-    () => <FollowUpTabs active={tab} overdueCount={overdueCount} onChange={setTab} />,
-    [overdueCount, tab]
+    () => (
+      <FollowUpTabs
+        active={tab}
+        overdueCount={overdueCount}
+        upcomingCount={upcomingCount}
+        onChange={setTab}
+      />
+    ),
+    [overdueCount, tab, upcomingCount]
   );
 
   return (
