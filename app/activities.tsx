@@ -183,28 +183,30 @@ export default function ActivitiesScreen() {
                 strokeWidth={1.5}
               />
             </HeaderIconButton>
-            <HeaderIconButton
-              label={
-                pickedFilters
-                  ? `Filter activities, ${pickedFilters} selected`
-                  : 'Filter activities'
-              }
-              onPress={() => setFilterOpen(true)}
-            >
-              <View style={styles.filterIconWrap}>
-                <HugeiconsIcon
-                  icon={FilterIcon}
-                  size={22}
-                  color={pickedFilters ? colors.brand : colors.text}
-                  strokeWidth={1.5}
-                />
-                {pickedFilters ? (
-                  <View style={styles.filterBadge}>
-                    <Text style={styles.filterBadgeText}>{pickedFilters}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </HeaderIconButton>
+            <View style={styles.filterButton}>
+              <HeaderIconButton
+                label={
+                  pickedFilters
+                    ? `Filter activities, ${pickedFilters} selected`
+                    : 'Filter activities'
+                }
+                onPress={() => setFilterOpen(true)}
+              >
+                <View style={styles.filterIconWrap}>
+                  <HugeiconsIcon
+                    icon={FilterIcon}
+                    size={22}
+                    color={pickedFilters ? colors.brand : colors.text}
+                    strokeWidth={1.5}
+                  />
+                  {pickedFilters ? (
+                    <View style={styles.filterBadge}>
+                      <Text style={styles.filterBadgeText}>{pickedFilters}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </HeaderIconButton>
+            </View>
           </>
         }
       />
@@ -334,6 +336,8 @@ export default function ActivitiesScreen() {
 function createStyles(colors: ThemeColors, pageWash: string) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: pageWash },
+    // The 40px tap areas leave a wide gap between the two 22px icons.
+    filterButton: { marginLeft: -8 },
     filterIconWrap: {
       width: 28,
       height: 28,
