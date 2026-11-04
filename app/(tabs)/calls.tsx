@@ -119,78 +119,6 @@ const DATE_FILTERS: { key: DateFilter; label: string }[] = [
   { key: '10d', label: 'Last 10 days' },
 ];
 
-/** UI-design only — set false / delete when real call data is ready. */
-const USE_CALLS_DEMO = true;
-
-const DEMO_LEADS = [
-  { id: 101, name: 'Rahim Electronics', phone: '+8801712345678' },
-  { id: 102, name: 'Nusrat Fashion House', phone: '+8801811223344' },
-  { id: 103, name: 'Karim Trading Co.', phone: '+8801919988776' },
-  { id: 104, name: 'Green Leaf Agro', phone: '+8801612340001' },
-  { id: 105, name: 'Sultana Pharma', phone: '+8801555667788' },
-  { id: 106, name: 'Bay View Properties', phone: '+8801700112233' },
-  { id: 107, name: 'Dhaka Soft Solutions', phone: '+8801888776655' },
-  { id: 108, name: 'Metro Logistics', phone: '+8801300987654' },
-  { id: 109, name: 'Sunrise Café', phone: '+8801966554433' },
-  { id: 110, name: 'Orbit Motors', phone: '+8801522334455' },
-] as const;
-
-const DEMO_DIRS: CallSyncDirection[] = [
-  'INCOMING',
-  'OUTGOING',
-  'MISSED',
-  'REJECTED',
-  'OUTGOING',
-  'INCOMING',
-  'MISSED',
-  'UNKNOWN',
-  'OUTGOING',
-  'INCOMING',
-];
-
-function buildDemoCalls(): RecentCall[] {
-  const now = new Date();
-  const calls: RecentCall[] = [];
-  let n = 0;
-
-  for (let day = 0; day < 10; day += 1) {
-    const perDay = 2 + (day % 3);
-    for (let i = 0; i < perDay; i += 1) {
-      const lead = DEMO_LEADS[(day * 2 + i) % DEMO_LEADS.length]!;
-      const direction = DEMO_DIRS[(day + i) % DEMO_DIRS.length]!;
-      const startedAt = new Date(now);
-      startedAt.setHours(0, 0, 0, 0);
-      startedAt.setDate(startedAt.getDate() - day);
-      startedAt.setHours(9 + i * 3, 10 + i * 11 + day, 0, 0);
-
-      const missedOrFailed =
-        direction === 'MISSED' ||
-        direction === 'REJECTED' ||
-        direction === 'UNKNOWN';
-      calls.push({
-        key: `demo-${day}-${i}-${n}`,
-        phone: lead.phone,
-        direction,
-        startedAt,
-        durationSec: missedOrFailed ? 0 : 45 + ((day * 17 + i * 23) % 360),
-        leadId: lead.id,
-        leadName: lead.name,
-      });
-      n += 1;
-    }
-  }
-
-  return calls.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
-}
-
-const DEMO_CALLS = buildDemoCalls();
-
-const DEMO_RESULT = {
-  state: 'ok' as const,
-  calls: DEMO_CALLS,
-  watchedCount: DEMO_LEADS.length,
-};
-
 /** Same Hugeicons + colors as lead details Call History. */
 const KIND_ICON: Record<CallUiKind, HugeIconData> = {
   incoming: PhoneIncomingIcon,
@@ -255,10 +183,10 @@ function CallsScreen() {
   /** Session-only — reopens whenever this screen is focused again. */
   const [alertDismissed, setAlertDismissed] = useState(false);
 
-  const setupDone =
-    USE_CALLS_DEMO ||
-    Boolean(callSync.prefs?.consentedAt && callSync.prefs?.enabled);
-  const calls = useRecentCalls(setupDone && !USE_CALLS_DEMO);
+  const setupDone = Boolean(
+    callSync.prefs?.consentedAt && callSync.prefs?.enabled
+  );
+  const calls = useRecentCalls(setupDone);
 
   const needsSetup =
     callSync.status === 'not_configured' ||
@@ -271,15 +199,11 @@ function CallsScreen() {
     useCallback(() => {
       setAlertDismissed(false);
       void refreshSync();
-      if (setupDone && !USE_CALLS_DEMO) void refetchCalls();
+      if (setupDone) void refetchCalls();
     }, [refreshSync, setupDone, refetchCalls])
   );
 
-  const data = USE_CALLS_DEMO
-    ? DEMO_RESULT
-    : calls.data?.state === 'ok'
-      ? calls.data
-      : null;
+  const data = calls.data?.state === 'ok' ? calls.data : null;
 
   const datedCalls = useMemo(() => {
     if (!data) return [];
@@ -479,7 +403,7 @@ function CallsScreen() {
     </View>
   ) : null;
 
-  if (!USE_CALLS_DEMO && callSync.loading && !callSync.prefs) {
+  if (callSync.loading && !callSync.prefs) {
     return (
       <View style={styles.safe}>
         {pageHeader}
@@ -516,11 +440,10 @@ function CallsScreen() {
   }
 
   const showList =
-    USE_CALLS_DEMO ||
-    (!calls.isLoading &&
-      !calls.isError &&
-      calls.data?.state !== 'unsupported' &&
-      calls.data?.state !== 'no_permission');
+    !calls.isLoading &&
+    !calls.isError &&
+    calls.data?.state !== 'unsupported' &&
+    calls.data?.state !== 'no_permission';
 
   const emptyCopy =
     filtered.length === 0
@@ -541,19 +464,19 @@ function CallsScreen() {
       {configuredToolbar}
 
       <View style={styles.body}>
-        {!USE_CALLS_DEMO && calls.isLoading ? (
+        {calls.isLoading ? (
           <CallsSkeleton />
-        ) : !USE_CALLS_DEMO && calls.isError ? (
+        ) : calls.isError ? (
           <ErrorState
             message={getErrorMessage(calls.error)}
             onRetry={() => calls.refetch()}
           />
-        ) : !USE_CALLS_DEMO && calls.data?.state === 'unsupported' ? (
+        ) : calls.data?.state === 'unsupported' ? (
           <EmptyState
             title="Call history not available"
             message="Call history is shown in the SalesFast Android app (development or production build). Expo Go and web cannot read it."
           />
-        ) : !USE_CALLS_DEMO && calls.data?.state === 'no_permission' ? (
+        ) : calls.data?.state === 'no_permission' ? (
           <View style={styles.flex}>
             <EmptyState
               title="Permission needed"
@@ -589,9 +512,9 @@ function CallsScreen() {
               keyExtractor={(item) => item.key}
               stickySectionHeadersEnabled={false}
               contentContainerStyle={styles.list}
-              refreshing={!USE_CALLS_DEMO && calls.isRefetching}
+              refreshing={calls.isRefetching}
               onRefresh={() => {
-                if (!USE_CALLS_DEMO) void calls.refetch();
+                void calls.refetch();
               }}
               ListEmptyComponent={
                 <EmptyState
