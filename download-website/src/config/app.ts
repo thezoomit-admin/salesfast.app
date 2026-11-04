@@ -65,16 +65,16 @@ export const appConfig: AppReleaseConfig = {
   tagline: 'Field sales, organized.',
   description:
     'The official Android app for SalesFast CRM — manage leads, follow-ups, activities, and automatic call history from your phone.',
-  version: '1.0.0-preview',
-  versionCode: 1,
+  version: '1.0.2-preview',
+  versionCode: 4,
   apkDownloadUrl:
-    'https://github.com/thezoomit-admin/salesfast.app/releases/download/v1.0.0-preview/SalesFast-CRM-v1.0.0-preview.apk',
-  apkFileSize: '15.5 MB',
-  releaseDate: '2026-11-03',
+    'https://github.com/thezoomit-admin/salesfast.app/releases/download/v1.0.2-preview/SalesFast-CRM-v1.0.2-preview.apk',
+  apkFileSize: '16.0 MB',
+  releaseDate: '2026-11-04',
   // Expo SDK 58 default minSdk (not overridden in app.config.ts).
   minAndroidVersion: 'Android 7.0 (API 24)',
   releaseNotes: [
-    'Preview APK rebuilt 2026-11-03 (local Gradle release)',
+    'Preview APK v1.0.2 (rebuilt 2026-11-04)',
     'Points at dev API: https://salesfastapi-dev.thezoomit.com/api',
     'arm64-v8a only — for internal testing / staging',
   ],
