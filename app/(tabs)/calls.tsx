@@ -18,8 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getErrorMessage } from '@/api/client';
 import {
   CallBlockedIcon,
+  CallIcon,
   FilterIcon,
-  MultiplicationSignIcon,
   PhoneIncomingIcon,
   PhoneMissedIcon,
   PhoneOutgoingIcon,
@@ -180,24 +180,16 @@ function CallsScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  /** Session-only — reopens whenever this screen is focused again. */
-  const [alertDismissed, setAlertDismissed] = useState(false);
 
   const setupDone = Boolean(
     callSync.prefs?.consentedAt && callSync.prefs?.enabled
   );
   const calls = useRecentCalls(setupDone);
 
-  const needsSetup =
-    callSync.status === 'not_configured' ||
-    callSync.status === 'paused' ||
-    callSync.status === 'needs_dev_build';
-
   const refreshSync = callSync.refresh;
   const refetchCalls = calls.refetch;
   useFocusEffect(
     useCallback(() => {
-      setAlertDismissed(false);
       void refreshSync();
       if (setupDone) void refetchCalls();
     }, [refreshSync, setupDone, refetchCalls])
@@ -276,9 +268,16 @@ function CallsScreen() {
         ? 'Match phone calls with CRM leads. Only lead calls are saved.'
         : callSync.message
   );
-  const showSetupAlert = needsSetup && !alertDismissed;
-
   const dateFilterActive = dateFilter !== 'all';
+
+  const callEmptyIcon = (
+    <HugeiconsIcon
+      icon={CallIcon}
+      size={28}
+      color={colors.brand}
+      strokeWidth={1.5}
+    />
+  );
 
   const pageHeader = (
     <ScreenHeader
@@ -303,68 +302,7 @@ function CallsScreen() {
     />
   );
 
-  const setupAlert = showSetupAlert ? (
-    <View style={styles.alertOverlay} pointerEvents="box-none">
-      <View
-        style={[
-          styles.syncCard,
-          styles[`syncCard_${banner.tone}`],
-          styles.alertCard,
-        ]}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${banner.title}. ${banner.action}`}
-          onPress={() => router.push('/call-sync/setup')}
-          style={({ pressed }) => [
-            styles.alertMain,
-            pressed && styles.pressed,
-          ]}
-        >
-          <View style={[styles.syncIcon, styles[`syncIcon_${banner.tone}`]]}>
-            <Ionicons
-              name={banner.icon}
-              size={22}
-              color={
-                banner.tone === 'ok'
-                  ? colors.success
-                  : banner.tone === 'warn'
-                    ? colors.warning
-                    : colors.textMuted
-              }
-            />
-          </View>
-          <View style={styles.syncCopy}>
-            <Text style={styles.syncTitle}>{banner.title}</Text>
-            <Text style={styles.syncBody} numberOfLines={2}>
-              {bannerBody}
-            </Text>
-          </View>
-          <View style={styles.syncAction}>
-            <Text style={styles.syncActionText}>{banner.action}</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.brand} />
-          </View>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Dismiss alert"
-          onPress={() => setAlertDismissed(true)}
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.alertClose,
-            pressed && styles.pressed,
-          ]}
-        >
-          <HugeiconsIcon
-            icon={MultiplicationSignIcon}
-            size={18}
-            color={colors.textMuted}
-            strokeWidth={1.5}
-          />
-        </Pressable>
-      </View>
-    </View>
-  ) : null;
+  const openSetup = () => router.push('/call-sync/setup');
 
   const configuredToolbar = syncOk ? (
     <View style={styles.toolbar}>
@@ -420,14 +358,10 @@ function CallsScreen() {
           <EmptyState
             title="Set up call sync"
             message="Match your phone calls with CRM leads. Only calls with your leads are saved to the CRM."
+            iconElement={callEmptyIcon}
+            actionLabel="Start setup"
+            onAction={openSetup}
           />
-          <View style={styles.cta}>
-            <Button
-              title="Start setup"
-              onPress={() => router.push('/call-sync/setup')}
-            />
-          </View>
-          {setupAlert}
         </View>
         <CallsFilterSheet
           open={filterOpen}
@@ -475,17 +409,18 @@ function CallsScreen() {
           <EmptyState
             title="Call history not available"
             message="Call history is shown in the SalesFast Android app (development or production build). Expo Go and web cannot read it."
+            iconElement={callEmptyIcon}
+            actionLabel="Open setup"
+            onAction={openSetup}
           />
         ) : calls.data?.state === 'no_permission' ? (
-          <View style={styles.flex}>
-            <EmptyState
-              title="Permission needed"
-              message="Allow call log access to see recent calls with your leads."
-            />
-            <View style={styles.cta}>
-              <Button title="Allow access" onPress={grantPermission} />
-            </View>
-          </View>
+          <EmptyState
+            title="Permission needed"
+            message="Allow call log access to see recent calls with your leads."
+            iconElement={callEmptyIcon}
+            actionLabel="Allow access"
+            onAction={grantPermission}
+          />
         ) : showList ? (
           <>
             <ScrollView
@@ -541,7 +476,6 @@ function CallsScreen() {
           </>
         ) : null}
 
-        {setupAlert}
       </View>
 
       <CallsFilterSheet
@@ -715,42 +649,6 @@ function createStyles(colors: ThemeColors) {
       gap: spacing.md,
       marginTop: spacing.md,
       marginBottom: spacing.md,
-    },
-    alertOverlay: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      top: spacing.md,
-      paddingHorizontal: spacing.lg,
-      zIndex: 20,
-      elevation: 8,
-    },
-    alertCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      shadowColor: '#000',
-      shadowOpacity: 0.12,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-    },
-    alertMain: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-      minWidth: 0,
-    },
-    alertClose: {
-      width: 32,
-      height: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-    },
-    cta: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.xl,
     },
     pressed: { opacity: 0.8 },
 

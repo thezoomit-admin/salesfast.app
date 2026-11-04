@@ -30,12 +30,15 @@ export function EmptyState({
   title,
   message,
   icon = 'file-tray-outline',
+  iconElement,
   actionLabel,
   onAction,
 }: {
   title: string;
   message?: string;
   icon?: ComponentProps<typeof Ionicons>['name'];
+  /** Prefer this over Ionicons `icon` when set (e.g. Hugeicons). */
+  iconElement?: ReactNode;
   actionLabel?: string;
   onAction?: () => void;
 }) {
@@ -44,7 +47,9 @@ export function EmptyState({
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIcon}>
-        <Ionicons name={icon} size={28} color={colors.brand} />
+        {iconElement ?? (
+          <Ionicons name={icon} size={28} color={colors.brand} />
+        )}
       </View>
       <Text style={styles.title}>{title}</Text>
       {message ? <Text style={styles.emptyCaption}>{message}</Text> : null}
