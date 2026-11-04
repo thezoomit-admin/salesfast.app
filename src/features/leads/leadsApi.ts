@@ -5,6 +5,12 @@ import {
   detailOrNull,
   leadDetailKey,
 } from '@/features/leads/leadDetailCache';
+import {
+  NO_LEAD_FILTERS,
+  leadFilterParams,
+  type LeadFilterParams,
+  type LeadFilters,
+} from '@/features/leads/leadFilters';
 import type {
   ApiResponse,
   FollowUpOutcome,
@@ -16,7 +22,7 @@ import type {
   MyFollowUp,
 } from '@/types/api';
 
-export type LeadListParams = {
+export type LeadListParams = LeadFilterParams & {
   page?: number;
   per_page?: number;
   search?: string;
@@ -44,6 +50,13 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
       followupFrom: params.followupFrom || undefined,
       followupTo: params.followupTo || undefined,
       viewed: params.viewed ?? undefined,
+      followupNone: params.followupNone || undefined,
+      sort: params.sort,
+      priority: params.priority,
+      leadSourceId: params.leadSourceId,
+      engagement: params.engagement,
+      dateFrom: params.dateFrom,
+      dateTo: params.dateTo,
     },
   });
   const payload = data.data;
@@ -251,10 +264,14 @@ export const leadViewsQuery = (leadId: number) =>
 /** Lead list tab — All, Unread, or one lead status id. */
 export type LeadListTab = 'all' | 'unread' | number;
 
-export const myLeadsQuery = (search: string, tab: LeadListTab = 'all') =>
+export const myLeadsQuery = (
+  search: string,
+  tab: LeadListTab = 'all',
+  filters: LeadFilters = NO_LEAD_FILTERS
+) =>
   infiniteQueryOptions({
     // Tab before search so ['my-leads', 'unread'] matches every search.
-    queryKey: ['my-leads', tab, search],
+    queryKey: ['my-leads', tab, search, filters],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
       fetchMyLeads({
@@ -262,6 +279,7 @@ export const myLeadsQuery = (search: string, tab: LeadListTab = 'all') =>
         search,
         leadStatusId: typeof tab === 'number' ? tab : undefined,
         viewed: tab === 'unread' ? false : undefined,
+        ...leadFilterParams(filters),
       }),
     getNextPageParam: (last) => {
       const current = last.meta.current_page ?? last.meta.page ?? 1;
@@ -289,16 +307,26 @@ export type LeadTabCounts = {
   byStatus: Record<number, number>;
 };
 
-/** Badge counts for the lead list tabs (same search as the list). */
-export const leadTabCountsQuery = (search: string) =>
+/** Badge counts for the lead list tabs (same search and filters as the list). */
+export const leadTabCountsQuery = (
+  search: string,
+  filters: LeadFilters = NO_LEAD_FILTERS
+) =>
   queryOptions({
     // Under 'my-leads' so every list invalidation refreshes the badges too.
-    queryKey: ['my-leads', 'counts', search],
+    // Sort never changes a count, so it stays out of the key.
+    queryKey: [
+      'my-leads',
+      'counts',
+      search,
+      { ...filters, sort: NO_LEAD_FILTERS.sort },
+    ],
     queryFn: async (): Promise<LeadTabCounts> => {
-      const q = search || undefined;
+      const { sort: _sort, ...params } = leadFilterParams(filters);
+      const shared = { ...params, search: search || undefined };
       const [all, unread] = await Promise.all([
-        fetchStatusCounts({ search: q }),
-        fetchStatusCounts({ search: q, viewed: false }),
+        fetchStatusCounts(shared),
+        fetchStatusCounts({ ...shared, viewed: false }),
       ]);
       const byStatus: Record<number, number> = {};
       for (const row of all.byStatus) {

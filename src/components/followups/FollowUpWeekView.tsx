@@ -19,6 +19,10 @@ import {
   type DayFollowUp,
 } from '@/components/followups/followUpCalendar';
 import {
+  FollowUpEmpty,
+  USE_FOLLOWUPS_EMPTY_UI,
+} from '@/components/followups/FollowUpEmpty';
+import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
 } from '@/components/icons/hugeicons';
@@ -76,7 +80,9 @@ function FollowUpWeekViewImpl({
   const now = useMinuteClock();
   const weekStrip = useRef<WeekStripHandle>(null);
 
-  const items = byDay.get(dayKey(selected)) ?? NO_FOLLOW_UPS;
+  const items = USE_FOLLOWUPS_EMPTY_UI
+    ? NO_FOLLOW_UPS
+    : (byDay.get(dayKey(selected)) ?? NO_FOLLOW_UPS);
   const hours = useMemo(() => {
     let first = DAY_START_HOUR;
     let last = DAY_END_HOUR;
@@ -87,7 +93,9 @@ function FollowUpWeekViewImpl({
     return Array.from({ length: last - first + 1 }, (_, i) => first + i);
   }, [items]);
 
-  const showNow = isToday(selected);
+  const showNow = isToday(selected) && !USE_FOLLOWUPS_EMPTY_UI;
+  const dayEmpty =
+    USE_FOLLOWUPS_EMPTY_UI || (!loading && items.length === 0);
 
   return (
     <View style={styles.root}>
@@ -114,57 +122,70 @@ function FollowUpWeekViewImpl({
 
       <ScrollView
         style={styles.timeline}
-        contentContainerStyle={styles.timelineContent}
+        contentContainerStyle={[
+          styles.timelineContent,
+          dayEmpty && styles.timelineEmpty,
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={!USE_FOLLOWUPS_EMPTY_UI && refreshing}
+            onRefresh={onRefresh}
+          />
         }
       >
-        {loading && items.length === 0 ? (
+        {loading && items.length === 0 && !USE_FOLLOWUPS_EMPTY_UI ? (
           <ActivityIndicator style={styles.loading} color={colors.textMuted} />
         ) : null}
-        {errorMessage && items.length === 0 ? (
+        {errorMessage && items.length === 0 && !USE_FOLLOWUPS_EMPTY_UI ? (
           <Text style={styles.error}>{errorMessage}</Text>
         ) : null}
 
-        {hours.map((hour) => {
-          const label = hourLabel(hour);
-          const slot = items.filter(({ due }) => due.getHours() === hour);
-          const nowHere = showNow && now.getHours() === hour;
-          return (
-            <View key={hour} style={styles.hourRow}>
-              {nowHere ? (
-                <View
-                  pointerEvents="none"
-                  style={[styles.nowLine, { top: `${(now.getMinutes() / 60) * 100}%` }]}
-                >
-                  {Array.from({ length: NOW_DASHES }, (_, i) => (
-                    <View key={i} style={styles.nowDash} />
+        {dayEmpty ? (
+          <FollowUpEmpty kind="calendar" />
+        ) : (
+          hours.map((hour) => {
+            const label = hourLabel(hour);
+            const slot = items.filter(({ due }) => due.getHours() === hour);
+            const nowHere = showNow && now.getHours() === hour;
+            return (
+              <View key={hour} style={styles.hourRow}>
+                {nowHere ? (
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.nowLine,
+                      { top: `${(now.getMinutes() / 60) * 100}%` },
+                    ]}
+                  >
+                    {Array.from({ length: NOW_DASHES }, (_, i) => (
+                      <View key={i} style={styles.nowDash} />
+                    ))}
+                  </View>
+                ) : null}
+                <View style={styles.hourLabel}>
+                  <Text style={styles.hourValue}>{label.value}</Text>
+                  <Text style={styles.hourSuffix}>{label.suffix}</Text>
+                </View>
+                <View style={styles.slot}>
+                  {slot.map(({ item, due }) => (
+                    <FollowUpItemCard
+                      key={item.id}
+                      item={item}
+                      due={due}
+                      now={now}
+                      tones={tones}
+                      onOpen={onOpen}
+                      onPressIn={onPressIn}
+                      onMore={onMore}
+                      onComplete={onComplete}
+                    />
                   ))}
                 </View>
-              ) : null}
-              <View style={styles.hourLabel}>
-                <Text style={styles.hourValue}>{label.value}</Text>
-                <Text style={styles.hourSuffix}>{label.suffix}</Text>
               </View>
-              <View style={styles.slot}>
-                {slot.map(({ item, due }) => (
-                  <FollowUpItemCard
-                    key={item.id}
-                    item={item}
-                    due={due}
-                    now={now}
-                    tones={tones}
-                    onOpen={onOpen}
-                    onPressIn={onPressIn}
-                    onMore={onMore}
-                    onComplete={onComplete}
-                  />
-                ))}
-              </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );
@@ -184,6 +205,7 @@ function createStyles(colors: ThemeColors) {
     },
     timeline: { flex: 1 },
     timelineContent: { paddingBottom: 24 },
+    timelineEmpty: { flexGrow: 1, justifyContent: 'center' },
     loading: { paddingVertical: 16 },
     error: {
       paddingVertical: 16,

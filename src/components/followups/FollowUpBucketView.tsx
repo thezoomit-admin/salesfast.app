@@ -22,24 +22,17 @@ import {
   type DayFollowUp,
 } from '@/components/followups/followUpCalendar';
 import { FollowUpItemCard } from '@/components/followups/FollowUpCard';
-import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import {
+  FollowUpEmpty,
+  USE_FOLLOWUPS_EMPTY_UI,
+} from '@/components/followups/FollowUpEmpty';
+import { QueryPlaceholder } from '@/components/ui/StateViews';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { leadRowOfFollowUp } from '@/features/leads/leadDetailCache';
 import { followUpBucketQuery, type FollowUpBucket } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
 import type { MyFollowUp } from '@/types/api';
 import { useTheme, type ThemeColors } from '@/theme';
-
-const EMPTY: Record<FollowUpBucket, { title: string; message: string }> = {
-  overdue: {
-    title: 'No overdue follow-ups',
-    message: 'You are all caught up.',
-  },
-  upcoming: {
-    title: 'No upcoming follow-ups',
-    message: 'Scheduled follow-ups will show up here.',
-  },
-};
 
 type Section = { key: string; title: string; data: DayFollowUp[] };
 
@@ -78,8 +71,14 @@ function FollowUpBucketViewImpl({ bucket, tabs, onMore, onComplete }: Props) {
   const now = useMinuteClock();
   const [pulling, setPulling] = useState(false);
 
-  const query = useInfiniteQuery(followUpBucketQuery(bucket));
-  const items = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data]);
+  const query = useInfiniteQuery({
+    ...followUpBucketQuery(bucket),
+    enabled: !USE_FOLLOWUPS_EMPTY_UI,
+  });
+  const items = useMemo(() => {
+    if (USE_FOLLOWUPS_EMPTY_UI) return [];
+    return query.data?.pages.flatMap((p) => p.items) ?? [];
+  }, [query.data]);
   const sections = useMemo(() => toSections(items), [items]);
   const leadRows = useMemo(() => items.map(leadRowOfFollowUp), [items]);
   const { openLead, prefetchLead } = useLeadRowHandlers(leadRows);
@@ -91,16 +90,19 @@ function FollowUpBucketViewImpl({ bucket, tabs, onMore, onComplete }: Props) {
   );
 
   const onRefresh = async () => {
+    if (USE_FOLLOWUPS_EMPTY_UI) return;
     setPulling(true);
     await query.refetch();
     setPulling(false);
   };
 
+  const showList = USE_FOLLOWUPS_EMPTY_UI || !!query.data;
+
   return (
     <View style={styles.root}>
       <ScreenHeader title="Follow-ups" showBack={false} />
       {tabs}
-      {query.data ? (
+      {showList ? (
         <SectionList
           style={styles.list}
           contentContainerStyle={styles.listContent}
@@ -134,11 +136,15 @@ function FollowUpBucketViewImpl({ bucket, tabs, onMore, onComplete }: Props) {
           }
           onEndReachedThreshold={0.4}
           onEndReached={() => {
-            if (query.hasNextPage && !query.isFetchingNextPage) {
+            if (
+              !USE_FOLLOWUPS_EMPTY_UI &&
+              query.hasNextPage &&
+              !query.isFetchingNextPage
+            ) {
               void query.fetchNextPage();
             }
           }}
-          ListEmptyComponent={<EmptyState {...EMPTY[bucket]} />}
+          ListEmptyComponent={<FollowUpEmpty kind={bucket} />}
           ListFooterComponent={
             query.isFetchingNextPage ? (
               <ActivityIndicator color={colors.brand} style={styles.footer} />

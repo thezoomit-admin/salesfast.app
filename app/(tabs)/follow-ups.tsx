@@ -15,6 +15,7 @@ import { useFollowUpActions, type FollowUpTarget } from '@/components/followups/
 import { dayKey, groupByDay } from '@/components/followups/followUpCalendar';
 import { FollowUpBucketView } from '@/components/followups/FollowUpBucketView';
 import { FollowUpCalendarSheet } from '@/components/followups/FollowUpCalendarSheet';
+import { USE_FOLLOWUPS_EMPTY_UI } from '@/components/followups/FollowUpEmpty';
 import { FollowUpTabs, type FollowUpTab } from '@/components/followups/FollowUpTabs';
 import { FollowUpWeekView } from '@/components/followups/FollowUpWeekView';
 import { leadRowOfFollowUp } from '@/features/leads/leadDetailCache';
@@ -93,9 +94,19 @@ function FollowUpsScreen() {
     }, [queryClient])
   );
 
-  const byDay = useMemo(() => groupByDay(data.items), [data.items]);
-  const calendarCount = data.loading ? undefined : byDay.get(dayKey(selected))?.length;
-  const leadRows = useMemo(() => data.items.map(leadRowOfFollowUp), [data.items]);
+  const byDay = useMemo(() => {
+    if (USE_FOLLOWUPS_EMPTY_UI) return new Map();
+    return groupByDay(data.items);
+  }, [data.items]);
+  const calendarCount = USE_FOLLOWUPS_EMPTY_UI
+    ? 0
+    : data.loading
+      ? undefined
+      : byDay.get(dayKey(selected))?.length;
+  const leadRows = useMemo(
+    () => (USE_FOLLOWUPS_EMPTY_UI ? [] : data.items.map(leadRowOfFollowUp)),
+    [data.items]
+  );
   const { openLead, prefetchLead } = useLeadRowHandlers(leadRows);
   const actions = useFollowUpActions();
   const { openMenu, openComplete } = actions;
@@ -116,8 +127,8 @@ function FollowUpsScreen() {
       <FollowUpTabs
         active={tab}
         calendarCount={calendarCount}
-        overdueCount={overdueCount}
-        upcomingCount={upcomingCount}
+        overdueCount={USE_FOLLOWUPS_EMPTY_UI ? 0 : overdueCount}
+        upcomingCount={USE_FOLLOWUPS_EMPTY_UI ? 0 : upcomingCount}
         onChange={setTab}
       />
     ),

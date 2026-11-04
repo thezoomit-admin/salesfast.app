@@ -17,11 +17,14 @@ import {
 
 import { getErrorMessage } from '@/api/client';
 import {
-  FilterIcon,
   MultiplicationSignIcon,
   Search02Icon,
 } from '@/components/icons/hugeicons';
-import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
+import {
+  HeaderFilterButton,
+  HeaderIconButton,
+  ScreenHeader,
+} from '@/components/ui/ScreenHeader';
 import { ActivitiesSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
 import { activitiesQuery, type Activity } from '@/features/activities/activitiesApi';
@@ -183,30 +186,11 @@ export default function ActivitiesScreen() {
                 strokeWidth={1.5}
               />
             </HeaderIconButton>
-            <View style={styles.filterButton}>
-              <HeaderIconButton
-                label={
-                  pickedFilters
-                    ? `Filter activities, ${pickedFilters} selected`
-                    : 'Filter activities'
-                }
-                onPress={() => setFilterOpen(true)}
-              >
-                <View style={styles.filterIconWrap}>
-                  <HugeiconsIcon
-                    icon={FilterIcon}
-                    size={22}
-                    color={pickedFilters ? colors.brand : colors.text}
-                    strokeWidth={1.5}
-                  />
-                  {pickedFilters ? (
-                    <View style={styles.filterBadge}>
-                      <Text style={styles.filterBadgeText}>{pickedFilters}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              </HeaderIconButton>
-            </View>
+            <HeaderFilterButton
+              label="Filter activities"
+              count={pickedFilters}
+              onPress={() => setFilterOpen(true)}
+            />
           </>
         }
       />
@@ -337,33 +321,6 @@ function createStyles(colors: ThemeColors, pageWash: string) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: pageWash },
     // The 40px tap areas leave a wide gap between the two 22px icons.
-    filterButton: { marginLeft: -8 },
-    filterIconWrap: {
-      width: 28,
-      height: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    filterBadge: {
-      position: 'absolute',
-      top: -4,
-      right: -8,
-      minWidth: 16,
-      height: 16,
-      paddingHorizontal: 4,
-      borderRadius: radii.pill,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.brand,
-      borderWidth: 1.5,
-      borderColor: pageWash,
-    },
-    filterBadgeText: {
-      fontSize: 9,
-      lineHeight: 11,
-      fontWeight: '700',
-      color: colors.white,
-    },
     searchReveal: { overflow: 'hidden', paddingHorizontal: spacing.lg },
     searchBar: {
       flexDirection: 'row',
