@@ -28,13 +28,13 @@ import {
   type AppNotification,
   dismissNotification,
   fetchNotifications,
-  fetchCategoryCounts,
+  fetchUnreadByTab,
   markAllNotificationsRead,
   markNotificationRead,
   type NotificationTab,
   type NotificationState,
   NOTIFICATIONS_KEY,
-  CATEGORY_COUNTS_KEY,
+  UNREAD_BY_TAB_KEY,
 } from '@/features/notifications/notificationsApi';
 import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
 import { formatDayHeading } from '@/utils/dates';
@@ -253,13 +253,12 @@ export default function NotificationsScreen() {
   const [active, setActive] = useState<NotificationTab>('urgent');
   const [history, setHistory] = useState(false);
 
-  const { data: counts } = useQuery({
-    queryKey: CATEGORY_COUNTS_KEY,
-    queryFn: fetchCategoryCounts,
+  const { data: unread } = useQuery({
+    queryKey: UNREAD_BY_TAB_KEY,
+    queryFn: fetchUnreadByTab,
     refetchInterval: REFRESH_MS,
   });
-  const unread = counts?.unread;
-  const hasUnread = !!unread && unread.warn + unread.urgent + unread.info > 0;
+  const hasUnread = !!unread && unread.all > 0;
 
   const markAll = useMutation({
     mutationFn: markAllNotificationsRead,
@@ -300,7 +299,7 @@ export default function NotificationsScreen() {
 
       <NotificationTabs
         tabs={TABS}
-        counts={counts?.total}
+        unread={unread}
         active={active}
         onChange={setActive}
         right={

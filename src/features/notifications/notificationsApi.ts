@@ -38,7 +38,7 @@ export type NotificationPage = {
 
 export const NOTIFICATIONS_KEY = ['notifications'] as const;
 export const UNREAD_COUNT_KEY = ['notifications', 'unread-count'] as const;
-export const CATEGORY_COUNTS_KEY = ['notifications', 'category-counts'] as const;
+export const UNREAD_BY_TAB_KEY = ['notifications', 'unread-by-tab'] as const;
 
 export async function fetchNotifications(
   tab: NotificationTab,
@@ -73,20 +73,12 @@ export async function fetchUnreadCount() {
   return data.data?.total ?? 0;
 }
 
-/** Per tab: everything it lists (`total`) and how much of that is `unread`. */
-export async function fetchCategoryCounts() {
+export async function fetchUnreadByTab() {
   const { data } = await api.get<
-    ApiResponse<{
-      byCategory: Record<NotificationCategory, number>;
-      totalByCategory: Record<NotificationCategory, number>;
-    }>
+    ApiResponse<{ byCategory: Record<NotificationCategory, number> }>
   >('/notifications/unread-count');
-  const none = { warn: 0, urgent: 0, info: 0 };
-  const total = data.data?.totalByCategory ?? none;
-  return {
-    unread: data.data?.byCategory ?? none,
-    total: { ...total, all: total.warn + total.urgent + total.info },
-  };
+  const unread = data.data?.byCategory ?? { warn: 0, urgent: 0, info: 0 };
+  return { ...unread, all: unread.warn + unread.urgent + unread.info };
 }
 
 export async function markNotificationRead(id: string) {

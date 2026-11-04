@@ -9,17 +9,17 @@ import type { NotificationTab } from './notificationsApi';
 type Props = {
   tabs: { key: NotificationTab; label: string }[];
   /** Badges stay hidden until known, so a count never flashes 0 while loading. */
-  counts?: Record<NotificationTab, number>;
+  unread?: Record<NotificationTab, number>;
   active: NotificationTab;
   onChange: (tab: NotificationTab) => void;
   /** Sits at the far end of the row. */
   right?: ReactNode;
 };
 
-/** Underlined tab row on a full-width rule, count badge beside the label. */
+/** Underlined tab row on a full-width rule, unread badge beside the label. */
 export function NotificationTabs({
   tabs,
-  counts,
+  unread,
   active,
   onChange,
   right,
@@ -39,14 +39,14 @@ export function NotificationTabs({
       >
         {tabs.map((tab) => {
           const selected = tab.key === active;
-          const count = counts?.[tab.key];
+          const count = unread?.[tab.key];
           return (
             <Fragment key={tab.key}>
               <Pressable
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
                 accessibilityLabel={
-                  count != null ? `${tab.label}, ${count}` : tab.label
+                  count != null ? `${tab.label}, ${count} unread` : tab.label
                 }
                 onPress={() => onChange(tab.key)}
                 style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
