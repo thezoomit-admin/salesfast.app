@@ -380,7 +380,7 @@ function ProfileScreen() {
             key: 'notifications',
             label: 'Notifications',
             icon: 'notifications-outline',
-            href: '/notifications',
+            href: '/settings/notifications',
           },
           {
             key: 'activities',
@@ -491,8 +491,8 @@ function ProfileScreen() {
       item.onPress();
       return;
     }
-    // navigate: switch tabs / reuse stack screens (Hisab — no duplicate stacks).
-    if (item.href) router.navigate(item.href);
+    // Push so Back returns to Settings (not a tab switch).
+    if (item.href) router.push(item.href);
   }
 
   return (

@@ -10,6 +10,7 @@ import {
   type Href,
   useFocusEffect,
   useNavigation,
+  usePathname,
   useRouter,
 } from 'expo-router';
 import type { ComponentProps } from 'react';
@@ -334,6 +335,9 @@ export default function NotificationsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const queryClient = useQueryClient();
+  const pathname = usePathname();
+  // Tab inbox has no back; Settings → Notifications is a stack push.
+  const showBack = pathname.startsWith('/settings');
   const [active, setActive] = useState<NotificationTab>('urgent');
   const [history, setHistory] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -345,6 +349,8 @@ export default function NotificationsScreen() {
       void queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
       return () => {
         setFocused(false);
+        // Stack version: opening a lead must keep the active tab.
+        if (showBack) return;
         // Coming back from another tab starts on Urgent again; coming back
         // from a lead opened here keeps the tab the user was on.
         const { routes, index } = navigation.getState() ?? {};
@@ -353,7 +359,7 @@ export default function NotificationsScreen() {
           setHistory(false);
         }
       };
-    }, [navigation, queryClient])
+    }, [navigation, queryClient, showBack])
   );
 
   const { data: unread } = useQuery({
@@ -377,7 +383,7 @@ export default function NotificationsScreen() {
     <View style={styles.safe}>
       <ScreenHeader
         title="Notifications"
-        showBack={false}
+        showBack={showBack}
         right={
           <Pressable
             disabled={!hasUnread || markAll.isPending}

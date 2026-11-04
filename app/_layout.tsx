@@ -95,6 +95,7 @@ function ThemedStack() {
         <Stack.Screen name="call-sync/setup" />
         <Stack.Screen name="settings/edit" />
         <Stack.Screen name="settings/about" />
+        <Stack.Screen name="settings/notifications" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </>
