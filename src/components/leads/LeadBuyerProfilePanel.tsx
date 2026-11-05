@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useAuth } from '@/features/auth/AuthContext';
 import {
   formatMoney,
   profileCompletion,
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export function LeadBuyerProfilePanel({ lead, meta }: Props) {
+  const { user } = useAuth();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const sm = useMemo(() => summarizeLead(lead, meta), [lead, meta]);
@@ -81,7 +83,15 @@ export function LeadBuyerProfilePanel({ lead, meta }: Props) {
         <Field label="Financing" value={sm.financing} styles={styles} />
         <Field label="Timeline" value={sm.timeline} styles={styles} />
         <Field label="Source" value={lead.leadSource?.name} styles={styles} />
-        <Field label="Assigned to" value={lead.assignedToName} styles={styles} />
+        <Field
+          label="Assigned to"
+          value={
+            user?.id && lead.assignedTo === user.id
+              ? user.name?.trim() || lead.assignedToName
+              : lead.assignedToName
+          }
+          styles={styles}
+        />
         <Field
           label="Next follow-up"
           value={followUp ? formatDateTime(followUp) : null}

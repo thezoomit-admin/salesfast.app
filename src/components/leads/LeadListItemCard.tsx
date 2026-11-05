@@ -13,6 +13,7 @@ import {
   PRIORITY_META,
   priorityBadgeColors,
 } from "@/features/leads/leadPriority";
+import { useAuth } from "@/features/auth/AuthContext";
 import { typography, useTheme, type ThemeColors } from "@/theme";
 import type { LeadListItem } from "@/types/api";
 import { followupWhenLabel } from "@/utils/dates";
@@ -44,6 +45,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   onPriorityPress,
   onHistoryPress,
 }: Props) {
+  const { user } = useAuth();
   const { colors, resolved } = useTheme();
   const isDark = resolved === "dark";
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -58,7 +60,11 @@ export const LeadListItemCard = memo(function LeadListItemCard({
     () => (priority ? priorityBadgeColors(priority, isDark) : null),
     [priority, isDark],
   );
-  const subtitle = [lead.leadSource?.name, lead.assignedToName]
+  const assignee =
+    user?.id && lead.assignedTo === user.id
+      ? user.name?.trim() || lead.assignedToName
+      : lead.assignedToName;
+  const subtitle = [lead.buyerPersona?.phone, lead.leadSource?.name, assignee]
     .filter(Boolean)
     .join(" · ");
   const when = followupWhenLabel(lead.nextFollowupDate, lead.updatedAt);

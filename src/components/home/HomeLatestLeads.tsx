@@ -25,6 +25,7 @@ import {
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
 import { useLeadPriorityMutation } from '@/features/leads/useLeadPriorityMutation';
+import { useAuth } from '@/features/auth/AuthContext';
 import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 import type { LeadPriority, MobileDashboard } from '@/types/api';
 import { followupWhenLabel } from '@/utils/dates';
@@ -54,6 +55,7 @@ function whenLabel(lead: RecentLead) {
 }
 
 export function HomeLatestLeads({ leads }: Props) {
+  const { user } = useAuth();
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -95,7 +97,11 @@ export function HomeLatestLeads({ leads }: Props) {
             const priorityBadge = priority
               ? priorityBadgeColors(priority, isDark)
               : null;
-            const subtitle = [lead.source?.name, lead.assignedToName]
+            const assignee =
+              user?.id && lead.assignedTo === user.id
+                ? user.name?.trim() || lead.assignedToName
+                : lead.assignedToName;
+            const subtitle = [lead.phone, lead.source?.name, assignee]
               .filter(Boolean)
               .join(' · ');
             const historyOpen = history?.leadId === lead.id;

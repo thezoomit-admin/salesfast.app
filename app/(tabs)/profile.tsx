@@ -189,15 +189,6 @@ function MenuRow({
   );
 }
 
-function maskEmail(email: string) {
-  const at = email.indexOf('@');
-  if (at <= 1) return email;
-  const user = email.slice(0, at);
-  const domain = email.slice(at);
-  if (user.length <= 2) return `${user[0]}*${domain}`;
-  return `${user[0]}${'*'.repeat(Math.min(user.length - 2, 4))}${user[user.length - 1]}${domain}`;
-}
-
 function ProfileScreen() {
   const {
     user,
@@ -234,9 +225,8 @@ function ProfileScreen() {
 
   const displayName = user?.name?.trim() || APP_NAME;
   const roleLabel = user?.designation?.name || user?.role || 'Agent';
-  const contact = user?.email?.trim()
-    ? maskEmail(user.email.trim())
-    : user?.phone?.trim() || '';
+  const phone = user?.phone?.trim() || '';
+  const email = user?.email?.trim() || '';
 
   const unsynced = usePendingWriteCount(user?.id);
   const signOutMessage = unsynced
@@ -546,9 +536,14 @@ function ProfileScreen() {
             <Text style={styles.profileComplete} numberOfLines={1}>
               {roleLabel}
             </Text>
-            {contact ? (
+            {phone ? (
               <Text style={styles.profileEmail} numberOfLines={1}>
-                {contact}
+                {phone}
+              </Text>
+            ) : null}
+            {email ? (
+              <Text style={styles.profileEmail} numberOfLines={1}>
+                {email}
               </Text>
             ) : null}
           </View>

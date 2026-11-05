@@ -256,6 +256,7 @@ export type MobileDashboard = {
     phone: string | null;
     status: LeadStatus | null;
     source: { id: number; name: string } | null;
+    assignedTo?: string | null;
     assignedToName: string | null;
     priority: LeadPriority | null;
     nextFollowupDate: string | null;

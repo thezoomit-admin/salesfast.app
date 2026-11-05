@@ -10,7 +10,7 @@ import {
   recordAuthRefresh,
 } from '@/lib/perfMonitor';
 import { secureStorage } from '@/services/secureStorage';
-import type { ApiResponse, MobileRefreshResult } from '@/types/api';
+import type { ApiResponse, AuthUser, MobileRefreshResult } from '@/types/api';
 
 declare module 'axios' {
   interface AxiosRequestConfig {
@@ -37,9 +37,17 @@ type RetriableConfig = InternalAxiosRequestConfig & {
 
 let refreshPromise: Promise<string | null> | null = null;
 let onAuthLost: (() => void) | null = null;
+let onSessionUser: ((user: AuthUser) => void) | null = null;
 
 export const setAuthLostHandler = (handler: (() => void) | null) => {
   onAuthLost = handler;
+};
+
+/** Fired when a refresh rewrites the active account's profile. */
+export const setSessionUserHandler = (
+  handler: ((user: AuthUser) => void) | null
+) => {
+  onSessionUser = handler;
 };
 
 export const api = axios.create({
@@ -115,18 +123,21 @@ async function refreshAccessToken(): Promise<string | null> {
 
   const nextRefresh = payload.refreshToken ?? refreshToken;
   const active = await stillActive();
+  // A refresh for this account must not install a different user's profile.
+  const sameUser = !payload.user || payload.user.id === accountId;
   // No await between the check above and these cache writes.
-  if (active && payload.user) {
+  if (active && payload.user && sameUser) {
     await secureStorage.saveSession({
       accessToken: payload.accessToken,
       refreshToken: nextRefresh,
       accountId: payload.user.id,
       userJson: JSON.stringify(payload.user),
     });
-  } else if (active) {
+    onSessionUser?.(payload.user);
+  } else if (active && sameUser) {
     await secureStorage.updateTokens(payload.accessToken, payload.refreshToken);
   }
-  if (payload.user) {
+  if (payload.user && sameUser) {
     await upsertSavedAccount({
       user: payload.user,
       accessToken: payload.accessToken,

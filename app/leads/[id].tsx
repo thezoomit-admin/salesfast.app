@@ -94,7 +94,8 @@ export default function LeadDetailScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const leadId = Number(id);
-  const accountId = useAuth().user?.id ?? '';
+  const { user } = useAuth();
+  const accountId = user?.id ?? '';
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
   // The sheet (audio recorder, channel list) mounts on first use, not with
@@ -241,7 +242,12 @@ export default function LeadDetailScreen() {
 
   const name = lead.buyerPersona?.fullName || 'Unnamed lead';
   const phone = lead.buyerPersona?.phone;
+  const email = lead.buyerPersona?.email?.trim() || '';
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
+  const assignee =
+    user?.id && lead.assignedTo === user.id
+      ? user.name?.trim() || lead.assignedToName
+      : lead.assignedToName;
   const sm = summarizeLead(lead, metaQuery.data);
   const currentStatusId = lead.leadStatus?.id ?? null;
   const priority = (lead.priority ?? null) as LeadPriority | null;
@@ -347,9 +353,16 @@ export default function LeadDetailScreen() {
               </View>
 
               <View style={styles.contactRow}>
-                {phone || whatsapp ? (
+                {phone || whatsapp || email ? (
                   <Text style={styles.subLine} numberOfLines={1}>
-                    {formatPhoneDisplay(phone || whatsapp)}
+                    {[
+                      phone || whatsapp
+                        ? formatPhoneDisplay(phone || whatsapp)
+                        : null,
+                      email || null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </Text>
                 ) : null}
                 <Pressable
@@ -394,7 +407,7 @@ export default function LeadDetailScreen() {
               </View>
 
               <Text style={styles.assignLine} numberOfLines={1}>
-                Assign by - {lead.assignedToName?.trim() || '—'}
+                Assign by - {assignee?.trim() || '—'}
               </Text>
 
               {sm.occupation ? (
