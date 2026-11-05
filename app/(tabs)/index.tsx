@@ -74,7 +74,7 @@ function HomeScreen() {
           summary={summary}
         />
       }
-      style={{ backgroundColor: heroBase(colors, isDark) }}
+      style={{ backgroundColor: heroBase(isDark) }}
       contentStyle={styles.sheet}
     >
       {/* Only the sheet scrolls; its rounded top stays under the fixed hero. */}

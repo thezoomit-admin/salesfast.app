@@ -1,5 +1,4 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { memo, useEffect, useState } from 'react';
 import {
@@ -11,72 +10,33 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 
-import { Search02Icon } from '@/components/icons/hugeicons';
+import {
+  ArrowDown01Icon,
+  HomeSolidIcon,
+  Search02Icon,
+} from '@/components/icons/hugeicons';
 import { SettingsIconButton } from '@/components/ui/SettingsIconButton';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { requestTabIntent } from '@/lib/tabIntent';
-import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { radii, spacing, typography, useTheme } from '@/theme';
 
-const FAVICON = require('../../../assets/images/favicon.png');
+const SCENE = require('../../../assets/images/home-hero.jpg');
+/** home-hero.jpg height / width. Taller than the hero, so its sky is spare. */
+const SCENE_RATIO = 0.8;
 
 /** How far the sheet below rides up over the scene. */
 const SHEET_OVERLAP = 24;
-const SCENE_WIDTH = 400;
-const SCENE_HEIGHT = 170;
+/** Keeps the copy on the dark sky, clear of the building. */
+const COPY_WIDTH = 0.6;
 /** How long the tapped summary stays before the pill folds back. */
 const SUMMARY_MS = 4000;
 
-/** Short enough to sit in the strip between the header row and the sheet. */
-const BUILDINGS = [
-  { x: 268, y: 116, w: 15, h: 26 },
-  { x: 286, y: 108, w: 19, h: 34 },
-  { x: 308, y: 118, w: 14, h: 24 },
-  { x: 325, y: 112, w: 17, h: 30 },
-];
+const SKY = '#0A4FC0';
 
-const CLOUDS = [
-  { x: 58, y: 26, scale: 1 },
-  { x: 236, y: 22, scale: 0.8 },
-  { x: 352, y: 30, scale: 1.1 },
-];
-
-const WINDOWS = BUILDINGS.flatMap((b) => {
-  const cells: { x: number; y: number }[] = [];
-  for (let y = b.y + 5; y < b.y + b.h - 6; y += 8) {
-    for (let x = b.x + 3; x < b.x + b.w - 4; x += 6) cells.push({ x, y });
-  }
-  return cells;
-});
-
-/** Behind the sheet's rounded corners. */
-export function heroBase(colors: ThemeColors, isDark: boolean) {
-  return isDark ? '#3A1508' : colors.brand;
-}
-
-function scenePalette(colors: ThemeColors, isDark: boolean) {
-  return isDark
-    ? {
-        skyTop: heroBase(colors, isDark),
-        skyBottom: '#5A2210',
-        sun: '#8A3A1F',
-        cloud: '#8A3A1F',
-        far: '#6E2A14',
-        building: '#8F3C20',
-        mid: '#4A1B0B',
-        near: '#2E1006',
-      }
-    : {
-        skyTop: heroBase(colors, isDark),
-        skyBottom: '#FF7A4D',
-        sun: '#FFD4C4',
-        cloud: '#FFFFFF',
-        far: '#FF9E7A',
-        building: '#FFC4AD',
-        mid: '#E5401A',
-        near: '#C93210',
-      };
+/** Behind the scene and the sheet's rounded corners. */
+export function heroBase(isDark: boolean) {
+  return isDark ? '#08327B' : SKY;
 }
 
 type Props = {
@@ -87,8 +47,7 @@ type Props = {
 };
 
 function HomeHeroBase({ name, photo, summary }: Props) {
-  const { colors, resolved } = useTheme();
-  const palette = scenePalette(colors, resolved === 'dark');
+  const { resolved } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const router = useRouter();
@@ -102,64 +61,14 @@ function HomeHeroBase({ name, photo, summary }: Props) {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 10 }]}>
-      <LinearGradient
-        colors={[palette.skyTop, palette.skyBottom]}
-        style={StyleSheet.absoluteFill}
-      />
       {/* Sized from the width alone and pinned to the bottom, so the status
           bar height can't zoom the scene or shift it against the sheet. */}
-      <Svg
-        width={width}
-        height={(width * SCENE_HEIGHT) / SCENE_WIDTH}
-        viewBox={`0 0 ${SCENE_WIDTH} ${SCENE_HEIGHT}`}
-        style={styles.scene}
-      >
-        {CLOUDS.map((c) => (
-          <G
-            key={c.x}
-            transform={`translate(${c.x} ${c.y}) scale(${c.scale})`}
-            fill={palette.cloud}
-            opacity={0.22}
-          >
-            <Ellipse cx="0" cy="6" rx="24" ry="7" />
-            <Ellipse cx="-7" cy="1" rx="10" ry="8" />
-            <Ellipse cx="8" cy="-1" rx="12" ry="10" />
-          </G>
-        ))}
-        <Circle cx="200" cy="104" r="34" fill={palette.sun} opacity={0.4} />
-        <Path
-          d="M0 122 C60 106 130 110 190 120 S310 132 400 108 V170 H0 Z"
-          fill={palette.far}
-        />
-        {BUILDINGS.map((b) => (
-          <Rect
-            key={b.x}
-            x={b.x}
-            y={b.y}
-            width={b.w}
-            height={b.h}
-            rx="2"
-            fill={palette.building}
-          />
-        ))}
-        {WINDOWS.map((w) => (
-          <Rect
-            key={`${w.x}-${w.y}`}
-            x={w.x}
-            y={w.y}
-            width="3"
-            height="4"
-            fill={palette.mid}
-            opacity={0.55}
-          />
-        ))}
-        <Path
-          d="M0 134 C70 122 150 126 220 132 S340 138 400 126 V170 H0 Z"
-          fill={palette.mid}
-        />
-        <Path d="M0 138 C40 130 80 134 112 170 H0 Z" fill={palette.near} />
-        <Path d="M400 132 C360 130 320 138 292 170 H400 Z" fill={palette.near} />
-      </Svg>
+      <Image
+        source={SCENE}
+        fadeDuration={0}
+        style={[styles.scene, { width, height: width * SCENE_RATIO }]}
+      />
+      {resolved === 'dark' ? <View style={styles.dim} /> : null}
 
       <View style={styles.row}>
         <Pressable
@@ -177,15 +86,26 @@ function HomeHeroBase({ name, photo, summary }: Props) {
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={revealed && summary ? summary : "Today's summary"}
+            accessibilityLabel={
+              revealed && summary ? summary : "Real Estate CRM, today's summary"
+            }
             disabled={!summary}
             onPress={() => setRevealed((open) => !open)}
             style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
           >
-            <Image source={FAVICON} style={styles.pillMark} resizeMode="contain" />
+            <HugeiconsIcon icon={HomeSolidIcon} size={16} color={SKY} />
             <Text style={styles.pillText} numberOfLines={1}>
-              {revealed && summary ? summary : "Today's summary"}
+              {revealed && summary ? summary : 'Real Estate CRM'}
             </Text>
+            {summary ? (
+              <HugeiconsIcon
+                icon={ArrowDown01Icon}
+                size={14}
+                color={SKY}
+                strokeWidth={2}
+                style={revealed ? styles.chevronOpen : undefined}
+              />
+            ) : null}
           </Pressable>
         </View>
 
@@ -208,6 +128,16 @@ function HomeHeroBase({ name, photo, summary }: Props) {
         </Pressable>
         <SettingsIconButton size={21} color={INK} style={styles.action} />
       </View>
+
+      <View style={[styles.copy, { maxWidth: width * COPY_WIDTH }]}>
+        <Text style={styles.headline}>
+          Find Your{'\n'}
+          <Text style={styles.headlineAccent}>Dream</Text> Property
+        </Text>
+        <Text style={styles.tagline}>
+          Manage leads, track calls{'\n'}& grow your business
+        </Text>
+      </View>
     </View>
   );
 }
@@ -220,7 +150,7 @@ const INK = '#484848';
 const styles = StyleSheet.create({
   root: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: SHEET_OVERLAP + 80,
+    paddingBottom: SHEET_OVERLAP + 14,
     // The sheet is the next sibling, so this pulls it up over the scene.
     marginBottom: -SHEET_OVERLAP,
     overflow: 'hidden',
@@ -229,6 +159,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     bottom: 0,
+  },
+  dim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(5, 14, 38, 0.45)',
   },
   row: {
     flexDirection: 'row',
@@ -256,13 +190,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     maxWidth: '100%',
-    paddingLeft: 3,
-    paddingRight: 10,
-    paddingVertical: 3,
-    borderRadius: 9,
+    paddingLeft: 8,
+    paddingRight: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
     backgroundColor: '#FFFFFF',
   },
-  pillMark: { width: 22, height: 22 },
   pillText: {
     ...typography.caption,
     flexShrink: 1,
@@ -271,6 +204,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: INK,
   },
+  chevronOpen: { transform: [{ rotate: '180deg' }] },
   action: {
     width: 42,
     height: 42,
@@ -278,6 +212,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  copy: {
+    marginTop: 16,
+    gap: 4,
+  },
+  headline: {
+    fontSize: 26,
+    lineHeight: 31,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    color: '#FFFFFF',
+  },
+  headlineAccent: { color: '#FFD233' },
+  tagline: {
+    ...typography.caption,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 40, 120, 0.45)',
+    textShadowRadius: 4,
   },
   pressed: { opacity: 0.8 },
 });
