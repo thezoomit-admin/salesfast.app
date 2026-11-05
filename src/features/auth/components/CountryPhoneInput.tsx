@@ -295,8 +295,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     rowSelected: {
       backgroundColor: isDark
-        ? 'rgba(59, 130, 246, 0.14)'
-        : 'rgba(10, 79, 192, 0.06)',
+        ? 'rgba(58, 131, 247, 0.14)'
+        : 'rgba(58, 131, 247, 0.06)',
     },
     rowFlag: {
       fontSize: 22,

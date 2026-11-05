@@ -38,7 +38,7 @@ export async function ensureNotificationChannel() {
     description: 'Lead assignments, follow-up reminders and CRM updates',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#0A4FC0',
+    lightColor: '#3A83F7',
     sound: 'default',
     showBadge: true,
   });

@@ -20,18 +20,20 @@ import {
   Calendar03Icon,
   CallIcon,
   Home03Icon,
+  HomeSolidIcon,
   Notification01Icon,
   NotificationSolidIcon,
-  PermanentJobIcon,
+  PeopleOutlineIcon,
 } from '@/components/icons/hugeicons';
+import { homePalette } from '@/components/home/homePalette';
 import { inboxPalette } from '@/features/notifications/inboxPalette';
 import { useTheme, type ThemeColors } from '@/theme';
 
-/** Visual tab order — Home centered. Also the page order of the pager. */
+/** Visual tab order — Home first. Also the page order of the pager. */
 export const TAB_ORDER = [
+  'index',
   'leads',
   'follow-ups',
-  'index',
   'calls',
   'notifications',
 ] as const;
@@ -39,7 +41,7 @@ export const TAB_ORDER = [
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 
 const TAB_ICONS: Record<string, HugeIconData> = {
-  leads: PermanentJobIcon,
+  leads: PeopleOutlineIcon,
   'follow-ups': Calendar03Icon,
   index: Home03Icon,
   calls: CallIcon,
@@ -47,6 +49,7 @@ const TAB_ICONS: Record<string, HugeIconData> = {
 };
 
 const ACTIVE_ICONS: Record<string, HugeIconData> = {
+  index: HomeSolidIcon,
   notifications: NotificationSolidIcon,
 };
 
@@ -131,25 +134,33 @@ export function AppTabBar({
     return () => position.removeListener(id);
   }, [position, routeCount, endTap, highlight]);
 
-  // The Inbox design restyles the bar too, so it follows while that page is open.
-  const inbox =
-    state.routes[active]?.name === 'notifications'
-      ? inboxPalette(resolved === 'dark')
-      : null;
+  // The Home and Inbox designs restyle the bar too, so it follows while either
+  // page is open.
+  const activeName = state.routes[active]?.name;
+  const isDark = resolved === 'dark';
+  const inbox = activeName === 'notifications' ? inboxPalette(isDark) : null;
+  const home = activeName === 'index' ? homePalette(isDark) : null;
+  const designed = inbox ?? home;
   const look: TabLook = {
-    accent: inbox?.accent ?? colors.brand,
-    icon: inbox?.ink ?? colors.text,
-    label: inbox?.inkSoft ?? colors.textSecondary,
-    badge: inbox?.alert ?? colors.brand,
-    marked: !!inbox,
+    accent: designed?.accent ?? colors.brand,
+    icon: designed?.ink ?? colors.text,
+    label: designed?.inkSoft ?? colors.textSecondary,
+    badge: designed?.alert ?? colors.brand,
+    marked: !!designed,
   };
 
   return (
     <View
-      style={[styles.wrap, inbox && { backgroundColor: inbox.sheet }]}
+      style={[styles.wrap, designed && { backgroundColor: designed.sheet }]}
       accessibilityRole="tablist"
     >
-      <View style={[styles.bar, inbox && styles.barInbox]}>
+      <View
+        style={[
+          styles.bar,
+          inbox && styles.barInbox,
+          home && { backgroundColor: home.sheet, borderTopColor: home.cardBorder },
+        ]}
+      >
         {TAB_ORDER.map((name) => {
           const route = routesByName[name];
           if (!route) return null;
@@ -190,7 +201,7 @@ export function AppTabBar({
               styles={styles}
               look={look}
               icon={TAB_ICONS[name]}
-              activeIcon={inbox ? ACTIVE_ICONS[name] : undefined}
+              activeIcon={designed ? ACTIVE_ICONS[name] : undefined}
               label={label}
               badge={badges?.[name] || undefined}
               active={active === routeIndex}
@@ -205,7 +216,10 @@ export function AppTabBar({
       {/* Edge-to-edge: system nav is transparent — paint brand under the inset. */}
       {systemInset > 0 ? (
         <View
-          style={[styles.systemBar, inbox && { backgroundColor: inbox.sheet }]}
+          style={[
+            styles.systemBar,
+            designed && { backgroundColor: designed.sheet },
+          ]}
         />
       ) : null}
     </View>

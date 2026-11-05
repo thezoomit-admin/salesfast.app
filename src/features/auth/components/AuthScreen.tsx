@@ -37,7 +37,7 @@ export function AuthScreen({ children, scroll = true, contentStyle }: Props) {
       {/* Brand gradient from top-left → white */}
       <LinearGradient
         colors={[
-          'rgba(10, 79, 192, 0.22)',
+          'rgba(58, 131, 247, 0.22)',
           'rgba(201, 220, 251, 0.35)',
           'rgba(255, 255, 255, 0.95)',
           authColors.background,

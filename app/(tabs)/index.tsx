@@ -6,8 +6,12 @@ import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { HomeBannerCarousel } from '@/components/home/HomeBannerCarousel';
-import { HomeDashboard } from '@/components/home/HomeDashboard';
+import {
+  HomeDashboardMore,
+  HomeDashboardTop,
+} from '@/components/home/HomeDashboard';
 import { heroBase, HomeHero } from '@/components/home/HomeHero';
+import { homePalette } from '@/components/home/homePalette';
 import {
   HomeOtherServices,
   HomeQuickActions,
@@ -20,7 +24,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { markFirstContent } from '@/lib/perfMonitor';
-import { spacing, useTheme, type ThemeColors } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 
 function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
@@ -29,7 +33,7 @@ function isOverdue(dueAt: string) {
 function HomeScreen() {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
   const { user } = useAuth();
   const callSync = useCallSyncStatus();
   const query = useQuery(dashboardQuery);
@@ -59,7 +63,7 @@ function HomeScreen() {
       if (aOver !== bOver) return aOver - bOver;
       return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
     })
-    .slice(0, 6);
+    .slice(0, 4);
 
   const summary = data
     ? `${data.kpis.todayFollowUps} due · ${data.kpis.overdueFollowUps} overdue`
@@ -77,7 +81,7 @@ function HomeScreen() {
       style={{ backgroundColor: heroBase(isDark) }}
       contentStyle={styles.sheet}
     >
-      {/* Only the sheet scrolls; its rounded top stays under the fixed hero. */}
+      {/* Only the sheet scrolls; it starts where the fixed hero's wave ends. */}
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
@@ -88,15 +92,11 @@ function HomeScreen() {
           />
         }
       >
-        {/* These need no data, so they stay usable while the dashboard loads. */}
-        <HomeQuickActions />
-        <HomeBannerCarousel />
         {data ? (
-          <HomeDashboard
+          <HomeDashboardTop
             kpis={data.kpis}
             trends={data.trends}
-            followUpStats={data.followUpStats}
-            recentLeads={data.recentLeads ?? []}
+            completedByDay={data.completedByDay}
             queue={queue}
           />
         ) : (
@@ -106,6 +106,16 @@ function HomeScreen() {
             skeleton={<HomeSkeleton />}
           />
         )}
+        {/* These need no data, so they stay usable while the dashboard loads. */}
+        <HomeQuickActions />
+        <HomeBannerCarousel />
+        {data ? (
+          <HomeDashboardMore
+            kpis={data.kpis}
+            trends={data.trends}
+            recentLeads={data.recentLeads ?? []}
+          />
+        ) : null}
         <HomeOtherServices />
         <HomeTips />
       </ScrollView>
@@ -121,7 +131,7 @@ function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   }, [screen, hasData, fetched]);
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(isDark: boolean) {
   return StyleSheet.create({
     sheet: {
       // flex, not Screen's flexGrow: the sheet must not grow to its content,
@@ -129,16 +139,14 @@ function createStyles(colors: ThemeColors) {
       flex: 1,
       padding: 0,
       gap: 0,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
       overflow: 'hidden',
-      backgroundColor: colors.surface,
+      backgroundColor: homePalette(isDark).sheet,
     },
     scroll: {
       paddingHorizontal: spacing.lg,
-      paddingTop: 20,
+      paddingTop: 8,
       paddingBottom: spacing.xl,
-      gap: spacing.xl,
+      gap: 18,
     },
   });
 }

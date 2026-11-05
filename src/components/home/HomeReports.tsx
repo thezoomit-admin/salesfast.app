@@ -25,7 +25,7 @@ function formatCount(n: number) {
   return n.toLocaleString('en-US');
 }
 
-const AVATAR_COLORS = ['#0F766E', '#0A4FC0', '#D97706', '#6366F1', '#0891B2'];
+const AVATAR_COLORS = ['#0F766E', '#3A83F7', '#D97706', '#6366F1', '#0891B2'];
 
 export function HomeReports({ kpis, recentLeads }: Props) {
   const { colors, resolved } = useTheme();

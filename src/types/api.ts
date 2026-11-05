@@ -245,7 +245,11 @@ export type MobileDashboard = {
     leads: number | null;
     followUps: number | null;
     calls: number | null;
+    /** Missing on servers older than the trends themselves. */
+    completed?: number | null;
   };
+  /** Follow-ups done per day, last 7 days, oldest first. Missing on old servers. */
+  completedByDay?: number[];
   recentLeads: Array<{
     id: number;
     name: string;
