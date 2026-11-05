@@ -18,26 +18,41 @@ type Banner = {
   label: string;
 };
 
-/** Add, remove or reorder banners here. Images should be 2:1. */
+/** Add, remove or reorder banners here. Images should be 16:9. */
 const BANNERS: Banner[] = [
   {
     key: 'banner-1',
     source: require('../../../assets/images/home-banners/banner-1.jpg'),
-    label: 'Promotional banner 1',
+    label: 'Lumiere SpringBay',
   },
   {
     key: 'banner-2',
     source: require('../../../assets/images/home-banners/banner-2.jpg'),
-    label: 'Promotional banner 2',
+    label: 'The 9 Stellars',
   },
   {
     key: 'banner-3',
     source: require('../../../assets/images/home-banners/banner-3.jpg'),
-    label: 'Promotional banner 3',
+    label: 'A&T Saigon Riverside',
+  },
+  {
+    key: 'banner-4',
+    source: require('../../../assets/images/home-banners/banner-4.jpg'),
+    label: 'Jamona Golden Silk',
+  },
+  {
+    key: 'banner-5',
+    source: require('../../../assets/images/home-banners/banner-5.jpg'),
+    label: 'Stown Gateway',
+  },
+  {
+    key: 'banner-6',
+    source: require('../../../assets/images/home-banners/banner-6.jpg'),
+    label: 'NVT Sky Villas Sarjapur',
   },
 ];
 
-const SLOT_RATIO = 2;
+const SLOT_RATIO = 16 / 9;
 
 function HomeBannerCarouselBase() {
   const { colors } = useTheme();
