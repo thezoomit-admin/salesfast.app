@@ -74,11 +74,15 @@ function kindOf(item: AppNotification): Kind {
 
   const followUpType = item.metadata?.followUpType ?? '';
   const kind = FOLLOW_UP_KIND[followUpType] ?? FOLLOW_UP;
-  if (followUpType !== 'COLD_CALL') return kind;
+  const coldCall = followUpType === 'COLD_CALL';
   if (item.resolution === 'COMPLETED') {
-    return { icon: 'checkmark-circle', tone: 'green', chip: 'Call' };
+    return {
+      icon: 'checkmark-circle',
+      tone: 'green',
+      chip: coldCall ? 'Call' : kind.chip,
+    };
   }
-  return item.isRead ? kind : { ...kind, tone: 'red' };
+  return coldCall && !item.isRead ? { ...kind, tone: 'red' } : kind;
 }
 
 type Props = {
@@ -113,29 +117,31 @@ export const NotificationCard = memo(function NotificationCard({
   const dueAt = SHOWS_DUE_DATE.has(crmType) ? item.metadata?.dueAt : undefined;
   const at = dueAt ?? item.createdAt;
   const when = `${formatDueIn(dueAt, now) ?? formatDueDay(at)}  •  ${formatClockTime(at)}`;
-  const note = resolved
+  const completed = item.resolution === 'COMPLETED';
+  const outcome = resolved
     ? (RESOLUTION_LABEL[item.resolution ?? ''] ?? item.message)
-    : dueAt
-      ? null
-      : item.message;
-  const overdue = crmType === 'FOLLOW_UP_OVERDUE' && !resolved;
+    : null;
+  // A completed row's green tick already says what its label would.
+  const note = completed ? null : (outcome ?? (dueAt ? null : item.message));
 
   return (
     <Pressable
       onPress={() => onPress(item)}
       onLongPress={() => onLongPress(item)}
       accessibilityRole="button"
-      accessibilityLabel={[item.title, note, when].filter(Boolean).join('. ')}
+      accessibilityLabel={[item.title, outcome ?? note, when]
+        .filter(Boolean)
+        .join('. ')}
       accessibilityHint="Long press to dismiss"
       accessibilityState={{ selected: unread }}
       style={({ pressed }) => [
         styles.card,
-        resolved && styles.resolved,
+        resolved && !completed && styles.resolved,
         pressed && styles.pressed,
       ]}
     >
       <View style={[styles.iconWrap, { backgroundColor: tint.bg }]}>
-        <Ionicons name={kind.icon} size={22} color={tint.fg} />
+        <Ionicons name={kind.icon} size={24} color={tint.fg} />
       </View>
 
       <View style={styles.content}>
@@ -163,13 +169,10 @@ export const NotificationCard = memo(function NotificationCard({
           <HugeiconsIcon
             icon={Calendar03Icon}
             size={13}
-            color={overdue ? palette.alert : palette.inkSoft}
+            color={palette.inkSoft}
             strokeWidth={1.6}
           />
-          <Text
-            style={[styles.when, overdue && styles.whenOverdue]}
-            numberOfLines={1}
-          >
+          <Text style={styles.when} numberOfLines={1}>
             {when}
           </Text>
         </View>
@@ -189,8 +192,8 @@ function createStyles(palette: InboxPalette) {
     card: {
       flexDirection: 'row',
       alignItems: 'center',
-      minHeight: 56,
-      paddingVertical: 7,
+      minHeight: 53,
+      paddingVertical: 5,
       paddingLeft: 12,
       paddingRight: 8,
       borderRadius: 16,
@@ -202,17 +205,17 @@ function createStyles(palette: InboxPalette) {
     resolved: { opacity: 0.6 },
     pressed: { opacity: 0.7 },
     iconWrap: {
-      width: 42,
-      height: 42,
+      width: 41,
+      height: 41,
       borderRadius: 21,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: 14,
+      marginRight: 13,
     },
     content: {
       flex: 1,
       minWidth: 0,
-      gap: 3,
+      gap: 2,
     },
     titleRow: {
       flexDirection: 'row',
@@ -221,15 +224,15 @@ function createStyles(palette: InboxPalette) {
     title: {
       flex: 1,
       minWidth: 0,
-      fontSize: 13,
+      fontSize: 12.5,
       lineHeight: 18,
       fontWeight: '700',
       color: palette.ink,
-      marginRight: 6,
+      marginRight: 4,
     },
     chip: {
-      height: 21,
-      paddingHorizontal: 9,
+      height: 20,
+      paddingHorizontal: 8,
       borderRadius: 11,
       alignItems: 'center',
       justifyContent: 'center',
@@ -268,7 +271,6 @@ function createStyles(palette: InboxPalette) {
       fontWeight: '500',
       color: palette.inkSoft,
     },
-    whenOverdue: { color: palette.alert },
     chevronSlot: {
       width: 18,
       alignItems: 'flex-end',

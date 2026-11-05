@@ -58,17 +58,9 @@ import {
 } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
 import { useTabIntent } from '@/lib/tabIntent';
+import { useDebounced } from '@/lib/useDebounced';
 import type { LeadListItem, LeadStatus } from '@/types/api';
 import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
-
-function useDebounced<T>(value: T, delay = 350) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(t);
-  }, [value, delay]);
-  return debounced;
-}
 
 // Name fallback until every server sends `code`.
 const isAssignStatus = (s: LeadStatus) =>

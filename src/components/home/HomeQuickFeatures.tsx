@@ -1,7 +1,13 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useMemo, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import {
@@ -37,6 +43,8 @@ type StatCard = {
 };
 
 const ICON_SIZE = 18;
+/** Below this, the card labels need a tighter header to fit on one line. */
+const COMPACT_WIDTH = 385;
 const WAVE_HEIGHT = 20;
 const TREND_UP = '#16A34A';
 const TREND_DOWN = '#DC2626';
@@ -50,7 +58,11 @@ function trendText(trend: number) {
 export function HomeQuickFeatures({ kpis, trends }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+  const compact = useWindowDimensions().width < COMPACT_WIDTH;
+  const styles = useMemo(
+    () => createStyles(colors, isDark, compact),
+    [colors, isDark, compact],
+  );
   const router = useRouter();
 
   const cards: StatCard[] = [
@@ -122,24 +134,27 @@ export function HomeQuickFeatures({ kpis, trends }: Props) {
               onPress={() => router.navigate(card.href)}
               style={({ pressed }) => [styles.card, pressed && styles.pressed]}
             >
-              {/* The card keeps its shadow; only this layer clips the waves. */}
+              {/* Clips the waves to the card's rounded corners. */}
               <View collapsable={false} style={styles.cardClip}>
-                <Svg
-                  width="100%"
-                  height={WAVE_HEIGHT}
-                  viewBox="0 0 100 24"
-                  preserveAspectRatio="none"
-                  style={styles.wave}
-                >
-                  <Path
-                    d="M0 3C14 6 26 12 42 16C58 20 68 15 77 9C85 4 92 1 100 0V24H0Z"
-                    fill={tint.waveBack}
-                  />
-                  <Path
-                    d="M12 24C24 18 36 17 50 18C70 19 86 18 100 15V24Z"
-                    fill={tint.waveFront}
-                  />
-                </Svg>
+                {/* On Android a percent width on an absolute child leaves out
+                    the parent's padding, so the width comes from this box. */}
+                <View style={styles.wave}>
+                  <Svg
+                    width="100%"
+                    height="100%"
+                    viewBox="0 0 100 24"
+                    preserveAspectRatio="none"
+                  >
+                    <Path
+                      d="M0 3C14 6 26 12 42 16C58 20 68 15 77 9C85 4 92 1 100 0V24H0Z"
+                      fill={tint.waveBack}
+                    />
+                    <Path
+                      d="M12 24C24 18 36 17 50 18C70 19 86 18 100 15V24Z"
+                      fill={tint.waveFront}
+                    />
+                  </Svg>
+                </View>
 
                 <View style={styles.cardHead}>
                   <View
@@ -163,7 +178,13 @@ export function HomeQuickFeatures({ kpis, trends }: Props) {
                 </Text>
 
                 <View style={styles.trend}>
-                  {trend === null ? null : <Trend trend={trend} styles={styles} />}
+                  {trend === null ? null : (
+                    <Trend
+                      trend={trend}
+                      flatColor={colors.textSecondary}
+                      styles={styles}
+                    />
+                  )}
                 </View>
               </View>
             </Pressable>
@@ -176,12 +197,15 @@ export function HomeQuickFeatures({ kpis, trends }: Props) {
 
 function Trend({
   trend,
+  flatColor,
   styles,
 }: {
   trend: number;
+  flatColor: string;
   styles: ReturnType<typeof createStyles>;
 }) {
-  const color = trend < 0 ? TREND_DOWN : TREND_UP;
+  const color =
+    trend === 0 ? flatColor : trend < 0 ? TREND_DOWN : TREND_UP;
   return (
     <>
       {trend === 0 ? null : (
@@ -196,7 +220,12 @@ function Trend({
   );
 }
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
+function createStyles(
+  colors: ThemeColors,
+  isDark: boolean,
+  compact: boolean,
+) {
+  const circle = compact ? 26 : 29;
   return StyleSheet.create({
     root: { gap: 12 },
     head: {
@@ -231,20 +260,15 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       minWidth: 0,
       borderRadius: 14,
       backgroundColor: isDark ? colors.surfaceMuted : colors.surface,
-      shadowColor: '#3B4A8C',
-      shadowOpacity: isDark ? 0 : 0.1,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: isDark ? 0 : 3,
     },
     cardClip: {
       minHeight: 92,
-      paddingHorizontal: 9,
+      paddingHorizontal: compact ? 7 : 9,
       paddingTop: 9,
       paddingBottom: 8,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: isDark ? colors.border : '#EEF1F8',
+      borderColor: isDark ? colors.border : '#EEF0F4',
       overflow: 'hidden',
     },
     wave: {
@@ -252,16 +276,17 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       left: 0,
       right: 0,
       bottom: 0,
+      height: WAVE_HEIGHT,
     },
     cardHead: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: compact ? 4 : 6,
     },
     circle: {
-      width: 29,
-      height: 29,
-      borderRadius: 15,
+      width: circle,
+      height: circle,
+      borderRadius: circle / 2,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -269,7 +294,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       ...typography.caption,
       flex: 1,
       minWidth: 0,
-      fontSize: 11,
+      fontSize: compact ? 10.5 : 11,
       lineHeight: 15,
       fontWeight: '500',
       color: isDark ? colors.textSecondary : '#5B6478',

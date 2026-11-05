@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputInstance,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -45,7 +46,7 @@ type Props = {
   onBack?: () => void;
   searchOpen: boolean;
   search: string;
-  searchRef: RefObject<TextInput | null>;
+  searchRef: RefObject<TextInputInstance | null>;
   onSearchChange: (value: string) => void;
   onToggleSearch: () => void;
   onOpenFilter: () => void;
@@ -106,7 +107,7 @@ export function NotificationsHero({
             onPress={() => router.navigate('/(tabs)/profile')}
             style={({ pressed }) => pressed && styles.pressed}
           >
-            <UserAvatar uri={photo} name={name} size={46} style={styles.avatar} />
+            <UserAvatar uri={photo} name={name} size={45} style={styles.avatar} />
           </Pressable>
         )}
 
@@ -218,7 +219,7 @@ export function NotificationsHero({
 const styles = StyleSheet.create({
   root: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: SHEET_OVERLAP + 26,
+    paddingBottom: SHEET_OVERLAP + 24,
     // The sheet is the next sibling, so this pulls it up over the scene.
     marginBottom: -SHEET_OVERLAP,
     overflow: 'hidden',
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     marginLeft: 3,
   },
   name: {
-    fontSize: 14,
+    fontSize: 13.5,
     lineHeight: 18,
     fontWeight: '700',
     color: '#FFFFFF',
@@ -259,14 +260,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     maxWidth: '100%',
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: radii.pill,
     backgroundColor: '#FFFFFF',
   },
   pillText: {
     flexShrink: 1,
-    fontSize: 11,
+    fontSize: 10.5,
     lineHeight: 15,
     fontWeight: '600',
     color: INK,
@@ -299,13 +300,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   copy: {
-    height: 72,
-    marginTop: 26,
+    height: 68,
+    marginTop: 24,
     marginLeft: 8,
     gap: 2,
   },
   headline: {
-    fontSize: 24,
+    fontSize: 23,
     lineHeight: 30,
     fontWeight: '700',
     letterSpacing: -0.2,

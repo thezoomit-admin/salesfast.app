@@ -16,7 +16,7 @@ export function NotificationsSkeleton({ rows = 7 }: { rows?: number }) {
     <SkeletonPulse style={styles.root}>
       {Array.from({ length: rows }, (_, i) => (
         <View key={i} style={styles.card}>
-          <SkeletonBone width={42} height={42} radius={21} />
+          <SkeletonBone width={41} height={41} radius={21} />
           <View style={styles.body}>
             <SkeletonBone width="72%" height={13} />
             <SkeletonBone width="54%" height={10} />
@@ -38,10 +38,10 @@ function createStyles(palette: InboxPalette) {
     card: {
       flexDirection: 'row',
       alignItems: 'center',
-      minHeight: 56,
-      paddingVertical: 7,
+      minHeight: 53,
+      paddingVertical: 5,
       paddingHorizontal: 12,
-      gap: 14,
+      gap: 13,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: palette.cardBorder,

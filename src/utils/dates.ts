@@ -46,15 +46,6 @@ export function formatClockTime(value?: string | Date | null) {
   return format(d, 'hh:mm a');
 }
 
-/** List section heading — "Today", "Yesterday", "27 November 2026". */
-export function formatDayHeading(value?: string | Date | null) {
-  const d = parseDate(value);
-  if (!d) return '—';
-  if (isToday(d)) return 'Today';
-  if (isYesterday(d)) return 'Yesterday';
-  return format(d, 'd MMMM yyyy');
-}
-
 /** "Today, 29th November", "Tomorrow, 30th November", "27th November". */
 export function formatDueDay(value?: string | Date | null) {
   const d = parseDate(value);

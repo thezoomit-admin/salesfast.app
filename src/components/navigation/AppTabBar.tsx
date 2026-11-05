@@ -21,8 +21,10 @@ import {
   CallIcon,
   Home03Icon,
   Notification01Icon,
+  NotificationSolidIcon,
   PermanentJobIcon,
 } from '@/components/icons/hugeicons';
+import { inboxPalette } from '@/features/notifications/inboxPalette';
 import { useTheme, type ThemeColors } from '@/theme';
 
 /** Visual tab order — Home centered. Also the page order of the pager. */
@@ -42,6 +44,10 @@ const TAB_ICONS: Record<string, HugeIconData> = {
   index: Home03Icon,
   calls: CallIcon,
   notifications: Notification01Icon,
+};
+
+const ACTIVE_ICONS: Record<string, HugeIconData> = {
+  notifications: NotificationSolidIcon,
 };
 
 const TAB_LABELS: Record<string, string> = {
@@ -66,7 +72,7 @@ export function AppTabBar({
   position,
   badges,
 }: AppTabBarProps) {
-  const { colors } = useTheme();
+  const { colors, resolved } = useTheme();
   // Real system inset only — edge-to-edge paints brand under the nav buttons.
   const systemInset = insets.bottom;
   const styles = useMemo(
@@ -125,9 +131,25 @@ export function AppTabBar({
     return () => position.removeListener(id);
   }, [position, routeCount, endTap, highlight]);
 
+  // The Inbox page has its own blue look; the bar follows it while it's open.
+  const inbox =
+    state.routes[active]?.name === 'notifications'
+      ? inboxPalette(resolved === 'dark')
+      : null;
+  const look: TabLook = {
+    accent: inbox?.accent ?? colors.brand,
+    icon: inbox?.ink ?? colors.text,
+    label: inbox?.inkSoft ?? colors.textSecondary,
+    badge: inbox?.alert ?? colors.brand,
+    marked: !!inbox,
+  };
+
   return (
-    <View style={styles.wrap} accessibilityRole="tablist">
-      <View style={styles.bar}>
+    <View
+      style={[styles.wrap, inbox && { backgroundColor: inbox.sheet }]}
+      accessibilityRole="tablist"
+    >
+      <View style={[styles.bar, inbox && styles.barInbox]}>
         {TAB_ORDER.map((name) => {
           const route = routesByName[name];
           if (!route) return null;
@@ -166,8 +188,9 @@ export function AppTabBar({
             <TabItem
               key={route.key}
               styles={styles}
-              colors={colors}
+              look={look}
               icon={TAB_ICONS[name]}
+              activeIcon={inbox ? ACTIVE_ICONS[name] : undefined}
               label={label}
               badge={badges?.[name] || undefined}
               active={active === routeIndex}
@@ -180,17 +203,32 @@ export function AppTabBar({
         })}
       </View>
       {/* Edge-to-edge: system nav is transparent — paint brand under the inset. */}
-      {systemInset > 0 ? <View style={styles.systemBar} /> : null}
+      {systemInset > 0 ? (
+        <View
+          style={[styles.systemBar, inbox && { backgroundColor: inbox.sheet }]}
+        />
+      ) : null}
     </View>
   );
 }
 
 const FADE_MS = 180;
 
+type TabLook = {
+  accent: string;
+  icon: string;
+  label: string;
+  badge: string;
+  /** Underline the selected tab. */
+  marked: boolean;
+};
+
 type TabItemProps = {
   styles: ReturnType<typeof createStyles>;
-  colors: ThemeColors;
+  look: TabLook;
   icon: HugeIconData | undefined;
+  /** Replaces `icon` while selected. */
+  activeIcon: HugeIconData | undefined;
   label: string;
   badge: number | undefined;
   /** Drawn highlighted (follows taps and swipes ahead of `focused`). */
@@ -204,8 +242,9 @@ type TabItemProps = {
 
 function TabItem({
   styles,
-  colors,
+  look,
   icon,
+  activeIcon,
   label,
   badge,
   active,
@@ -247,22 +286,22 @@ function TabItem({
               <HugeiconsIcon
                 icon={icon}
                 size={24}
-                color={colors.text}
+                color={look.icon}
                 strokeWidth={1.7}
               />
             </Animated.View>
             <Animated.View style={[styles.iconLayer, { opacity: on }]}>
               <HugeiconsIcon
-                icon={icon}
+                icon={activeIcon ?? icon}
                 size={24}
-                color={colors.brand}
+                color={look.accent}
                 strokeWidth={2.1}
               />
             </Animated.View>
           </>
         ) : null}
         {badge != null ? (
-          <View style={styles.badge}>
+          <View style={[styles.badge, { backgroundColor: look.badge }]}>
             <Text style={styles.badgeText}>
               {badge > 99 ? '99+' : String(badge)}
             </Text>
@@ -270,11 +309,18 @@ function TabItem({
         ) : null}
       </View>
       <Text
-        style={[styles.label, active && styles.labelActive]}
+        style={[
+          styles.label,
+          { color: active ? look.accent : look.label },
+          active && styles.labelActive,
+        ]}
         numberOfLines={1}
       >
         {label}
       </Text>
+      {active && look.marked ? (
+        <View style={[styles.underline, { backgroundColor: look.accent }]} />
+      ) : null}
     </Pressable>
   );
 }
@@ -295,6 +341,15 @@ function createStyles(colors: ThemeColors, systemInset: number) {
       minHeight: 64,
       borderTopWidth: 1,
       borderTopColor: colors.border,
+    },
+    // Same outer height as `bar`, so the pager doesn't resize on a tab switch.
+    barInbox: {
+      minHeight: 56,
+      marginBottom: 8,
+      paddingBottom: 6,
+      borderTopWidth: 0,
+      borderRadius: 20,
+      boxShadow: '0 -2px 12px rgba(40, 60, 140, 0.07)',
     },
     systemBar: {
       height: systemInset,
@@ -326,11 +381,16 @@ function createStyles(colors: ThemeColors, systemInset: number) {
       fontSize: 11,
       lineHeight: 14,
       fontWeight: '500',
-      color: colors.textSecondary,
     },
     labelActive: {
       fontWeight: '600',
-      color: colors.brand,
+    },
+    underline: {
+      position: 'absolute',
+      bottom: -6,
+      width: 52,
+      height: 2,
+      borderRadius: 1,
     },
     badge: {
       position: 'absolute',
@@ -342,7 +402,6 @@ function createStyles(colors: ThemeColors, systemInset: number) {
       paddingHorizontal: 4,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.brand,
     },
     badgeText: {
       color: colors.white,

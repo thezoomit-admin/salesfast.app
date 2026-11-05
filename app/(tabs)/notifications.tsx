@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -13,31 +14,44 @@ import {
   usePathname,
   useRouter,
 } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
 import type { ComponentProps } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Pressable,
   RefreshControl,
-  SectionList,
   StyleSheet,
-  Text,
+  type TextInputInstance,
   View,
 } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
+import { heroBase } from '@/components/home/HomeHero';
 import {
   Bookmark02Icon,
   CalendarClockIcon,
   ClockAlertIcon,
   Notification01Icon,
+  Search02Icon,
   UserAdd01Icon,
 } from '@/components/icons/hugeicons';
+import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { FilterChip } from '@/components/ui/FilterChip';
+import { FilterSection, FilterSheet } from '@/components/ui/FilterSheet';
+import { Screen } from '@/components/ui/Screen';
 import { NotificationsSkeleton } from '@/components/ui/skeletons';
 import { EmptyState, QueryPlaceholder } from '@/components/ui/StateViews';
+import { useAuth } from '@/features/auth/AuthContext';
+import { dashboardQuery } from '@/features/dashboard/dashboardApi';
+import {
+  type InboxPalette,
+  inboxPalette,
+} from '@/features/notifications/inboxPalette';
 import { NotificationCard } from '@/features/notifications/NotificationCard';
+import { NotificationsHero } from '@/features/notifications/NotificationsHero';
 import { NotificationTabs } from '@/features/notifications/NotificationTabs';
 import {
   type AppNotification,
@@ -46,13 +60,14 @@ import {
   fetchUnreadByTab,
   markAllNotificationsRead,
   markNotificationRead,
-  type NotificationTab,
+  type NotificationFilters,
   type NotificationState,
+  type NotificationTab,
   NOTIFICATIONS_KEY,
   UNREAD_BY_TAB_KEY,
 } from '@/features/notifications/notificationsApi';
-import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
-import { formatDayHeading } from '@/utils/dates';
+import { useDebounced } from '@/lib/useDebounced';
+import { spacing, useTheme, useThemeColors, type ThemeColors } from '@/theme';
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 type EmptyTone = 'brand' | 'warning' | 'danger';
@@ -89,15 +104,6 @@ const TABS: {
     emptyTone: 'warning',
   },
   {
-    key: 'urgent',
-    label: 'Urgent',
-    emptyTitle: 'Nothing overdue',
-    emptyMessage:
-      'Overdue follow-ups land here first — clear this list to stay on top of your pipeline.',
-    emptyIcon: ClockAlertIcon,
-    emptyTone: 'danger',
-  },
-  {
     key: 'info',
     label: 'Info',
     emptyTitle: 'No new lead updates',
@@ -108,6 +114,17 @@ const TABS: {
   },
 ];
 
+/** Not a pill: the Overdue filter opens this list. */
+const OVERDUE_TAB: (typeof TABS)[number] = {
+  key: 'urgent',
+  label: 'Overdue',
+  emptyTitle: 'Nothing overdue',
+  emptyMessage:
+    'Overdue follow-ups land here first — clear this list to stay on top of your pipeline.',
+  emptyIcon: ClockAlertIcon,
+  emptyTone: 'danger',
+};
+
 const HISTORY_EMPTY = {
   title: 'No resolved alerts yet',
   message:
@@ -116,13 +133,18 @@ const HISTORY_EMPTY = {
   tone: 'brand' as EmptyTone,
 };
 
+const NO_MATCH_EMPTY = {
+  title: 'No matching notifications',
+  message: 'Try another name, or clear the search and filters.',
+  icon: Search02Icon as HugeIconData,
+  tone: 'brand' as EmptyTone,
+};
+
 function emptyToneColors(colors: ThemeColors, tone: EmptyTone) {
   if (tone === 'warning') return { fg: colors.warning, bg: colors.warningSoft };
   if (tone === 'danger') return { fg: colors.danger, bg: colors.dangerSoft };
   return { fg: colors.brand, bg: colors.primary50 };
 }
-
-type DaySection = { title: string; data: AppNotification[] };
 
 function NotificationEmpty({
   title,
@@ -155,18 +177,6 @@ function NotificationEmpty({
   );
 }
 
-/** `items` arrive newest first, so each day is one contiguous run. */
-function groupByDay(items: AppNotification[]) {
-  const sections: DaySection[] = [];
-  for (const item of items) {
-    const title = formatDayHeading(item.createdAt);
-    const last = sections[sections.length - 1];
-    if (last?.title === title) last.data.push(item);
-    else sections.push({ title, data: [item] });
-  }
-  return sections;
-}
-
 function routeFor(item: AppNotification): Href | null {
   const url = item.mobileUrl;
   if (url && /^\/leads\/\d+$/.test(url)) return url as Href;
@@ -176,15 +186,16 @@ function routeFor(item: AppNotification): Href | null {
 function NotificationList({
   tab,
   state,
+  filters,
   live,
 }: {
   tab: (typeof TABS)[number];
   state: NotificationState;
+  filters: NotificationFilters;
   /** The page stays mounted as a tab; refresh only while it's on screen. */
   live: boolean;
 }) {
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors } = useTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -204,15 +215,25 @@ function NotificationList({
   }, [live]);
 
   const query = useInfiniteQuery({
-    queryKey: [...NOTIFICATIONS_KEY, 'list', tab.key, state],
-    queryFn: ({ pageParam }) => fetchNotifications(tab.key, state, pageParam),
+    queryKey: [
+      ...NOTIFICATIONS_KEY,
+      'list',
+      tab.key,
+      state,
+      filters.keyword ?? '',
+      !!filters.unreadOnly,
+    ],
+    queryFn: ({ pageParam }) =>
+      fetchNotifications(tab.key, state, pageParam, filters),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     refetchInterval: live ? REFRESH_MS : false,
+    // Each keystroke is a new key; keep the rows up until the answer lands.
+    placeholderData: keepPreviousData,
   });
 
-  const sections = useMemo(
-    () => groupByDay(query.data?.pages.flatMap((p) => p.items) ?? []),
+  const items = useMemo(
+    () => query.data?.pages.flatMap((p) => p.items) ?? [],
     [query.data]
   );
 
@@ -244,18 +265,12 @@ function NotificationList({
       <NotificationCard
         item={item}
         now={now}
+        linked={routeFor(item) !== null}
         onPress={onPressItem}
         onLongPress={setDismissing}
       />
     ),
     [now, onPressItem]
-  );
-
-  const renderSectionHeader = useCallback(
-    ({ section }: { section: DaySection }) => (
-      <Text style={styles.sectionTitle}>{section.title}</Text>
-    ),
-    [styles]
   );
 
   if (!query.data) {
@@ -268,23 +283,37 @@ function NotificationList({
     );
   }
 
-  const history = state === 'history';
+  const empty =
+    filters.keyword || filters.unreadOnly
+      ? NO_MATCH_EMPTY
+      : state === 'history'
+        ? HISTORY_EMPTY
+        : {
+            title: tab.emptyTitle,
+            message: tab.emptyMessage,
+            icon: tab.emptyIcon,
+            tone: tab.emptyTone,
+          };
 
   return (
     <>
-      <SectionList
-        style={styles.list}
+      <FlatList
+        style={listStyles.list}
         contentContainerStyle={[
-          styles.content,
-          sections.length === 0 && styles.emptyContent,
+          listStyles.content,
+          items.length === 0 && listStyles.emptyContent,
         ]}
-        sections={sections}
+        data={items}
         keyExtractor={(item) => item._id}
-        stickySectionHeadersEnabled={false}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={query.isRefetching && !query.isFetchingNextPage}
+            refreshing={
+              query.isRefetching &&
+              !query.isFetchingNextPage &&
+              !query.isPlaceholderData
+            }
             onRefresh={() => {
               void refreshAll();
             }}
@@ -297,21 +326,13 @@ function NotificationList({
             void query.fetchNextPage();
           }
         }}
-        ListEmptyComponent={
-          <NotificationEmpty
-            title={history ? HISTORY_EMPTY.title : tab.emptyTitle}
-            message={history ? HISTORY_EMPTY.message : tab.emptyMessage}
-            icon={history ? HISTORY_EMPTY.icon : tab.emptyIcon}
-            tone={history ? HISTORY_EMPTY.tone : tab.emptyTone}
-          />
-        }
+        ListEmptyComponent={<NotificationEmpty {...empty} />}
         ListFooterComponent={
           query.isFetchingNextPage ? (
-            <ActivityIndicator color={colors.brand} style={styles.footer} />
+            <ActivityIndicator color={colors.brand} style={listStyles.footer} />
           ) : undefined
         }
         renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
         initialNumToRender={12}
         maxToRenderPerBatch={10}
         windowSize={7}
@@ -332,16 +353,30 @@ function NotificationList({
 }
 
 export default function NotificationsScreen() {
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const palette = inboxPalette(isDark);
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const queryClient = useQueryClient();
+  const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAuth();
   // Tab inbox has no back; Settings → Notifications is a stack push.
   const showBack = pathname.startsWith('/settings');
-  const [active, setActive] = useState<NotificationTab>('urgent');
+  const [active, setActive] = useState<NotificationTab>('all');
   const [history, setHistory] = useState(false);
   const [focused, setFocused] = useState(false);
   const navigation = useNavigation();
+
+  const searchRef = useRef<TextInputInstance>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const keyword = useDebounced(search.trim());
+
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draftUnread, setDraftUnread] = useState(false);
+  const [draftOverdue, setDraftOverdue] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -351,15 +386,26 @@ export default function NotificationsScreen() {
         setFocused(false);
         // Stack version: opening a lead must keep the active tab.
         if (showBack) return;
-        // Coming back from another tab starts on Urgent again; coming back
-        // from a lead opened here keeps the tab the user was on.
+        // Coming back from another tab starts on All again; coming back
+        // from a lead opened here keeps what the user was looking at.
         const { routes, index } = navigation.getState() ?? {};
         if (routes?.[index ?? 0]?.name !== 'notifications') {
-          setActive('urgent');
+          setActive('all');
           setHistory(false);
+          setUnreadOnly(false);
+          setSearchOpen(false);
+          setSearch('');
         }
       };
     }, [navigation, queryClient, showBack])
+  );
+
+  // The hero is dark enough to need light icons in both themes.
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('light');
+      return () => setStatusBarStyle(isDark ? 'light' : 'dark');
+    }, [isDark])
   );
 
   const { data: unread } = useQuery({
@@ -368,105 +414,183 @@ export default function NotificationsScreen() {
   });
   const hasUnread = !!unread && unread.all > 0;
 
+  // Shares the Home dashboard cache, so this adds no extra request.
+  const { data: dashboard } = useQuery(dashboardQuery);
+  const summary = dashboard
+    ? `${dashboard.kpis.todayFollowUps} due · ${dashboard.kpis.overdueFollowUps} overdue`
+    : null;
+
   const markAll = useMutation({
     mutationFn: markAllNotificationsRead,
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY }),
   });
 
-  const activeTab = TABS.find((t) => t.key === active) ?? TABS[0]!;
+  const overdue = active === 'urgent';
+  const activeTab = overdue
+    ? OVERDUE_TAB
+    : (TABS.find((t) => t.key === active) ?? TABS[0]!);
   // Info rows never resolve, so only alert tabs have a history.
   const hasHistory = active !== 'info';
   const state: NotificationState = history && hasHistory ? 'history' : 'active';
+  const filters = useMemo(
+    () => ({ keyword, unreadOnly }),
+    [keyword, unreadOnly]
+  );
+
+  const toggleSearch = () => {
+    if (searchOpen) {
+      setSearch('');
+      searchRef.current?.blur();
+    } else {
+      requestAnimationFrame(() => searchRef.current?.focus());
+    }
+    setSearchOpen(!searchOpen);
+  };
+
+  const openFilter = () => {
+    setDraftUnread(unreadOnly);
+    setDraftOverdue(overdue);
+    setFilterOpen(true);
+  };
+
+  const applyFilter = () => {
+    setUnreadOnly(draftUnread);
+    if (draftOverdue) setActive('urgent');
+    else if (overdue) setActive('all');
+    setFilterOpen(false);
+  };
 
   return (
-    <View style={styles.safe}>
-      <ScreenHeader
-        title="Notifications"
-        showBack={showBack}
-        right={
-          <Pressable
-            disabled={!hasUnread || markAll.isPending}
-            onPress={() => markAll.mutate()}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !hasUnread }}
-            hitSlop={8}
-            style={({ pressed }) => [styles.markAll, pressed && styles.pressed]}
-          >
-            <Text
-              style={[styles.markAllText, !hasUnread && styles.markAllDisabled]}
-              numberOfLines={1}
-            >
-              Mark all as read
-            </Text>
-          </Pressable>
-        }
-      />
-
-      <NotificationTabs
-        tabs={TABS}
-        unread={unread}
-        active={active}
-        onChange={setActive}
-        right={
-          hasHistory ? (
+    <Screen
+      header={
+        <NotificationsHero
+          name={user?.name?.trim() || 'Agent'}
+          photo={user?.profilePhoto}
+          summary={summary}
+          onBack={showBack ? () => router.back() : undefined}
+          searchOpen={searchOpen}
+          search={search}
+          searchRef={searchRef}
+          onSearchChange={setSearch}
+          onToggleSearch={toggleSearch}
+          onOpenFilter={openFilter}
+          filterCount={Number(unreadOnly) + Number(overdue)}
+        />
+      }
+      style={{ backgroundColor: heroBase(isDark) }}
+      contentStyle={styles.sheet}
+    >
+      <View style={styles.tabs}>
+        <NotificationTabs
+          tabs={TABS}
+          unread={unread}
+          active={overdue ? 'all' : active}
+          onChange={setActive}
+          right={
             <Pressable
+              disabled={!hasHistory}
               onPress={() => setHistory((on) => !on)}
               accessibilityRole="button"
               accessibilityLabel="History"
-              accessibilityState={{ selected: state === 'history' }}
+              accessibilityState={{
+                selected: state === 'history',
+                disabled: !hasHistory,
+              }}
               hitSlop={8}
-              style={({ pressed }) => pressed && styles.pressed}
+              style={({ pressed }) => [
+                !hasHistory && styles.disabled,
+                pressed && styles.pressed,
+              ]}
             >
               <Ionicons
                 name="time-outline"
-                size={20}
-                color={state === 'history' ? colors.brand : colors.textMuted}
+                size={21}
+                color={state === 'history' ? palette.accent : palette.ink}
               />
             </Pressable>
-          ) : null
-        }
-      />
+          }
+        />
+      </View>
 
       <NotificationList
         key={`${active}-${state}`}
         tab={activeTab}
         state={state}
+        filters={filters}
         live={focused}
       />
-    </View>
+
+      <FilterSheet
+        open={filterOpen}
+        title="Filter notifications"
+        clearDisabled={!draftUnread && !draftOverdue}
+        onClear={() => {
+          setDraftUnread(false);
+          setDraftOverdue(false);
+        }}
+        onApply={applyFilter}
+        onClose={() => setFilterOpen(false)}
+      >
+        <FilterSection title="Show only">
+          <FilterChip
+            label="Unread"
+            active={draftUnread}
+            onPress={() => setDraftUnread((on) => !on)}
+          />
+          <FilterChip
+            label="Overdue"
+            active={draftOverdue}
+            onPress={() => setDraftOverdue((on) => !on)}
+          />
+        </FilterSection>
+        <FilterSection title="Inbox" chips={false}>
+          <Button
+            title="Mark all as read"
+            variant="secondary"
+            disabled={!hasUnread}
+            loading={markAll.isPending}
+            onPress={() => {
+              markAll.mutate();
+              setFilterOpen(false);
+            }}
+          />
+        </FilterSection>
+      </FilterSheet>
+    </Screen>
   );
 }
 
-function createStyles(colors: ThemeColors) {
+const listStyles = StyleSheet.create({
+  list: { flex: 1 },
+  content: {
+    paddingHorizontal: 12,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    gap: 5,
+  },
+  emptyContent: { flexGrow: 1 },
+  footer: { paddingVertical: spacing.lg },
+});
+
+function createStyles(palette: InboxPalette) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.surface },
-    list: { flex: 1 },
-    content: {
-      paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.xl,
+    sheet: {
+      // flex, not Screen's flexGrow: the sheet must not grow to its content,
+      // or the list has nothing to scroll.
+      flex: 1,
+      padding: 0,
+      gap: 0,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: palette.sheet,
     },
-    emptyContent: { flexGrow: 1 },
-    sectionTitle: {
-      ...typography.caption,
-      fontSize: 12,
-      lineHeight: 16,
-      color: colors.textMuted,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing.xs,
+    tabs: {
+      paddingHorizontal: 12,
+      paddingTop: 10,
     },
-    footer: { paddingVertical: spacing.lg },
-    markAll: {
-      minHeight: 40,
-      justifyContent: 'center',
-    },
-    markAllText: {
-      fontSize: 14,
-      lineHeight: 20,
-      fontWeight: '500',
-      color: colors.textSecondary,
-    },
-    markAllDisabled: { color: colors.textMuted },
+    disabled: { opacity: 0.35 },
     pressed: { opacity: 0.7 },
   });
 }
