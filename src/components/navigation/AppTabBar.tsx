@@ -87,8 +87,6 @@ export function AppTabBar({
   const [pressedName, setPressedName] = useState<string | null>(null);
   const activeName = pressedName ?? focusedName;
   const paints = useRef(new Map<string, (active: boolean) => void>());
-  const colorsRef = useRef(colors);
-  colorsRef.current = colors;
   const pendingName = useRef<string | null>(null);
   const jumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStarted = useRef(false);
@@ -157,6 +155,11 @@ export function AppTabBar({
     (name: string, routeKey: string, focused: boolean) => {
       touchStarted.current = true;
       selectTab(name, routeKey, focused);
+      // press follows press-in in this turn. A later keyboard press must not
+      // see a flag left behind by a cancelled touch.
+      setTimeout(() => {
+        touchStarted.current = false;
+      }, 0);
     },
     [selectTab]
   );
@@ -165,10 +168,7 @@ export function AppTabBar({
     (name: string, routeKey: string, focused: boolean) => {
       // A touch already selected on press-in. A keyboard activation only
       // delivers press.
-      if (touchStarted.current) {
-        touchStarted.current = false;
-        return;
-      }
+      if (touchStarted.current) return;
       selectTab(name, routeKey, focused);
     },
     [selectTab]
@@ -263,14 +263,13 @@ const TabItem = memo(function TabItem({
 
   useLayoutEffect(() => {
     registerPaint(name, (isActive) => {
-      idleRef.current?.setNativeProps({
-        style: { opacity: isActive ? 0 : 1 },
-      });
-      activeIconRef.current?.setNativeProps({
-        style: { opacity: isActive ? 1 : 0 },
-      });
+      // Opacity only — a partial `style` would drop the icon's layout.
+      idleRef.current?.setNativeProps({ opacity: isActive ? 0 : 1 });
+      activeIconRef.current?.setNativeProps({ opacity: isActive ? 1 : 0 });
       labelRef.current?.setNativeProps({
         style: {
+          fontSize: 11,
+          lineHeight: 14,
           color: isActive ? colors.brand : colors.textSecondary,
           fontWeight: isActive ? '600' : '500',
         },
@@ -284,7 +283,6 @@ const TabItem = memo(function TabItem({
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={accessibilityLabel}
-      delayPressIn={0}
       onPressIn={() => onTabPressIn(name, routeKey, focused)}
       onPress={() => onTabPress(name, routeKey, focused)}
       onLongPress={() => onTabLongPress(routeKey)}
