@@ -28,8 +28,8 @@ type TabNavigation = {
 
 /** Nearest to Home first. Profile last: only the Home header opens it. */
 const WARM_ORDER = ['follow-ups', 'calls', 'leads', 'notifications', 'profile'];
-const WARM_START_MS = 500;
-const WARM_STEP_MS = 350;
+const WARM_START_MS = 120;
+const WARM_STEP_MS = 80;
 
 /**
  * Mount every tab page soon after Home is up, one at a time, so a tab press

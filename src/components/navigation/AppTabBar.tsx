@@ -3,11 +3,21 @@ import type { MaterialTopTabBarProps } from 'expo-router/js-top-tabs';
 import {
   memo,
   useCallback,
+  useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentProps,
 } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type TextInstance,
+  type ViewInstance,
+} from 'react-native';
 
 import {
   Calendar03Icon,
@@ -71,36 +81,97 @@ export function AppTabBar({
   );
   const focusedName = state.routes[state.index]?.name;
 
-  // The tab under the finger lights on touch-down, so its colour is on screen
-  // before the finger lifts and before the navigator's render starts. Once
-  // the finger is gone the navigator's index decides again, which also covers
-  // the back button, redirects and a press that slides off the tab.
+  // Finger-down highlight. It stays until the pager's index catches up —
+  // clearing it on finger-up paints the previous tab again for the whole
+  // time the next page takes to commit.
   const [pressedName, setPressedName] = useState<string | null>(null);
   const activeName = pressedName ?? focusedName;
+  const paints = useRef(new Map<string, (active: boolean) => void>());
+  const colorsRef = useRef(colors);
+  colorsRef.current = colors;
+  const pendingName = useRef<string | null>(null);
+  const jumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStarted = useRef(false);
 
-  const onTabPressIn = useCallback((name: string) => {
-    setPressedName(name);
+  const registerPaint = useCallback(
+    (name: string, paint: ((active: boolean) => void) | null) => {
+      if (paint) paints.current.set(name, paint);
+      else paints.current.delete(name);
+    },
+    []
+  );
+
+  const paintActive = useCallback((name: string) => {
+    for (const tab of TAB_ORDER) paints.current.get(tab)?.(tab === name);
   }, []);
 
-  // Pressable can delay this until after the next tab's touch-down.
-  const onTabPressOut = useCallback((name: string) => {
-    setPressedName((current) => (current === name ? null : current));
-  }, []);
+  useEffect(() => {
+    if (pressedName != null && pressedName === focusedName) {
+      setPressedName(null);
+      pendingName.current = null;
+    }
+  }, [pressedName, focusedName]);
 
-  const onTabPress = useCallback(
-    (routeKey: string, focused: boolean) => {
+  useEffect(
+    () => () => {
+      if (jumpTimer.current) clearTimeout(jumpTimer.current);
+    },
+    []
+  );
+
+  const selectTab = useCallback(
+    (name: string, routeKey: string, focused: boolean) => {
+      // Native update first, so the colour is on screen before React commits
+      // and before the next page renders.
+      paintActive(name);
+      setPressedName(name);
+      if (focused) {
+        emitter.emit({
+          type: 'tabPress',
+          target: routeKey,
+          canPreventDefault: true,
+        });
+        return;
+      }
+      if (pendingName.current === name) return;
       const event = emitter.emit({
         type: 'tabPress',
         target: routeKey,
         canPreventDefault: true,
       });
-      if (!focused && !event.defaultPrevented) {
-        // Tells the pager straight away. `navigateToTab` goes through the
-        // router's queue, which costs extra renders before the page moves.
+      if (event.defaultPrevented) return;
+      pendingName.current = name;
+      if (jumpTimer.current) clearTimeout(jumpTimer.current);
+      // The highlight is already queued to native. jumpTo in this turn
+      // re-renders the destination page before that paint, so the colour
+      // waits on the page. The next turn moves the page.
+      jumpTimer.current = setTimeout(() => {
+        jumpTimer.current = null;
         jumpTo(routeKey);
-      }
+      }, 0);
     },
-    [emitter, jumpTo]
+    [emitter, jumpTo, paintActive]
+  );
+
+  const onTabPressIn = useCallback(
+    (name: string, routeKey: string, focused: boolean) => {
+      touchStarted.current = true;
+      selectTab(name, routeKey, focused);
+    },
+    [selectTab]
+  );
+
+  const onTabPress = useCallback(
+    (name: string, routeKey: string, focused: boolean) => {
+      // A touch already selected on press-in. A keyboard activation only
+      // delivers press.
+      if (touchStarted.current) {
+        touchStarted.current = false;
+        return;
+      }
+      selectTab(name, routeKey, focused);
+    },
+    [selectTab]
   );
 
   const onTabLongPress = useCallback(
@@ -134,8 +205,8 @@ export function AppTabBar({
               active={activeName === name}
               focused={focusedName === name}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
+              registerPaint={registerPaint}
               onTabPressIn={onTabPressIn}
-              onTabPressOut={onTabPressOut}
               onTabPress={onTabPress}
               onTabLongPress={onTabLongPress}
             />
@@ -163,9 +234,9 @@ type TabItemProps = {
   /** The navigator's current tab. */
   focused: boolean;
   accessibilityLabel: string;
-  onTabPressIn: (name: string) => void;
-  onTabPressOut: (name: string) => void;
-  onTabPress: (routeKey: string, focused: boolean) => void;
+  registerPaint: (name: string, paint: ((active: boolean) => void) | null) => void;
+  onTabPressIn: (name: string, routeKey: string, focused: boolean) => void;
+  onTabPress: (name: string, routeKey: string, focused: boolean) => void;
   onTabLongPress: (routeKey: string) => void;
 };
 
@@ -181,19 +252,41 @@ const TabItem = memo(function TabItem({
   active,
   focused,
   accessibilityLabel,
+  registerPaint,
   onTabPressIn,
-  onTabPressOut,
   onTabPress,
   onTabLongPress,
 }: TabItemProps) {
+  const idleRef = useRef<ViewInstance>(null);
+  const activeIconRef = useRef<ViewInstance>(null);
+  const labelRef = useRef<TextInstance>(null);
+
+  useLayoutEffect(() => {
+    registerPaint(name, (isActive) => {
+      idleRef.current?.setNativeProps({
+        style: { opacity: isActive ? 0 : 1 },
+      });
+      activeIconRef.current?.setNativeProps({
+        style: { opacity: isActive ? 1 : 0 },
+      });
+      labelRef.current?.setNativeProps({
+        style: {
+          color: isActive ? colors.brand : colors.textSecondary,
+          fontWeight: isActive ? '600' : '500',
+        },
+      });
+    });
+    return () => registerPaint(name, null);
+  }, [colors.brand, colors.textSecondary, name, registerPaint]);
+
   return (
     <Pressable
       accessibilityRole="tab"
-      accessibilityState={{ selected: focused }}
+      accessibilityState={{ selected: active }}
       accessibilityLabel={accessibilityLabel}
-      onPressIn={() => onTabPressIn(name)}
-      onPressOut={() => onTabPressOut(name)}
-      onPress={() => onTabPress(routeKey, focused)}
+      delayPressIn={0}
+      onPressIn={() => onTabPressIn(name, routeKey, focused)}
+      onPress={() => onTabPress(name, routeKey, focused)}
       onLongPress={() => onTabLongPress(routeKey)}
       style={styles.item}
     >
@@ -204,6 +297,7 @@ const TabItem = memo(function TabItem({
                 no animation or SVG redraw. `collapsable` keeps these views
                 from being flattened away when their opacity flips. */}
             <View
+              ref={idleRef}
               collapsable={false}
               style={[styles.iconLayer, active && styles.iconHidden]}
             >
@@ -215,6 +309,7 @@ const TabItem = memo(function TabItem({
               />
             </View>
             <View
+              ref={activeIconRef}
               collapsable={false}
               style={[styles.iconLayer, !active && styles.iconHidden]}
             >
@@ -236,6 +331,7 @@ const TabItem = memo(function TabItem({
         ) : null}
       </View>
       <Text
+        ref={labelRef}
         style={[
           styles.label,
           { color: active ? colors.brand : colors.textSecondary },
