@@ -47,7 +47,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     accent: {
       backgroundColor: colors.brandSoft,
-      borderColor: isDark ? colors.brand : '#F5C4B3',
+      borderColor: isDark ? colors.brand : '#B3CDF5',
     },
     value: { ...typography.title, color: colors.text },
     label: { ...typography.caption, color: colors.textSecondary },

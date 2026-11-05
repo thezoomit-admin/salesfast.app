@@ -1,7 +1,7 @@
 /**
- * Salesfast CRM brand — matched to logo + admin palette.
+ * Salesfast CRM app brand — blue, matched to the home hero.
  *
- *   Primary  #F2461C · pressed #D93B14 · soft #FBD2C2
+ *   Primary  #0A4FC0 · pressed #083E99 · soft #C9DCFB (dark mode: #3B82F6)
  *   Page wash #F7F7F7 (Hisab surface) · Navy #15202C
  */
 
@@ -37,10 +37,10 @@ export type ThemeColors = {
  *   light  #484848 · normal #767676 · dark #9c9c9c
  */
 export const lightColors: ThemeColors = {
-  brand: '#F2461C',
-  brandMuted: '#D93B14',
-  brandSoft: '#FBD2C2',
-  primary50: '#FEF2EC',
+  brand: '#0A4FC0',
+  brandMuted: '#083E99',
+  brandSoft: '#C9DCFB',
+  primary50: '#EDF3FE',
   accent: '#484848',
   accentSoft: '#E7EAED',
   background: '#F7F7F7',
@@ -66,10 +66,10 @@ export const lightColors: ThemeColors = {
  * Main text white; TEXT-MAIN scale for secondary / muted.
  */
 export const darkColors: ThemeColors = {
-  brand: '#F2461C',
-  brandMuted: '#FF6A45',
-  brandSoft: '#2A1610',
-  primary50: '#1F120E',
+  brand: '#3B82F6',
+  brandMuted: '#60A5FA',
+  brandSoft: '#0F1E3A',
+  primary50: '#0B1730',
   accent: '#FFFFFF',
   accentSoft: '#1B1B1B',
   background: '#000000',

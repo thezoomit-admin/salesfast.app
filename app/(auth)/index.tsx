@@ -47,14 +47,14 @@ export default function WelcomeScreen() {
 
   const gradientColors = isDark
     ? ([
-        'rgba(242, 70, 28, 0.22)',
-        'rgba(242, 70, 28, 0.08)',
+        'rgba(59, 130, 246, 0.22)',
+        'rgba(59, 130, 246, 0.08)',
         'rgba(0, 0, 0, 0.92)',
         colors.background,
       ] as const)
     : ([
-        'rgba(242, 70, 28, 0.14)',
-        'rgba(251, 210, 194, 0.22)',
+        'rgba(10, 79, 192, 0.14)',
+        'rgba(201, 220, 251, 0.22)',
         'rgba(255, 255, 255, 0.96)',
         '#FFFFFF',
       ] as const);
