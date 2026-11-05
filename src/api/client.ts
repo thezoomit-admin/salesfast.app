@@ -210,7 +210,7 @@ export function getErrorMessage(
     if (data?.message) return data.message;
     if (data?.errorMessages?.length) return data.errorMessages.join(', ');
     if (error.message === 'Network Error') {
-      return `Cannot reach API (${API_BASE_URL}). Use your PC Wi‑Fi IP in EXPO_PUBLIC_API_URL — localhost does not work in Expo Go.`;
+      return `Cannot reach API (${API_BASE_URL}). Check that the backend is running and this phone is on the same Wi‑Fi as the PC.`;
     }
   }
   if (error instanceof Error && error.message) return error.message;
