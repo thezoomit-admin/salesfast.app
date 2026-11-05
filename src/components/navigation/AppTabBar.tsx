@@ -131,7 +131,7 @@ export function AppTabBar({
     return () => position.removeListener(id);
   }, [position, routeCount, endTap, highlight]);
 
-  // The Inbox page has its own blue look; the bar follows it while it's open.
+  // The Inbox design restyles the bar too, so it follows while that page is open.
   const inbox =
     state.routes[active]?.name === 'notifications'
       ? inboxPalette(resolved === 'dark')

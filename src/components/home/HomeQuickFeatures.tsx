@@ -135,7 +135,10 @@ export function HomeQuickFeatures({ kpis, trends }: Props) {
               style={({ pressed }) => [styles.card, pressed && styles.pressed]}
             >
               {/* Clips the waves to the card's rounded corners. */}
-              <View collapsable={false} style={styles.cardClip}>
+              <View
+                collapsable={false}
+                style={[styles.cardClip, { borderColor: tint.waveBack }]}
+              >
                 {/* On Android a percent width on an absolute child leaves out
                     the parent's padding, so the width comes from this box. */}
                 <View style={styles.wave}>
@@ -268,7 +271,6 @@ function createStyles(
       paddingBottom: 8,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: isDark ? colors.border : '#EEF0F4',
       overflow: 'hidden',
     },
     wave: {

@@ -1,6 +1,7 @@
 /**
- * The inbox's own blue look. It sits apart from the orange brand tokens in
- * `@/theme`, so every screen outside the inbox keeps its colours.
+ * The inbox design's own colours: a brighter blue than the brand, navy ink,
+ * and a tint per notification type. Kept out of `@/theme` so screens outside
+ * the inbox don't pick them up.
  */
 
 export type InboxTone = 'blue' | 'red' | 'orange' | 'green' | 'purple';
