@@ -24,7 +24,10 @@ import {
   NotificationSolidIcon,
   PermanentJobIcon,
 } from '@/components/icons/hugeicons';
-import { inboxPalette } from '@/features/notifications/inboxPalette';
+import {
+  inboxPalette,
+  type InboxPalette,
+} from '@/features/notifications/inboxPalette';
 import { useTheme, type ThemeColors } from '@/theme';
 
 /** Visual tab order — Home centered. Also the page order of the pager. */
@@ -73,11 +76,12 @@ export function AppTabBar({
   badges,
 }: AppTabBarProps) {
   const { colors, resolved } = useTheme();
-  // Real system inset only — edge-to-edge paints brand under the nav buttons.
+  // Real system inset only — edge-to-edge paints the bar under the nav buttons.
   const systemInset = insets.bottom;
+  const palette = inboxPalette(resolved === 'dark');
   const styles = useMemo(
-    () => createStyles(colors, systemInset),
-    [colors, systemInset]
+    () => createStyles(colors, palette, systemInset),
+    [colors, palette, systemInset]
   );
 
   const routesByName = Object.fromEntries(
@@ -131,25 +135,9 @@ export function AppTabBar({
     return () => position.removeListener(id);
   }, [position, routeCount, endTap, highlight]);
 
-  // The Inbox design restyles the bar too, so it follows while that page is open.
-  const inbox =
-    state.routes[active]?.name === 'notifications'
-      ? inboxPalette(resolved === 'dark')
-      : null;
-  const look: TabLook = {
-    accent: inbox?.accent ?? colors.brand,
-    icon: inbox?.ink ?? colors.text,
-    label: inbox?.inkSoft ?? colors.textSecondary,
-    badge: inbox?.alert ?? colors.brand,
-    marked: !!inbox,
-  };
-
   return (
-    <View
-      style={[styles.wrap, inbox && { backgroundColor: inbox.sheet }]}
-      accessibilityRole="tablist"
-    >
-      <View style={[styles.bar, inbox && styles.barInbox]}>
+    <View style={styles.wrap} accessibilityRole="tablist">
+      <View style={styles.bar}>
         {TAB_ORDER.map((name) => {
           const route = routesByName[name];
           if (!route) return null;
@@ -188,9 +176,9 @@ export function AppTabBar({
             <TabItem
               key={route.key}
               styles={styles}
-              look={look}
+              palette={palette}
               icon={TAB_ICONS[name]}
-              activeIcon={inbox ? ACTIVE_ICONS[name] : undefined}
+              activeIcon={ACTIVE_ICONS[name]}
               label={label}
               badge={badges?.[name] || undefined}
               active={active === routeIndex}
@@ -202,30 +190,17 @@ export function AppTabBar({
           );
         })}
       </View>
-      {/* Edge-to-edge: system nav is transparent — paint brand under the inset. */}
-      {systemInset > 0 ? (
-        <View
-          style={[styles.systemBar, inbox && { backgroundColor: inbox.sheet }]}
-        />
-      ) : null}
+      {/* Edge-to-edge: system nav is transparent — paint under the inset. */}
+      {systemInset > 0 ? <View style={styles.systemBar} /> : null}
     </View>
   );
 }
 
 const FADE_MS = 180;
 
-type TabLook = {
-  accent: string;
-  icon: string;
-  label: string;
-  badge: string;
-  /** Underline the selected tab. */
-  marked: boolean;
-};
-
 type TabItemProps = {
   styles: ReturnType<typeof createStyles>;
-  look: TabLook;
+  palette: InboxPalette;
   icon: HugeIconData | undefined;
   /** Replaces `icon` while selected. */
   activeIcon: HugeIconData | undefined;
@@ -242,7 +217,7 @@ type TabItemProps = {
 
 function TabItem({
   styles,
-  look,
+  palette,
   icon,
   activeIcon,
   label,
@@ -286,7 +261,7 @@ function TabItem({
               <HugeiconsIcon
                 icon={icon}
                 size={24}
-                color={look.icon}
+                color={palette.ink}
                 strokeWidth={1.7}
               />
             </Animated.View>
@@ -294,14 +269,14 @@ function TabItem({
               <HugeiconsIcon
                 icon={activeIcon ?? icon}
                 size={24}
-                color={look.accent}
+                color={palette.accent}
                 strokeWidth={2.1}
               />
             </Animated.View>
           </>
         ) : null}
         {badge != null ? (
-          <View style={[styles.badge, { backgroundColor: look.badge }]}>
+          <View style={[styles.badge, { backgroundColor: palette.alert }]}>
             <Text style={styles.badgeText}>
               {badge > 99 ? '99+' : String(badge)}
             </Text>
@@ -311,24 +286,28 @@ function TabItem({
       <Text
         style={[
           styles.label,
-          { color: active ? look.accent : look.label },
+          { color: active ? palette.accent : palette.inkSoft },
           active && styles.labelActive,
         ]}
         numberOfLines={1}
       >
         {label}
       </Text>
-      {active && look.marked ? (
-        <View style={[styles.underline, { backgroundColor: look.accent }]} />
+      {active ? (
+        <View style={[styles.underline, { backgroundColor: palette.accent }]} />
       ) : null}
     </Pressable>
   );
 }
 
-function createStyles(colors: ThemeColors, systemInset: number) {
+function createStyles(
+  colors: ThemeColors,
+  palette: InboxPalette,
+  systemInset: number
+) {
   return StyleSheet.create({
     wrap: {
-      backgroundColor: colors.brand,
+      backgroundColor: palette.sheet,
     },
     bar: {
       flexDirection: 'row',
@@ -336,24 +315,16 @@ function createStyles(colors: ThemeColors, systemInset: number) {
       justifyContent: 'space-between',
       backgroundColor: colors.surface,
       paddingTop: 6,
-      paddingBottom: 8,
+      paddingBottom: 6,
       paddingHorizontal: 4,
-      minHeight: 64,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-    },
-    // Same outer height as `bar`, so the pager doesn't resize on a tab switch.
-    barInbox: {
       minHeight: 56,
       marginBottom: 8,
-      paddingBottom: 6,
-      borderTopWidth: 0,
       borderRadius: 20,
       boxShadow: '0 -2px 12px rgba(40, 60, 140, 0.07)',
     },
     systemBar: {
       height: systemInset,
-      backgroundColor: colors.brand,
+      backgroundColor: palette.sheet,
     },
     item: {
       flex: 1,

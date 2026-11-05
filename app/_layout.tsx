@@ -74,8 +74,10 @@ function ThemedStack() {
   return (
     <>
       <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
-      {/* Light buttons on brand-colored system inset (Android). */}
-      {Platform.OS === 'android' ? <NavigationBar style="light" /> : null}
+      {/* Android buttons sit on the tab bar's sheet colour, so follow the theme. */}
+      {Platform.OS === 'android' ? (
+        <NavigationBar style={resolved === 'dark' ? 'light' : 'dark'} />
+      ) : null}
       <Stack
         screenOptions={{
           headerShown: false,

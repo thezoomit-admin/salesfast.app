@@ -1,7 +1,7 @@
 /**
  * The inbox design's own colours: a brighter blue than the brand, navy ink,
- * and a tint per notification type. Kept out of `@/theme` so screens outside
- * the inbox don't pick them up.
+ * and a tint per notification type. Kept out of `@/theme` so other screens
+ * don't pick them up; the tab bar and the Home sections use it on purpose.
  */
 
 export type InboxTone = 'blue' | 'red' | 'sky' | 'green' | 'purple';
