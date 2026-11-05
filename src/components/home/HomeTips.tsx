@@ -24,7 +24,7 @@ const TIPS: Tip[] = [
     key: 'call-sync',
     text: 'Turn on call sync to log every call',
     icon: SmartPhone01Icon,
-    tint: 'cream',
+    tint: 'ice',
     href: '/call-sync/setup',
   },
   {

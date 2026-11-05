@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
-import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { blue, radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
 const MAX_VISIBLE_OTHERS = 2;
 const DISMISS_DISTANCE = 100;
@@ -31,7 +31,7 @@ const AVATAR_TONES = [
   '#60A5FA',
   '#FBBF24',
   '#34D399',
-  '#F97316',
+  blue.indigo,
 ];
 
 type ListItem = {

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { blue, radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
 const SHEET_OFFSCREEN = 560;
 const OPEN_MS = 420;
@@ -350,14 +350,14 @@ function ConfettiBurst() {
     r: number;
     rot: string;
   }[] = [
-    { dx: -58, dy: -64, color: '#F97316', w: 11, h: 11, r: 3, rot: '25deg' },
+    { dx: -58, dy: -64, color: blue.sky, w: 11, h: 11, r: 3, rot: '25deg' },
     { dx: -24, dy: -60, color: '#A78BFA', w: 9, h: 14, r: 4, rot: '-20deg' },
     { dx: 28, dy: -72, color: '#60A5FA', w: 12, h: 6, r: 3, rot: '40deg' },
     { dx: 60, dy: -52, color: '#F43F5E', w: 10, h: 10, r: 4, rot: '10deg' },
     { dx: -72, dy: -10, color: '#34D399', w: 8, h: 13, r: 3, rot: '-35deg' },
     { dx: 72, dy: 4, color: '#FBBF24', w: 11, h: 7, r: 3, rot: '15deg' },
     { dx: -36, dy: 36, color: '#818CF8', w: 9, h: 9, r: 4, rot: '0deg' },
-    { dx: 38, dy: 34, color: '#FB923C', w: 12, h: 5, r: 3, rot: '-10deg' },
+    { dx: 38, dy: 34, color: blue.indigo, w: 12, h: 5, r: 3, rot: '-10deg' },
     { dx: -10, dy: -78, color: '#C084FC', w: 8, h: 8, r: 4, rot: '18deg' },
     { dx: 14, dy: 48, color: '#2DD4BF', w: 10, h: 6, r: 3, rot: '-12deg' },
   ];

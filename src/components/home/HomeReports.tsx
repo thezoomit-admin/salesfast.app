@@ -5,7 +5,7 @@ import { useMemo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ArrowRight01Icon } from '@/components/icons/hugeicons';
-import { radii, typography, useTheme, type ThemeColors } from '@/theme';
+import { blue, radii, typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
 type Kpis = MobileDashboard['kpis'];
@@ -25,7 +25,7 @@ function formatCount(n: number) {
   return n.toLocaleString('en-US');
 }
 
-const AVATAR_COLORS = ['#0F766E', '#3A83F7', '#D97706', '#6366F1', '#0891B2'];
+const AVATAR_COLORS = ['#0F766E', blue[500], blue[800], '#6366F1', '#0891B2'];
 
 export function HomeReports({ kpis, recentLeads }: Props) {
   const { colors, resolved } = useTheme();

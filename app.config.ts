@@ -58,8 +58,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     package: 'com.salesfastcrm',
     versionCode: 3,
     adaptiveIcon: {
-      // Match the orange plate in salesfast-app-logo.png (corners under Android mask).
-      backgroundColor: '#F2461C',
+      // Match the blue plate in salesfast-app-logo.png (corners under Android mask).
+      backgroundColor: '#3A83F7',
       foregroundImage: './assets/images/salesfast-app-logo.png',
       monochromeImage: './assets/images/favicon.png',
     },

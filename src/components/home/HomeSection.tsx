@@ -1,13 +1,13 @@
 import { useMemo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { typography, useTheme, type ThemeColors } from '@/theme';
+import { blue, typography, useTheme, type ThemeColors } from '@/theme';
 
 /** Soft card washes; dark mode drops to one muted surface. */
 export function homeTints(colors: ThemeColors, isDark: boolean) {
   const flat = colors.surfaceMuted;
   return {
-    cream: isDark ? flat : '#FDF6E9',
+    ice: isDark ? flat : blue[50],
     mint: isDark ? flat : '#EDF5F3',
     lime: isDark ? flat : '#F6F8EC',
     lilac: isDark ? flat : '#F6EFFC',

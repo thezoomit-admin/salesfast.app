@@ -12,6 +12,8 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 
+import { blue } from '@/theme';
+
 type IconProps = { size?: number };
 
 /** A plain call, not a component: Defs only needs the gradient element. */
@@ -227,20 +229,20 @@ export const QuickActionIcons = {
   ),
   search: makeIcon(
     <>
-      <Circle cx="20" cy="20" r="14.5" fill="none" stroke="#FB7C0C" strokeWidth="5" />
+      <Circle cx="20" cy="20" r="14.5" fill="none" stroke={blue.sky} strokeWidth="5" />
       <Line
         x1="31"
         y1="31"
         x2="42.5"
         y2="42.5"
-        stroke="#FB7C0C"
+        stroke={blue.sky}
         strokeWidth="5.6"
         strokeLinecap="round"
       />
       <Path
         d="M17 12.6C15.2 13.2 13.6 14.6 13 16.4"
         fill="none"
-        stroke="#FFD2A8"
+        stroke="#BFE3FB"
         strokeWidth="1.8"
         strokeLinecap="round"
       />
@@ -287,7 +289,7 @@ export const QuickActionIcons = {
   ),
   upcoming: makeIcon(
     <>
-      <Defs>{gradient('upcoming', '#FBB62E', '#F08C06')}</Defs>
+      <Defs>{gradient('upcoming', blue[400], blue[600])}</Defs>
       <Circle cx="24" cy="24" r="20.5" fill="url(#upcoming)" />
       <Path
         d="M13.5 24H34M26 15.5L34.5 24L26 32.5"
@@ -321,12 +323,12 @@ export const QuickActionIcons = {
   ),
   alerts: makeIcon(
     <>
-      <Defs>{gradient('alerts', '#FBB62E', '#F08C06')}</Defs>
+      <Defs>{gradient('alerts', blue[400], blue[600])}</Defs>
       <Path
         d="M24 4C16.5 4 11.5 9.7 11.5 17V24C11.5 27 9.8 29 8 31C6.8 32.4 7.6 35 10 35H38C40.4 35 41.2 32.4 40 31C38.2 29 36.5 27 36.5 24V17C36.5 9.7 31.5 4 24 4Z"
         fill="url(#alerts)"
       />
-      <Path d="M18.5 38.5C19.5 42 21.5 44 24 44C26.5 44 28.5 42 29.5 38.5Z" fill="#F08C06" />
+      <Path d="M18.5 38.5C19.5 42 21.5 44 24 44C26.5 44 28.5 42 29.5 38.5Z" fill={blue[700]} />
     </>,
   ),
   settings: makeIcon(
@@ -367,16 +369,16 @@ export const QuickActionTints: Record<
   'add-lead': { light: '#DAE9FE', dark: '#0A7AFC33' },
   'follow-ups': { light: '#DAF4EF', dark: '#0AAB7533' },
   calls: { light: '#DFF7E7', dark: '#01B86133' },
-  search: { light: '#FDEADB', dark: '#FB7C0C33' },
+  search: { light: blue.skySoft, dark: '#0B8FE033' },
   activities: { light: '#E7E4FD', dark: '#6766DE33' },
   inbox: { light: '#DDEEFE', dark: '#1E90FF33' },
   'call-sync': { light: '#DAF6F9', dark: '#27B4C233' },
   overdue: { light: '#FDE6E4', dark: '#E8352E33' },
-  upcoming: { light: '#FEF0D5', dark: '#F08C0633' },
+  upcoming: { light: blue[100], dark: '#2A6FE033' },
   calendar: { light: '#FCE5F0', dark: '#DB277733' },
   unread: { light: '#EEE7FE', dark: '#7C4DEF33' },
   profile: { light: '#DAE9FE', dark: '#0A7AFC33' },
-  alerts: { light: '#FEF0D5', dark: '#F08C0633' },
+  alerts: { light: blue[100], dark: '#2A6FE033' },
   settings: { light: '#E8ECF2', dark: '#64748B33' },
   about: { light: '#DAF6F9', dark: '#27B4C233' },
 };

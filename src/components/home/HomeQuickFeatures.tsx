@@ -101,7 +101,7 @@ export function HomeQuickFeatures({ kpis, trends }: Props) {
   return (
     <View style={styles.root}>
       <View style={styles.head}>
-        <HugeiconsIcon icon={FlashSolidIcon} size={20} color="#FFA51F" />
+        <HugeiconsIcon icon={FlashSolidIcon} size={20} color={colors.brand} />
         <Text style={styles.title} numberOfLines={1}>
           Quick access
         </Text>

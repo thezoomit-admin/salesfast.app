@@ -9,6 +9,7 @@ import {
   MapPinnedIcon,
   MessageSquareIcon,
 } from '@/components/icons/hugeicons';
+import { blue } from '@/theme';
 import type { MyFollowUp } from '@/types/api';
 
 /** Card colour family of a follow-up, from its type. */
@@ -28,12 +29,12 @@ export function kindTones(isDark: boolean): Record<FollowUpKind, KindTone> {
     ? {
         reminder: { bg: 'rgba(56,170,240,0.16)', accent: '#5BB8F5' },
         todo: { bg: 'rgba(40,190,130,0.16)', accent: '#3FCF94' },
-        event: { bg: 'rgba(245,140,95,0.16)', accent: '#F59A73' },
+        event: { bg: 'rgba(76,98,240,0.18)', accent: '#8A9BFF' },
       }
     : {
         reminder: { bg: '#DFF3FD', accent: '#3B9EE8' },
         todo: { bg: '#EAF8F1', accent: '#22B07D' },
-        event: { bg: '#FDF1EB', accent: '#F2855A' },
+        event: { bg: blue.indigoSoft, accent: blue.indigo },
       };
 }
 

@@ -22,7 +22,7 @@ const FOLLOW_UP: Kind = { icon: 'people', tone: 'blue', chip: 'Follow-up' };
 /** What the follow-up is meant to be, from the alert's `followUpType`. */
 const FOLLOW_UP_KIND: Record<string, Kind> = {
   FOLLOWUP: FOLLOW_UP,
-  COLD_CALL: { icon: 'call', tone: 'orange', chip: 'Cold Call' },
+  COLD_CALL: { icon: 'call', tone: 'sky', chip: 'Cold Call' },
   SITE_VISIT: { icon: 'location', tone: 'purple', chip: 'Site Visit' },
   OFFICE_VISIT: { icon: 'business', tone: 'blue', chip: 'Visit' },
 };
