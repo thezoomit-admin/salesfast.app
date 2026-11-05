@@ -11,12 +11,11 @@ import {
   type Href,
   useFocusEffect,
   useNavigation,
-  usePathname,
   useRouter,
 } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import type { ComponentProps } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -352,17 +351,21 @@ function NotificationList({
   );
 }
 
-export default function NotificationsScreen() {
+type NotificationsScreenProps = {
+  /** Settings → Notifications is a stack push; the tab inbox has no back. */
+  showBack?: boolean;
+};
+
+export function NotificationsScreen({
+  showBack = false,
+}: NotificationsScreenProps) {
   const { resolved } = useTheme();
   const isDark = resolved === 'dark';
   const palette = inboxPalette(isDark);
   const styles = useMemo(() => createStyles(palette), [palette]);
   const queryClient = useQueryClient();
   const router = useRouter();
-  const pathname = usePathname();
   const { user } = useAuth();
-  // Tab inbox has no back; Settings → Notifications is a stack push.
-  const showBack = pathname.startsWith('/settings');
   const [active, setActive] = useState<NotificationTab>('all');
   const [history, setHistory] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -560,6 +563,8 @@ export default function NotificationsScreen() {
     </Screen>
   );
 }
+
+export default memo(NotificationsScreen);
 
 const listStyles = StyleSheet.create({
   list: { flex: 1 },

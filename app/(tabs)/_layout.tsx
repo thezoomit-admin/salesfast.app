@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { TopTabs } from 'expo-router/js-top-tabs';
 import { CommonActions } from 'expo-router/react-navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-import { AppTabBar, TAB_ORDER } from '@/components/navigation/AppTabBar';
+import { AppTabBar } from '@/components/navigation/AppTabBar';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
   fetchUnreadByTab,
@@ -26,16 +26,33 @@ type TabNavigation = {
   dispatch: (action: ReturnType<typeof CommonActions.preload>) => void;
 };
 
-/** Mount the pages either side of `name`, so a tab switch never reveals a blank page. */
-function preloadNeighbours(navigation: TabNavigation, name: string) {
-  const index = TAB_ORDER.indexOf(name as (typeof TAB_ORDER)[number]);
-  if (index < 0) return;
-  const loaded = navigation.getState().routes;
-  for (const neighbour of [TAB_ORDER[index - 1], TAB_ORDER[index + 1]]) {
-    if (neighbour && !loaded.some((route) => route.name === neighbour)) {
-      navigation.dispatch(CommonActions.preload(neighbour));
-    }
-  }
+/** Nearest to Home first. Profile last: only the Home header opens it. */
+const WARM_ORDER = ['follow-ups', 'calls', 'leads', 'notifications', 'profile'];
+const WARM_START_MS = 500;
+const WARM_STEP_MS = 350;
+
+/**
+ * Mount every tab page soon after Home is up, one at a time, so a tab press
+ * never has to build a page. Mounting on press blocks the JS thread right when
+ * the page and the tab colour need to change.
+ */
+function useWarmTabs(navigation: TabNavigation | null, ready: boolean) {
+  useEffect(() => {
+    if (!navigation || !ready) return;
+    const pending = [...WARM_ORDER];
+    let timer: ReturnType<typeof setTimeout>;
+    const warmNext = () => {
+      const name = pending.shift();
+      if (!name) return;
+      const loaded = navigation
+        .getState()
+        .routes.some((route) => route.name === name);
+      if (!loaded) navigation.dispatch(CommonActions.preload(name));
+      timer = setTimeout(warmNext, loaded ? 0 : WARM_STEP_MS);
+    };
+    timer = setTimeout(warmNext, WARM_START_MS);
+    return () => clearTimeout(timer);
+  }, [navigation, ready]);
 }
 
 export default function TabLayout() {
@@ -72,6 +89,9 @@ export default function TabLayout() {
     void queryClient.prefetchQuery(noteChannelsQuery);
   }, [homeReady, queryClient]);
 
+  const [tabNavigation, setTabNavigation] = useState<TabNavigation | null>(null);
+  useWarmTabs(tabNavigation, homeReady);
+
   return (
     <TopTabs
       // Native pager (react-native-pager-view).
@@ -90,13 +110,14 @@ export default function TabLayout() {
       screenOptions={{
         // Tabs switch only from the tab bar, never by swiping the page.
         swipeEnabled: false,
-        animationEnabled: true,
-        // Pages mount on first visit or when they become a neighbour,
-        // then stay mounted.
+        // Instant switch. A slide scrolls through every page on the way,
+        // so far tabs take longest and each page passed has to be drawn.
+        animationEnabled: false,
+        // Pages mount on first visit or from useWarmTabs, then stay mounted.
         lazy: true,
       }}
-      screenListeners={({ navigation, route }) => ({
-        focus: () => preloadNeighbours(navigation, route.name),
+      screenListeners={({ navigation }) => ({
+        focus: () => setTabNavigation((current) => current ?? navigation),
       })}
     >
       {/* Declaration order is the pager order — keep it equal to TAB_ORDER.
