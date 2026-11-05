@@ -33,6 +33,11 @@ export const ArrowRightLongIcon: IconSvgElement = [
   ['path', { d: 'M4 12H20M14 6L20 12L14 18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.8', key: '0' }],
 ];
 
+/** Home performance — week-on-week trend. Flipped for a fall. */
+export const TrendUpIcon: IconSvgElement = [
+  ['path', { d: 'M3 17L9 11L13 15L21 7M15.5 7H21V12.5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '2.2', key: '0' }],
+];
+
 /** Home quick access — trend. Rotated for a fall. */
 export const ArrowUpIcon: IconSvgElement = [
   ['path', { d: 'M12 20V4M5.5 10.5L12 4L18.5 10.5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '2.4', key: '0' }],

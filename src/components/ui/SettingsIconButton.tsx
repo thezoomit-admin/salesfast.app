@@ -17,7 +17,6 @@ import { radii, useThemeColors, type ThemeColors } from '@/theme';
 type Props = {
   size?: number;
   color?: string;
-  badgeColor?: string;
   /** Override navigation (defaults to Settings tab). */
   onPress?: () => void;
   hitSlop?: number;
@@ -28,7 +27,6 @@ type Props = {
 export function SettingsIconButton({
   size = 22,
   color,
-  badgeColor,
   onPress,
   hitSlop = 8,
   style,
@@ -70,9 +68,7 @@ export function SettingsIconButton({
           strokeWidth={1.5}
         />
         {count > 0 ? (
-          <View
-            style={[styles.badge, badgeColor ? { backgroundColor: badgeColor } : null]}
-          >
+          <View style={styles.badge}>
             <Text style={styles.badgeText}>
               {count > 99 ? '99+' : String(count)}
             </Text>

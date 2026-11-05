@@ -1,10 +1,11 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
 import { isTomorrow } from 'date-fns/isTomorrow';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   useFollowUpActions,
@@ -14,18 +15,22 @@ import {
   followUpKind,
   followUpState,
   followUpTypeLabel,
-  followupTypeIcon,
-  kindTones,
   useMinuteClock,
 } from '@/components/followups/followUpCalendar';
-import { HomeSection } from '@/components/home/HomeSection';
+import { homePalette, type HomePalette } from '@/components/home/homePalette';
 import {
-  CallIcon,
-  CheckIcon,
-  MoreVerticalIcon,
+  BuildingBlueIcon,
+  HandsetPurpleIcon,
+} from '@/components/home/QuickActionIcons';
+import {
+  ArrowRight01Icon,
+  ArrowRightLongIcon,
+  Calendar03Icon,
+  HomeSolidIcon,
 } from '@/components/icons/hugeicons';
-import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { useTheme } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
+import { openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 type QueueItem = MobileDashboard['upcomingFollowUps'][number];
 
@@ -33,8 +38,16 @@ type Props = {
   queue: QueueItem[];
 };
 
-/** Fixed: the dark theme's lighter danger red is too pale under white text. */
-const OVERDUE_TAG = '#D92D20';
+const HOUSE_BLUE = '#2F5BE7';
+const WHATSAPP_GREEN = '#1FAF5A';
+/** Fixed: the dark theme's lighter danger red is too pale on the row. */
+const OVERDUE_RED = '#D92D20';
+
+const KIND_TONE = {
+  todo: 'blue',
+  event: 'purple',
+  reminder: 'green',
+} as const;
 
 function targetOf(item: QueueItem): FollowUpTarget {
   return {
@@ -48,230 +61,285 @@ function targetOf(item: QueueItem): FollowUpTarget {
   };
 }
 
-function dayTag(due: Date) {
-  if (isToday(due)) return 'Today';
-  if (isTomorrow(due)) return 'Tomorrow';
-  return format(due, 'EEE, d MMM');
+function whenLabel(due: Date) {
+  const day = format(due, 'd MMM');
+  const time = format(due, 'h:mm a');
+  if (isToday(due)) return `Today, ${day} • ${time}`;
+  if (isTomorrow(due)) return `Tomorrow, ${day} • ${time}`;
+  return `${format(due, 'EEE')}, ${day} • ${time}`;
+}
+
+async function callLead(phone: string | null) {
+  try {
+    if (!(await openPhoneDialer(phone))) Alert.alert('Unable to start the call');
+  } catch {
+    Alert.alert('Unable to start the call');
+  }
+}
+
+async function messageLead(phone: string | null) {
+  try {
+    if (!(await openWhatsApp(phone))) Alert.alert('Unable to open WhatsApp');
+  } catch {
+    Alert.alert('Unable to open WhatsApp');
+  }
 }
 
 export function HomeUpcomingFollowUps({ queue }: Props) {
-  const { colors, resolved } = useTheme();
+  const { resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  const tones = useMemo(() => kindTones(isDark), [isDark]);
+  const palette = homePalette(isDark);
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const router = useRouter();
   const now = useMinuteClock();
   const actions = useFollowUpActions();
 
   return (
-    <HomeSection
-      title="Upcoming follow-ups"
-      onSeeAll={() => router.navigate('/(tabs)/follow-ups')}
-    >
+    <View style={styles.root}>
+      <View style={styles.head}>
+        <View style={styles.headBar} />
+        <Text style={styles.title} numberOfLines={1}>
+          Upcoming Follow-ups
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="See all follow-ups"
+          onPress={() => router.navigate('/(tabs)/follow-ups')}
+          hitSlop={8}
+          style={({ pressed }) => [styles.seeAll, pressed && styles.pressed]}
+        >
+          <Text style={styles.seeAllText}>See all</Text>
+          <HugeiconsIcon
+            icon={ArrowRightLongIcon}
+            size={15}
+            color={palette.link}
+          />
+        </Pressable>
+      </View>
+
       {queue.length === 0 ? (
         <Text style={styles.empty}>
           No follow-ups lined up. Schedule the next touch from a lead.
         </Text>
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.slider}
-          contentContainerStyle={styles.sliderRow}
-        >
+        <View style={styles.list}>
           {queue.map((item) => {
             const due = new Date(item.dueAt);
             // The dashboard queue only lists Pending follow-ups.
             const state = followUpState({ status: 'PENDING', onTime: null }, due, now);
             const late = state === 'overdue' || state === 'missed';
-            const tone = tones[followUpKind(item.type)];
+            const kind = followUpKind(item.type);
+            const tone = palette.tones[KIND_TONE[kind]];
             return (
-              <View key={item.id} style={styles.card}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${item.leadName}`}
-                  onPress={() => router.push(`/leads/${item.leadId}`)}
-                  style={({ pressed }) => [styles.top, pressed && styles.pressed]}
-                >
-                  <View style={[styles.mark, { backgroundColor: tone.bg }]}>
+              <Pressable
+                key={item.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${item.leadName}`}
+                accessibilityHint="Long press for follow-up actions"
+                onPress={() => router.push(`/leads/${item.leadId}`)}
+                onLongPress={() => actions.openMenu(targetOf(item))}
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+              >
+                <View style={styles.mark}>
+                  {kind === 'event' ? (
+                    <BuildingBlueIcon size={21} />
+                  ) : (
                     <HugeiconsIcon
-                      icon={followupTypeIcon(item.type)}
-                      size={22}
-                      color={tone.accent}
-                      strokeWidth={1.7}
+                      icon={HomeSolidIcon}
+                      size={20}
+                      color={isDark ? palette.tones.blue.fg : HOUSE_BLUE}
                     />
-                  </View>
-                  <View style={styles.copy}>
-                    <View style={styles.titleRow}>
-                      <Text style={styles.name} numberOfLines={1}>
-                        {item.leadName}
-                      </Text>
-                      <Text style={styles.time}>{format(due, 'h:mm a')}</Text>
-                    </View>
-                    <Text style={styles.type} numberOfLines={1}>
-                      {followUpTypeLabel(item.type)}
-                    </Text>
-                    <View
-                      style={[
-                        styles.tag,
-                        { backgroundColor: late ? OVERDUE_TAG : colors.brand },
-                      ]}
-                    >
-                      <Text style={styles.tagText}>
-                        {late ? `Overdue · ${dayTag(due)}` : dayTag(due)}
-                      </Text>
-                    </View>
-                  </View>
-                </Pressable>
+                  )}
+                </View>
 
-                <View style={styles.footer}>
-                  <HugeiconsIcon
-                    icon={CallIcon}
-                    size={15}
-                    color={colors.textMuted}
-                    strokeWidth={1.8}
-                  />
-                  <Text style={styles.phone} numberOfLines={1}>
-                    {item.leadPhone || 'No phone number'}
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Complete follow-up for ${item.leadName}`}
-                    hitSlop={8}
-                    onPress={() => actions.openComplete(targetOf(item))}
-                    style={({ pressed }) => [styles.done, pressed && styles.pressed]}
-                  >
+                <View style={styles.copy}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {item.leadName}
+                    </Text>
+                    <View style={[styles.chip, { backgroundColor: tone.bg }]}>
+                      <Text
+                        style={[styles.chipText, { color: tone.fg }]}
+                        numberOfLines={1}
+                      >
+                        {followUpTypeLabel(item.type)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.whenRow}>
                     <HugeiconsIcon
-                      icon={CheckIcon}
-                      size={14}
-                      color={colors.success}
-                      strokeWidth={2.4}
-                    />
-                    <Text style={styles.doneText}>Done</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`More actions for ${item.leadName}`}
-                    hitSlop={8}
-                    onPress={() => actions.openMenu(targetOf(item))}
-                    style={({ pressed }) => pressed && styles.pressed}
-                  >
-                    <HugeiconsIcon
-                      icon={MoreVerticalIcon}
-                      size={18}
-                      color={colors.textSecondary}
+                      icon={Calendar03Icon}
+                      size={13}
+                      color={late ? OVERDUE_RED : palette.inkSoft}
                       strokeWidth={1.8}
                     />
-                  </Pressable>
+                    <Text
+                      style={[styles.when, late && styles.whenLate]}
+                      numberOfLines={1}
+                    >
+                      {late ? `Overdue · ${whenLabel(due)}` : whenLabel(due)}
+                    </Text>
+                  </View>
                 </View>
-              </View>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Call ${item.leadName}`}
+                  disabled={!item.leadPhone}
+                  hitSlop={4}
+                  onPress={() => void callLead(item.leadPhone)}
+                  style={({ pressed }) => [
+                    styles.action,
+                    styles.actionCall,
+                    (!item.leadPhone || pressed) && styles.dimmed,
+                  ]}
+                >
+                  <HandsetPurpleIcon size={17} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`WhatsApp ${item.leadName}`}
+                  disabled={!item.leadPhone}
+                  hitSlop={4}
+                  onPress={() => void messageLead(item.leadPhone)}
+                  style={({ pressed }) => [
+                    styles.action,
+                    styles.actionChat,
+                    (!item.leadPhone || pressed) && styles.dimmed,
+                  ]}
+                >
+                  <Ionicons
+                    name="logo-whatsapp"
+                    size={18}
+                    color={WHATSAPP_GREEN}
+                  />
+                </Pressable>
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={17}
+                  color={palette.inkSoft}
+                  strokeWidth={2}
+                />
+              </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
       )}
 
       {actions.sheets}
-    </HomeSection>
+    </View>
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(palette: HomePalette) {
   return StyleSheet.create({
+    root: { gap: 12 },
     pressed: { opacity: 0.7 },
-    empty: {
-      ...typography.caption,
-      lineHeight: 18,
-      color: colors.textMuted,
-    },
-    slider: { marginHorizontal: -spacing.lg },
-    sliderRow: { gap: 10, paddingHorizontal: spacing.lg },
-    card: {
-      width: 280,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    top: {
+    dimmed: { opacity: 0.5 },
+    head: {
       flexDirection: 'row',
-      gap: 12,
-      padding: 14,
+      alignItems: 'center',
+      gap: 8,
+    },
+    headBar: {
+      width: 4,
+      height: 16,
+      borderRadius: 2,
+      backgroundColor: palette.accent,
+    },
+    title: {
+      flex: 1,
+      fontSize: 15,
+      lineHeight: 20,
+      fontWeight: '700',
+      color: palette.ink,
+    },
+    seeAll: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    seeAllText: {
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '600',
+      color: palette.link,
+    },
+    empty: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: palette.inkSoft,
+    },
+    list: { gap: 6 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: palette.cardBorder,
+      backgroundColor: palette.card,
     },
     mark: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      marginRight: 4,
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 6,
+      backgroundColor: palette.tones.blue.bg,
     },
     copy: {
       flex: 1,
       minWidth: 0,
-      alignItems: 'flex-start',
       gap: 3,
     },
-    titleRow: {
-      alignSelf: 'stretch',
+    nameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
+      gap: 7,
     },
     name: {
-      ...typography.subtitle,
       flexShrink: 1,
-      fontSize: 15,
-      lineHeight: 20,
-      color: colors.text,
-    },
-    time: {
-      ...typography.caption,
-      fontWeight: '600',
-      color: colors.brand,
-    },
-    type: {
-      ...typography.caption,
+      fontSize: 13.5,
       lineHeight: 18,
-      color: colors.textSecondary,
+      fontWeight: '700',
+      color: palette.ink,
     },
-    tag: {
-      marginTop: 2,
+    chip: {
+      flexShrink: 0,
+      maxWidth: '50%',
       paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 5,
+      paddingVertical: 1,
+      borderRadius: 999,
     },
-    tagText: {
-      ...typography.caption,
-      fontSize: 12,
-      lineHeight: 16,
+    chipText: {
+      fontSize: 10.5,
+      lineHeight: 15,
       fontWeight: '600',
-      color: colors.white,
     },
-    footer: {
+    whenRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
+      gap: 4,
     },
-    phone: {
-      ...typography.caption,
-      flex: 1,
-      minWidth: 0,
-      color: colors.textSecondary,
+    when: {
+      flexShrink: 1,
+      fontSize: 11.5,
+      lineHeight: 15,
+      color: palette.inkSoft,
     },
-    done: {
-      flexDirection: 'row',
+    whenLate: { color: OVERDUE_RED },
+    action: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
       alignItems: 'center',
-      gap: 3,
+      justifyContent: 'center',
     },
-    doneText: {
-      ...typography.caption,
-      fontWeight: '600',
-      color: colors.success,
-    },
+    actionCall: { backgroundColor: palette.tones.purple.bg },
+    actionChat: { backgroundColor: palette.tones.green.bg },
   });
 }

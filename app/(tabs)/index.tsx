@@ -6,12 +6,8 @@ import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { HomeBannerCarousel } from '@/components/home/HomeBannerCarousel';
-import {
-  HomeDashboardMore,
-  HomeDashboardTop,
-} from '@/components/home/HomeDashboard';
+import { HomeDashboard } from '@/components/home/HomeDashboard';
 import { heroBase, HomeHero } from '@/components/home/HomeHero';
-import { homePalette } from '@/components/home/homePalette';
 import {
   HomeOtherServices,
   HomeQuickActions,
@@ -24,7 +20,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import { markFirstContent } from '@/lib/perfMonitor';
-import { spacing, useTheme } from '@/theme';
+import { spacing, useTheme, type ThemeColors } from '@/theme';
 
 function isOverdue(dueAt: string) {
   return new Date(dueAt).getTime() < Date.now();
@@ -33,7 +29,7 @@ function isOverdue(dueAt: string) {
 function HomeScreen() {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuth();
   const callSync = useCallSyncStatus();
   const query = useQuery(dashboardQuery);
@@ -81,7 +77,7 @@ function HomeScreen() {
       style={{ backgroundColor: heroBase(isDark) }}
       contentStyle={styles.sheet}
     >
-      {/* Only the sheet scrolls; it starts where the fixed hero's wave ends. */}
+      {/* Only the sheet scrolls; its rounded top stays under the fixed hero. */}
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
@@ -92,11 +88,15 @@ function HomeScreen() {
           />
         }
       >
+        {/* These need no data, so they stay usable while the dashboard loads. */}
+        <HomeQuickActions />
+        <HomeBannerCarousel />
         {data ? (
-          <HomeDashboardTop
+          <HomeDashboard
             kpis={data.kpis}
             trends={data.trends}
             completedByDay={data.completedByDay}
+            recentLeads={data.recentLeads ?? []}
             queue={queue}
           />
         ) : (
@@ -106,16 +106,6 @@ function HomeScreen() {
             skeleton={<HomeSkeleton />}
           />
         )}
-        {/* These need no data, so they stay usable while the dashboard loads. */}
-        <HomeQuickActions />
-        <HomeBannerCarousel />
-        {data ? (
-          <HomeDashboardMore
-            kpis={data.kpis}
-            trends={data.trends}
-            recentLeads={data.recentLeads ?? []}
-          />
-        ) : null}
         <HomeOtherServices />
         <HomeTips />
       </ScrollView>
@@ -131,7 +121,7 @@ function useFirstContent(screen: string, hasData: boolean, fetched: boolean) {
   }, [screen, hasData, fetched]);
 }
 
-function createStyles(isDark: boolean) {
+function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     sheet: {
       // flex, not Screen's flexGrow: the sheet must not grow to its content,
@@ -139,14 +129,16 @@ function createStyles(isDark: boolean) {
       flex: 1,
       padding: 0,
       gap: 0,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
       overflow: 'hidden',
-      backgroundColor: homePalette(isDark).sheet,
+      backgroundColor: colors.surface,
     },
     scroll: {
       paddingHorizontal: spacing.lg,
-      paddingTop: 8,
+      paddingTop: 20,
       paddingBottom: spacing.xl,
-      gap: 18,
+      gap: spacing.xl,
     },
   });
 }

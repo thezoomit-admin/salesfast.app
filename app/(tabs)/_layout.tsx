@@ -102,9 +102,9 @@ export default function TabLayout() {
       {/* Declaration order is the pager order — keep it equal to TAB_ORDER.
           Profile comes last: a page with the bar but no bar item, opened
           from the Home header. */}
-      <TopTabs.Screen name="index" options={{ title: 'Home' }} />
       <TopTabs.Screen name="leads" options={{ title: 'Leads' }} />
       <TopTabs.Screen name="follow-ups" options={{ title: 'Follow-ups' }} />
+      <TopTabs.Screen name="index" options={{ title: 'Home' }} />
       <TopTabs.Screen name="calls" options={{ title: 'Calls' }} />
       <TopTabs.Screen name="notifications" options={{ title: 'Notifications' }} />
       <TopTabs.Screen name="profile" options={{ title: 'Profile' }} />

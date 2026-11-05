@@ -108,11 +108,72 @@ const SYNC_ARM = (
 const HANDSET =
   'M10.5 3.2C12.8 2.4 15.2 3.4 16.3 5.6L18.4 10C19.4 12 19 14.4 17.3 15.8L15.4 17.4C15 17.8 14.9 18.3 15.1 18.8C17.2 23.6 23.4 29.9 28.7 32.4C29.2 32.6 29.7 32.5 30.1 32.1L31.9 30.2C33.4 28.7 35.7 28.3 37.7 29.2L42.4 31.4C44.6 32.5 45.7 34.9 44.9 37.2C43.8 40.9 40.2 44.2 36.4 44.4C21.4 44.4 3.6 26.6 3.6 11.6C3.8 7.8 6.9 4.3 10.5 3.2Z';
 
-/** Home quick access — the Calls tile's handset in blue. */
-export const HandsetBlueIcon = makeIcon(
+function handset(id: string, from: string, to: string) {
+  return makeIcon(
+    <>
+      <Defs>{gradient(id, from, to)}</Defs>
+      <Path d={HANDSET} fill={`url(#${id})`} />
+    </>,
+  );
+}
+
+/** Home sections — the Calls tile's handset in other colours. */
+export const HandsetBlueIcon = handset('handset-blue', '#1E7BFF', '#0B5BE8');
+export const HandsetRedIcon = handset('handset-red', '#F5484B', '#D9262C');
+export const HandsetPurpleIcon = handset('handset-purple', '#5D3CEB', '#4A25D9');
+
+/** Home performance — card header. */
+export const BarsPurpleIcon = makeIcon(
   <>
-    <Defs>{gradient('handset-blue', '#1E7BFF', '#0B5BE8')}</Defs>
-    <Path d={HANDSET} fill="url(#handset-blue)" />
+    <Rect x="5" y="26" width="10" height="17" rx="3" fill="#4A25D9" />
+    <Rect x="19" y="15" width="10" height="28" rx="3" fill="#4A25D9" />
+    <Rect x="33" y="5" width="10" height="38" rx="3" fill="#4A25D9" />
+  </>,
+);
+
+const SIDE_PERSON = (
+  <>
+    <Circle cx="9.5" cy="16.5" r="5.8" fill="url(#people)" />
+    <Path
+      d="M1.5 34.5C1.5 28 5 24.5 10 24.5C11.5 24.5 12.8 24.8 14 25.4C10.5 28 8.5 32 8.5 37.5H4.2C2.5 37.5 1.5 36.3 1.5 34.5Z"
+      fill="url(#people)"
+    />
+  </>
+);
+
+/** Home pipeline card. */
+export const PeopleBlueIcon = makeIcon(
+  <>
+    <Defs>{gradient('people', '#2F6BFF', '#1B4FE0')}</Defs>
+    {SIDE_PERSON}
+    <G transform="translate(48 0) scale(-1 1)">{SIDE_PERSON}</G>
+    <Circle cx="24" cy="14" r="8" fill="url(#people)" />
+    <Path
+      d="M11 38C11 29 17 24.5 24 24.5C31 24.5 37 29 37 38C37 40.5 35.5 42 33 42H15C12.5 42 11 40.5 11 38Z"
+      fill="url(#people)"
+    />
+  </>,
+);
+
+const BUILDING_WINDOWS = [
+  [11, 10],
+  [20, 10],
+  [11, 19],
+  [20, 19],
+  [11, 28],
+  [20, 28],
+];
+
+/** Home follow-up rows — visits. */
+export const BuildingBlueIcon = makeIcon(
+  <>
+    <Defs>{gradient('building', '#3F6BF0', '#2F5BE7')}</Defs>
+    <Rect x="5" y="4" width="26" height="40" rx="4" fill="url(#building)" />
+    <Rect x="33" y="18" width="11" height="26" rx="3" fill="url(#building)" />
+    {BUILDING_WINDOWS.map(([x, y]) => (
+      <Rect key={`${x}-${y}`} x={x} y={y} width="5" height="5" rx="1.2" fill="#FFFFFF" />
+    ))}
+    <Rect x="15" y="36" width="6" height="8" rx="1" fill="#FFFFFF" />
   </>,
 );
 

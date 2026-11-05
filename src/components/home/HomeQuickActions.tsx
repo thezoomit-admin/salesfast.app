@@ -1,7 +1,14 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter, type Href } from 'expo-router';
 import { memo, useMemo, useState, type ComponentType } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { HomeSection } from '@/components/home/HomeSection';
 import {
@@ -27,7 +34,16 @@ const OTHER_ICON = 30;
 
 /** Two full rows when collapsed; the row after them peeks under the toggle. */
 const COLLAPSED_COUNT = 8;
-const COLUMNS = 4;
+const ROW_GAP = 20;
+const STACK_GAP = 14;
+const LABEL_GAP = 8;
+const LABEL_LINE = 18;
+/** Until the extra tiles report their real height (larger with big system text). */
+const ONE_ROW_HEIGHT = TILE + LABEL_GAP + LABEL_LINE;
+/** How far the collapsed toggle climbs to sit over the peeking row. */
+const TOGGLE_OVERLAP = TILE / 2 + 32;
+const PEEK_OPACITY = 0.22;
+const TOGGLE_MS = 280;
 
 const TILES: Tile[] = [
   { key: 'leads', label: 'Leads', href: '/(tabs)/leads' },
@@ -68,6 +84,9 @@ const TILES: Tile[] = [
     intent: { screen: 'leads', value: 'unread' },
   },
 ];
+
+const MAIN_TILES = TILES.slice(0, COLLAPSED_COUNT);
+const EXTRA_TILES = TILES.slice(COLLAPSED_COUNT);
 
 const OTHER_TILES: Tile[] = [
   { key: 'profile', label: 'Edit Profile', href: '/settings/edit' },
@@ -130,46 +149,90 @@ function HomeQuickActionsBase() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [expanded, setExpanded] = useState(false);
+  const [extraHeight, setExtraHeight] = useState(ONE_ROW_HEIGHT);
+  /** Height and margin can't run on the native driver, so all of it stays on JS. */
+  const [progress] = useState(() => new Animated.Value(0));
+
+  const toggle = () => {
+    const next = !expanded;
+    setExpanded(next);
+    Animated.timing(progress, {
+      toValue: next ? 1 : 0,
+      duration: TOGGLE_MS,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  };
 
   return (
     <View style={styles.root}>
-      <TileGrid tiles={expanded ? TILES : TILES.slice(0, COLLAPSED_COUNT)} />
+      <TileGrid tiles={MAIN_TILES} />
 
-      {expanded ? null : (
-        <View
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={styles.peek}
-        >
-          <TileGrid
-            tiles={TILES.slice(COLLAPSED_COUNT, COLLAPSED_COUNT + COLUMNS)}
-          />
-        </View>
-      )}
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => setExpanded((open) => !open)}
-        style={({ pressed }) => [
-          styles.toggle,
-          !expanded && styles.toggleOverPeek,
-          pressed && styles.pressed,
+      <Animated.View
+        pointerEvents={expanded ? 'auto' : 'none'}
+        accessibilityElementsHidden={!expanded}
+        importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'}
+        style={[
+          styles.extra,
+          {
+            height: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [TILE, extraHeight],
+            }),
+            opacity: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [PEEK_OPACITY, 1],
+            }),
+          },
         ]}
       >
-        <Text style={styles.toggleText}>
-          {expanded ? 'Show less' : 'Show more'}
-        </Text>
-        <View style={expanded ? styles.chevronUp : undefined}>
-          <HugeiconsIcon
-            icon={ArrowDown01Icon}
-            size={16}
-            color={colors.brand}
-            strokeWidth={2.2}
-          />
+        {/* Absolute, so it keeps its full height while the clip above animates. */}
+        <View
+          style={styles.extraContent}
+          onLayout={(event) => setExtraHeight(event.nativeEvent.layout.height)}
+        >
+          <TileGrid tiles={EXTRA_TILES} />
         </View>
-      </Pressable>
+      </Animated.View>
+
+      <Animated.View
+        style={{
+          marginTop: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [-TOGGLE_OVERLAP, 0],
+          }),
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          onPress={toggle}
+          style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}
+        >
+          <Text style={styles.toggleText}>
+            {expanded ? 'Show less' : 'Show more'}
+          </Text>
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  rotate: progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '180deg'],
+                  }),
+                },
+              ],
+            }}
+          >
+            <HugeiconsIcon
+              icon={ArrowDown01Icon}
+              size={16}
+              color={colors.brand}
+              strokeWidth={2.2}
+            />
+          </Animated.View>
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -188,17 +251,17 @@ export const HomeOtherServices = memo(HomeOtherServicesBase);
 
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    root: { alignItems: 'center', gap: 14 },
+    root: { alignItems: 'center', gap: STACK_GAP },
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignSelf: 'stretch',
-      rowGap: 20,
+      rowGap: ROW_GAP,
     },
     tile: {
       width: '25%',
       alignItems: 'center',
-      gap: 8,
+      gap: LABEL_GAP,
     },
     pressed: { opacity: 0.7 },
     iconTile: {
@@ -211,20 +274,19 @@ function createStyles(colors: ThemeColors) {
     label: {
       ...typography.caption,
       fontSize: 13,
-      lineHeight: 18,
+      lineHeight: LABEL_LINE,
       fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
     },
     /** Darker than colors.text, so the labels hold up beside the tinted tiles. */
     labelInk: { color: '#15202C' },
-    peek: {
+    extra: {
       alignSelf: 'stretch',
-      height: TILE,
-      marginTop: 2,
+      marginTop: ROW_GAP - STACK_GAP,
       overflow: 'hidden',
-      opacity: 0.22,
     },
+    extraContent: { position: 'absolute', top: 0, left: 0, right: 0 },
     toggle: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -236,7 +298,6 @@ function createStyles(colors: ThemeColors) {
       borderColor: colors.border,
       backgroundColor: colors.surface,
     },
-    toggleOverPeek: { marginTop: -(TILE / 2 + 32) },
     toggleText: {
       ...typography.caption,
       fontSize: 14,
@@ -244,6 +305,5 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '600',
       color: colors.brand,
     },
-    chevronUp: { transform: [{ rotate: '180deg' }] },
   });
 }
