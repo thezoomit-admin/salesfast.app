@@ -23,6 +23,21 @@ export const HomeSolidIcon: IconSvgElement = [
   ['path', { d: 'M3 11.9896V14.5C3 17.7998 3 19.4497 4.02513 20.4749C5.05025 21.5 6.70017 21.5 10 21.5H14C17.2998 21.5 18.9497 21.5 19.9749 20.4749C21 19.4497 21 17.7998 21 14.5V11.9896C21 10.3083 21 9.46773 20.6441 8.74005C20.2882 8.01237 19.6247 7.49628 18.2976 6.46411L16.2976 4.90855C14.2331 3.30285 13.2009 2.5 12 2.5C10.7991 2.5 9.76689 3.30285 7.70242 4.90855L5.70241 6.46411C4.37533 7.49628 3.71179 8.01237 3.3559 8.74005C3 9.46773 3 10.3083 3 11.9896ZM15 21.5V16.5C15 15.0858 15 14.3787 14.5607 13.9393C14.1213 13.5 13.4142 13.5 12 13.5C10.5858 13.5 9.87868 13.5 9.43934 13.9393C9 14.3787 9 15.0858 9 16.5V21.5H15Z', fill: 'currentColor', fillRule: 'evenodd', key: '0' }],
 ];
 
+/** Home quick access header. */
+export const FlashSolidIcon: IconSvgElement = [
+  ['path', { d: 'M13.4 2.2L5 13.4C4.7 13.8 5 14.4 5.5 14.4H10.6L9.6 21.2C9.5 21.9 10.4 22.3 10.8 21.7L19.1 10.6C19.4 10.2 19.1 9.6 18.6 9.6H13.4L14.5 2.7C14.6 2 13.8 1.6 13.4 2.2Z', fill: 'currentColor', key: '0' }],
+];
+
+/** Home quick access — View all. */
+export const ArrowRightLongIcon: IconSvgElement = [
+  ['path', { d: 'M4 12H20M14 6L20 12L14 18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.8', key: '0' }],
+];
+
+/** Home quick access — trend. Rotated for a fall. */
+export const ArrowUpIcon: IconSvgElement = [
+  ['path', { d: 'M12 20V4M5.5 10.5L12 4L18.5 10.5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '2.4', key: '0' }],
+];
+
 /** Tab — Leads (Hisab AddTeam02 people mark). */
 export const AddTeam02Icon: IconSvgElement = [
   ['path', { d: 'M3 20V17.9704C3 16.7281 3.55927 15.5099 4.68968 14.9946C6.0685 14.3661 7.72212 14 9.5 14C10.7448 14 11.9287 14.1795 13 14.5028', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],

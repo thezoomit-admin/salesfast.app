@@ -94,6 +94,7 @@ function HomeScreen() {
         {data ? (
           <HomeDashboard
             kpis={data.kpis}
+            trends={data.trends}
             followUpStats={data.followUpStats}
             recentLeads={data.recentLeads ?? []}
             queue={queue}

@@ -237,6 +237,14 @@ export type MobileDashboard = {
     todayFollowUps: number;
     overdueFollowUps: number;
     completedActivities: number;
+    /** Missing on old servers. */
+    callsToday?: number;
+  };
+  /** Percent change; null without a baseline. Missing on old servers. */
+  trends?: {
+    leads: number | null;
+    followUps: number | null;
+    calls: number | null;
   };
   recentLeads: Array<{
     id: number;

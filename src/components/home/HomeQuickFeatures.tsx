@@ -1,206 +1,299 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useRouter, type Href } from 'expo-router';
-import { useMemo, type ComponentProps } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
-import { homeTints, HomeSection } from '@/components/home/HomeSection';
 import {
-  Calendar03Icon,
-  CircleCheckIcon,
-  UserAdd01Icon,
+  HandsetBlueIcon,
+  QuickActionIcons,
+} from '@/components/home/QuickActionIcons';
+import {
+  ArrowRightLongIcon,
+  ArrowUpIcon,
+  FlashSolidIcon,
+  HomeSolidIcon,
 } from '@/components/icons/hugeicons';
 import { typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
 type Props = {
   kpis: MobileDashboard['kpis'];
-  recentLeads: MobileDashboard['recentLeads'];
+  trends?: MobileDashboard['trends'];
 };
+
+type Tint = { circle: string; waveBack: string; waveFront: string };
 
 type StatCard = {
   key: string;
   label: string;
-  value: number;
-  icon: ComponentProps<typeof HugeiconsIcon>['icon'];
-  iconColor: string;
-  background: string;
+  /** Null when the server is too old to send it. */
+  value: number | null;
+  trend: number | null;
+  icon: ReactNode;
+  tint: Tint;
+  darkTint: Tint;
   href: Href;
 };
 
-const CHIP_COUNT = 3;
+const ICON_SIZE = 18;
+const WAVE_HEIGHT = 20;
+const TREND_UP = '#16A34A';
+const TREND_DOWN = '#DC2626';
 
-export function HomeQuickFeatures({ kpis, recentLeads }: Props) {
+const FollowUpsIcon = QuickActionIcons['follow-ups'];
+
+function trendText(trend: number) {
+  return `${trend > 0 ? '+' : ''}${trend}%`;
+}
+
+export function HomeQuickFeatures({ kpis, trends }: Props) {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const router = useRouter();
-  const tints = homeTints(colors, isDark);
 
   const cards: StatCard[] = [
     {
-      key: 'new',
-      label: 'New leads',
-      value: kpis.newLeads,
-      icon: UserAdd01Icon,
-      iconColor: colors.brand,
-      background: tints.cream,
+      key: 'leads',
+      label: 'Total Leads',
+      value: kpis.totalAssigned,
+      trend: trends?.leads ?? null,
+      icon: <HugeiconsIcon icon={HomeSolidIcon} size={ICON_SIZE} color="#5A4FF0" />,
+      tint: { circle: '#ECE9FE', waveBack: '#E6E1FD', waveFront: '#C9C1F9' },
+      darkTint: { circle: '#6B63F733', waveBack: '#6B63F726', waveFront: '#6B63F74D' },
       href: '/(tabs)/leads',
     },
     {
-      key: 'open',
-      label: 'Still open',
+      key: 'follow-ups',
+      label: 'Follow-ups',
       value: kpis.pendingFollowUps,
-      icon: Calendar03Icon,
-      iconColor: isDark ? '#2DD4BF' : '#0F766E',
-      background: tints.mint,
+      trend: trends?.followUps ?? null,
+      icon: <FollowUpsIcon size={ICON_SIZE} />,
+      tint: { circle: '#E0F6EE', waveBack: '#DDF5EB', waveFront: '#B7ECD6' },
+      darkTint: { circle: '#0AAB7533', waveBack: '#0AAB7526', waveFront: '#0AAB754D' },
       href: '/(tabs)/follow-ups',
     },
     {
-      key: 'done',
-      label: 'Activities',
-      value: kpis.completedActivities,
-      icon: CircleCheckIcon,
-      iconColor: colors.success,
-      background: tints.lime,
-      href: '/activities',
+      key: 'calls',
+      label: 'Calls Today',
+      value: kpis.callsToday ?? null,
+      trend: trends?.calls ?? null,
+      icon: <HandsetBlueIcon size={ICON_SIZE} />,
+      tint: { circle: '#DFE9FD', waveBack: '#DEE9FD', waveFront: '#AFCDFB' },
+      darkTint: { circle: '#1E7BFF33', waveBack: '#1E7BFF26', waveFront: '#1E7BFF4D' },
+      href: '/(tabs)/calls',
     },
   ];
 
-  const chips = recentLeads.slice(0, CHIP_COUNT);
-
   return (
-    <HomeSection title="Quick access">
-      {chips.length > 0 ? (
-        <View style={styles.row}>
-          {chips.map((lead) => {
-            const name = lead.name || 'Unnamed lead';
-            return (
-              <Pressable
-                key={lead.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Open ${name}`}
-                onPress={() => router.push(`/leads/${lead.id}`)}
-                style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-              >
-                <View
-                  style={[
-                    styles.chipMark,
-                    { backgroundColor: lead.status?.color || colors.brand },
-                  ]}
-                >
-                  <Text style={styles.chipInitial}>
-                    {name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <Text style={styles.chipName} numberOfLines={1}>
-                  {name.trim().split(/\s+/)[0]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
+    <View style={styles.root}>
+      <View style={styles.head}>
+        <HugeiconsIcon icon={FlashSolidIcon} size={20} color="#FFA51F" />
+        <Text style={styles.title} numberOfLines={1}>
+          Quick access
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View all leads"
+          onPress={() => router.navigate('/(tabs)/leads')}
+          hitSlop={8}
+          style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}
+        >
+          <Text style={styles.viewAllText}>View all</Text>
+          <HugeiconsIcon icon={ArrowRightLongIcon} size={16} color={colors.brand} />
+        </Pressable>
+      </View>
 
       <View style={styles.row}>
-        {cards.map((card) => (
-          <Pressable
-            key={card.key}
-            accessibilityRole="button"
-            accessibilityLabel={`${card.label}: ${card.value}`}
-            onPress={() => router.navigate(card.href)}
-            style={({ pressed }) => [
-              styles.card,
-              { backgroundColor: card.background },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={styles.cardTop}>
-              <HugeiconsIcon
-                icon={card.icon}
-                size={26}
-                color={card.iconColor}
-                strokeWidth={1.6}
-              />
-              <Text style={styles.cardValue} numberOfLines={1}>
-                {card.value}
-              </Text>
-            </View>
-            <Text style={styles.cardLabel} numberOfLines={1}>
-              {card.label}
-            </Text>
-          </Pressable>
-        ))}
+        {cards.map((card) => {
+          const tint = isDark ? card.darkTint : card.tint;
+          const { trend } = card;
+          const value = card.value ?? '—';
+          return (
+            <Pressable
+              key={card.key}
+              accessibilityRole="button"
+              accessibilityLabel={
+                trend === null
+                  ? `${card.label}: ${value}`
+                  : `${card.label}: ${value}, ${trendText(trend)}`
+              }
+              onPress={() => router.navigate(card.href)}
+              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+            >
+              {/* The card keeps its shadow; only this layer clips the waves. */}
+              <View collapsable={false} style={styles.cardClip}>
+                <Svg
+                  width="100%"
+                  height={WAVE_HEIGHT}
+                  viewBox="0 0 100 24"
+                  preserveAspectRatio="none"
+                  style={styles.wave}
+                >
+                  <Path
+                    d="M0 3C14 6 26 12 42 16C58 20 68 15 77 9C85 4 92 1 100 0V24H0Z"
+                    fill={tint.waveBack}
+                  />
+                  <Path
+                    d="M12 24C24 18 36 17 50 18C70 19 86 18 100 15V24Z"
+                    fill={tint.waveFront}
+                  />
+                </Svg>
+
+                <View style={styles.cardHead}>
+                  <View
+                    collapsable={false}
+                    style={[styles.circle, { backgroundColor: tint.circle }]}
+                  >
+                    {card.icon}
+                  </View>
+                  <Text
+                    style={styles.label}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                  >
+                    {card.label}
+                  </Text>
+                </View>
+
+                <Text style={styles.value} numberOfLines={1}>
+                  {value}
+                </Text>
+
+                <View style={styles.trend}>
+                  {trend === null ? null : <Trend trend={trend} styles={styles} />}
+                </View>
+              </View>
+            </Pressable>
+          );
+        })}
       </View>
-    </HomeSection>
+    </View>
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function Trend({
+  trend,
+  styles,
+}: {
+  trend: number;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const color = trend < 0 ? TREND_DOWN : TREND_UP;
+  return (
+    <>
+      {trend === 0 ? null : (
+        <View style={trend < 0 ? styles.arrowDown : undefined}>
+          <HugeiconsIcon icon={ArrowUpIcon} size={11} color={color} />
+        </View>
+      )}
+      <Text style={[styles.trendText, { color }]} numberOfLines={1}>
+        {trendText(trend)}
+      </Text>
+    </>
+  );
+}
+
+function createStyles(colors: ThemeColors, isDark: boolean) {
   return StyleSheet.create({
-    row: { flexDirection: 'row', gap: 10 },
-    pressed: { opacity: 0.8 },
-    chip: {
-      flexBasis: 0,
-      flexGrow: 1,
-      maxWidth: '32%',
-      minWidth: 0,
+    root: { gap: 12 },
+    head: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      paddingHorizontal: 8,
-      paddingVertical: 8,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
-    chipMark: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-    },
-    chipInitial: {
-      fontSize: 12,
-      lineHeight: 15,
+    title: {
+      ...typography.subtitle,
+      flex: 1,
+      fontSize: 16,
+      lineHeight: 22,
       fontWeight: '700',
-      color: '#FFFFFF',
+      color: isDark ? colors.text : '#15202C',
     },
-    chipName: {
+    viewAll: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    viewAllText: {
       ...typography.caption,
-      flexShrink: 1,
+      fontSize: 13,
       lineHeight: 18,
-      color: colors.text,
+      fontWeight: '600',
+      color: colors.brand,
     },
+    row: { flexDirection: 'row', gap: 8 },
+    pressed: { opacity: 0.8 },
     card: {
       flex: 1,
       minWidth: 0,
-      minHeight: 84,
-      justifyContent: 'space-between',
-      gap: 10,
-      padding: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
+      borderRadius: 14,
+      backgroundColor: isDark ? colors.surfaceMuted : colors.surface,
+      shadowColor: '#3B4A8C',
+      shadowOpacity: isDark ? 0 : 0.1,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: isDark ? 0 : 3,
     },
-    cardTop: {
+    cardClip: {
+      minHeight: 92,
+      paddingHorizontal: 9,
+      paddingTop: 9,
+      paddingBottom: 8,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : '#EEF1F8',
+      overflow: 'hidden',
+    },
+    wave: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    cardHead: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
       gap: 6,
     },
-    cardValue: {
-      flexShrink: 1,
-      fontSize: 20,
-      lineHeight: 25,
-      fontWeight: '700',
-      color: colors.text,
+    circle: {
+      width: 29,
+      height: 29,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
-    cardLabel: {
+    label: {
       ...typography.caption,
-      lineHeight: 18,
-      color: colors.text,
+      flex: 1,
+      minWidth: 0,
+      fontSize: 11,
+      lineHeight: 15,
+      fontWeight: '500',
+      color: isDark ? colors.textSecondary : '#5B6478',
+    },
+    value: {
+      marginTop: 4,
+      paddingLeft: 7,
+      fontSize: 18,
+      lineHeight: 23,
+      fontWeight: '800',
+      color: isDark ? colors.text : '#15202C',
+    },
+    trend: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      height: 15,
+      paddingLeft: 7,
+    },
+    arrowDown: { transform: [{ rotate: '180deg' }] },
+    trendText: {
+      fontSize: 10.5,
+      lineHeight: 14,
+      fontWeight: '600',
     },
   });
 }

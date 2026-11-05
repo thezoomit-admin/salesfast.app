@@ -105,6 +105,17 @@ const SYNC_ARM = (
   </>
 );
 
+const HANDSET =
+  'M10.5 3.2C12.8 2.4 15.2 3.4 16.3 5.6L18.4 10C19.4 12 19 14.4 17.3 15.8L15.4 17.4C15 17.8 14.9 18.3 15.1 18.8C17.2 23.6 23.4 29.9 28.7 32.4C29.2 32.6 29.7 32.5 30.1 32.1L31.9 30.2C33.4 28.7 35.7 28.3 37.7 29.2L42.4 31.4C44.6 32.5 45.7 34.9 44.9 37.2C43.8 40.9 40.2 44.2 36.4 44.4C21.4 44.4 3.6 26.6 3.6 11.6C3.8 7.8 6.9 4.3 10.5 3.2Z';
+
+/** Home quick access — the Calls tile's handset in blue. */
+export const HandsetBlueIcon = makeIcon(
+  <>
+    <Defs>{gradient('handset-blue', '#1E7BFF', '#0B5BE8')}</Defs>
+    <Path d={HANDSET} fill="url(#handset-blue)" />
+  </>,
+);
+
 const GEAR_TEETH = [0, 45, 90, 135, 180, 225, 270, 315];
 
 export const QuickActionIcons = {
@@ -150,10 +161,7 @@ export const QuickActionIcons = {
   calls: makeIcon(
     <>
       <Defs>{gradient('calls', '#17C672', '#04A856')}</Defs>
-      <Path
-        d="M10.5 3.2C12.8 2.4 15.2 3.4 16.3 5.6L18.4 10C19.4 12 19 14.4 17.3 15.8L15.4 17.4C15 17.8 14.9 18.3 15.1 18.8C17.2 23.6 23.4 29.9 28.7 32.4C29.2 32.6 29.7 32.5 30.1 32.1L31.9 30.2C33.4 28.7 35.7 28.3 37.7 29.2L42.4 31.4C44.6 32.5 45.7 34.9 44.9 37.2C43.8 40.9 40.2 44.2 36.4 44.4C21.4 44.4 3.6 26.6 3.6 11.6C3.8 7.8 6.9 4.3 10.5 3.2Z"
-        fill="url(#calls)"
-      />
+      <Path d={HANDSET} fill="url(#calls)" />
     </>,
   ),
   search: makeIcon(
