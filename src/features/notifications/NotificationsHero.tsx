@@ -1,0 +1,341 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { HugeiconsIcon } from '@hugeicons/react-native';
+import { useRouter } from 'expo-router';
+import { type RefObject, useEffect, useState } from 'react';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import {
+  ArrowDown01Icon,
+  FilterIcon,
+  HomeSolidIcon,
+  MultiplicationSignIcon,
+  Search02Icon,
+} from '@/components/icons/hugeicons';
+import { UserAvatar } from '@/components/ui/UserAvatar';
+import { radii, spacing, useTheme } from '@/theme';
+
+const SCENE = require('../../../assets/images/notifications-hero.jpg');
+/** Image height / width. Its top is spare sky for tall status bars. */
+const SCENE_RATIO = 0.87;
+
+/** How far the sheet below rides up over the scene. */
+const SHEET_OVERLAP = 20;
+/** How long the tapped summary stays before the pill folds back. */
+const SUMMARY_MS = 4000;
+
+/** Buttons stay white in dark mode, so their ink can't follow the theme. */
+const INK = '#14184A';
+const ALERT = '#F73823';
+
+type Props = {
+  name: string;
+  photo?: string | null;
+  /** Today's numbers; null until the dashboard loads. */
+  summary: string | null;
+  /** Stack copy from Settings: back takes the avatar's place. */
+  onBack?: () => void;
+  searchOpen: boolean;
+  search: string;
+  searchRef: RefObject<TextInput | null>;
+  onSearchChange: (value: string) => void;
+  onToggleSearch: () => void;
+  onOpenFilter: () => void;
+  filterCount: number;
+};
+
+export function NotificationsHero({
+  name,
+  photo,
+  summary,
+  onBack,
+  searchOpen,
+  search,
+  searchRef,
+  onSearchChange,
+  onToggleSearch,
+  onOpenFilter,
+  filterCount,
+}: Props) {
+  const { resolved } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const router = useRouter();
+  const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    if (!revealed) return;
+    const id = setTimeout(() => setRevealed(false), SUMMARY_MS);
+    return () => clearTimeout(id);
+  }, [revealed]);
+
+  return (
+    <View style={[styles.root, { paddingTop: insets.top + 6 }]}>
+      {/* Sized from the width alone and pinned to the bottom, so the status
+          bar height can't zoom the scene or shift it against the sheet. */}
+      <Image
+        source={SCENE}
+        fadeDuration={0}
+        style={[styles.scene, { width, height: width * SCENE_RATIO }]}
+      />
+      {resolved === 'dark' ? <View style={styles.dim} /> : null}
+
+      <View style={styles.row}>
+        {onBack ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            onPress={onBack}
+            hitSlop={4}
+            style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+          >
+            <Ionicons name="arrow-back" size={20} color={INK} />
+          </Pressable>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open profile"
+            onPress={() => router.navigate('/(tabs)/profile')}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <UserAvatar uri={photo} name={name} size={46} style={styles.avatar} />
+          </Pressable>
+        )}
+
+        <View style={styles.identity}>
+          <Text style={styles.name} numberOfLines={1}>
+            {name}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              revealed && summary ? summary : "Real Estate CRM, today's summary"
+            }
+            disabled={!summary}
+            onPress={() => setRevealed((open) => !open)}
+            style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
+          >
+            <HugeiconsIcon icon={HomeSolidIcon} size={14} color={INK} />
+            <Text style={styles.pillText} numberOfLines={1}>
+              {revealed && summary ? summary : 'Real Estate CRM'}
+            </Text>
+            {summary ? (
+              <HugeiconsIcon
+                icon={ArrowDown01Icon}
+                size={12}
+                color={INK}
+                strokeWidth={2.2}
+                style={revealed ? styles.chevronOpen : undefined}
+              />
+            ) : null}
+          </Pressable>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={searchOpen ? 'Close search' : 'Search notifications'}
+          onPress={onToggleSearch}
+          hitSlop={4}
+          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+        >
+          <HugeiconsIcon
+            icon={searchOpen ? MultiplicationSignIcon : Search02Icon}
+            size={18}
+            color={INK}
+            strokeWidth={2}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            filterCount
+              ? `Filter notifications, ${filterCount} selected`
+              : 'Filter notifications'
+          }
+          onPress={onOpenFilter}
+          hitSlop={4}
+          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+        >
+          <HugeiconsIcon
+            icon={FilterIcon}
+            size={18}
+            color={INK}
+            strokeWidth={2}
+          />
+          {filterCount ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{filterCount}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      </View>
+
+      {/* Fixed height, so opening search can't move the sheet. */}
+      <View style={styles.copy}>
+        {searchOpen ? (
+          <View style={styles.searchWrap}>
+            <HugeiconsIcon
+              icon={Search02Icon}
+              size={16}
+              color={INK}
+              strokeWidth={1.8}
+            />
+            <TextInput
+              ref={searchRef}
+              value={search}
+              onChangeText={onSearchChange}
+              placeholder="Search notifications"
+              placeholderTextColor="#7A7EA3"
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
+              style={styles.searchInput}
+            />
+          </View>
+        ) : (
+          <>
+            <Text style={styles.headline} numberOfLines={1}>
+              Notifications
+            </Text>
+            <Text style={styles.tagline}>
+              Stay updated with{'\n'}latest activities
+            </Text>
+          </>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: SHEET_OVERLAP + 26,
+    // The sheet is the next sibling, so this pulls it up over the scene.
+    marginBottom: -SHEET_OVERLAP,
+    overflow: 'hidden',
+  },
+  scene: {
+    position: 'absolute',
+    left: 0,
+    bottom: 0,
+  },
+  dim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(5, 14, 38, 0.45)',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avatar: {
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  identity: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-start',
+    gap: 3,
+    marginLeft: 3,
+  },
+  name: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: '100%',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    backgroundColor: '#FFFFFF',
+  },
+  pillText: {
+    flexShrink: 1,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '600',
+    color: INK,
+  },
+  chevronOpen: { transform: [{ rotate: '180deg' }] },
+  action: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ALERT,
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    lineHeight: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  copy: {
+    height: 72,
+    marginTop: 26,
+    marginLeft: 8,
+    gap: 2,
+  },
+  headline: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    color: '#FFFFFF',
+  },
+  tagline: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 40, 120, 0.45)',
+    textShadowRadius: 4,
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    height: 44,
+    marginTop: 8,
+    marginLeft: -8,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
+    backgroundColor: '#FFFFFF',
+  },
+  searchInput: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 0,
+    fontSize: 14,
+    color: INK,
+  },
+  pressed: { opacity: 0.8 },
+});
