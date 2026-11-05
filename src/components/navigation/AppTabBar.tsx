@@ -21,13 +21,8 @@ import {
   CallIcon,
   Home03Icon,
   Notification01Icon,
-  NotificationSolidIcon,
   PermanentJobIcon,
 } from '@/components/icons/hugeicons';
-import {
-  inboxPalette,
-  type InboxPalette,
-} from '@/features/notifications/inboxPalette';
 import { useTheme, type ThemeColors } from '@/theme';
 
 /** Visual tab order — Home centered. Also the page order of the pager. */
@@ -47,10 +42,6 @@ const TAB_ICONS: Record<string, HugeIconData> = {
   index: Home03Icon,
   calls: CallIcon,
   notifications: Notification01Icon,
-};
-
-const ACTIVE_ICONS: Record<string, HugeIconData> = {
-  notifications: NotificationSolidIcon,
 };
 
 const TAB_LABELS: Record<string, string> = {
@@ -75,13 +66,12 @@ export function AppTabBar({
   position,
   badges,
 }: AppTabBarProps) {
-  const { colors, resolved } = useTheme();
-  // Real system inset only — edge-to-edge paints the bar under the nav buttons.
+  const { colors } = useTheme();
+  // Real system inset only — edge-to-edge paints brand under the nav buttons.
   const systemInset = insets.bottom;
-  const palette = inboxPalette(resolved === 'dark');
   const styles = useMemo(
-    () => createStyles(colors, palette, systemInset),
-    [colors, palette, systemInset]
+    () => createStyles(colors, systemInset),
+    [colors, systemInset]
   );
 
   const routesByName = Object.fromEntries(
@@ -176,9 +166,8 @@ export function AppTabBar({
             <TabItem
               key={route.key}
               styles={styles}
-              palette={palette}
+              colors={colors}
               icon={TAB_ICONS[name]}
-              activeIcon={ACTIVE_ICONS[name]}
               label={label}
               badge={badges?.[name] || undefined}
               active={active === routeIndex}
@@ -190,7 +179,7 @@ export function AppTabBar({
           );
         })}
       </View>
-      {/* Edge-to-edge: system nav is transparent — paint under the inset. */}
+      {/* Edge-to-edge: system nav is transparent — paint brand under the inset. */}
       {systemInset > 0 ? <View style={styles.systemBar} /> : null}
     </View>
   );
@@ -200,10 +189,8 @@ const FADE_MS = 180;
 
 type TabItemProps = {
   styles: ReturnType<typeof createStyles>;
-  palette: InboxPalette;
+  colors: ThemeColors;
   icon: HugeIconData | undefined;
-  /** Replaces `icon` while selected. */
-  activeIcon: HugeIconData | undefined;
   label: string;
   badge: number | undefined;
   /** Drawn highlighted (follows taps and swipes ahead of `focused`). */
@@ -217,9 +204,8 @@ type TabItemProps = {
 
 function TabItem({
   styles,
-  palette,
+  colors,
   icon,
-  activeIcon,
   label,
   badge,
   active,
@@ -261,22 +247,22 @@ function TabItem({
               <HugeiconsIcon
                 icon={icon}
                 size={24}
-                color={palette.ink}
+                color={colors.text}
                 strokeWidth={1.7}
               />
             </Animated.View>
             <Animated.View style={[styles.iconLayer, { opacity: on }]}>
               <HugeiconsIcon
-                icon={activeIcon ?? icon}
+                icon={icon}
                 size={24}
-                color={palette.accent}
+                color={colors.brand}
                 strokeWidth={2.1}
               />
             </Animated.View>
           </>
         ) : null}
         {badge != null ? (
-          <View style={[styles.badge, { backgroundColor: palette.alert }]}>
+          <View style={[styles.badge, { backgroundColor: colors.brand }]}>
             <Text style={styles.badgeText}>
               {badge > 99 ? '99+' : String(badge)}
             </Text>
@@ -286,28 +272,21 @@ function TabItem({
       <Text
         style={[
           styles.label,
-          { color: active ? palette.accent : palette.inkSoft },
+          { color: active ? colors.brand : colors.textSecondary },
           active && styles.labelActive,
         ]}
         numberOfLines={1}
       >
         {label}
       </Text>
-      {active ? (
-        <View style={[styles.underline, { backgroundColor: palette.accent }]} />
-      ) : null}
     </Pressable>
   );
 }
 
-function createStyles(
-  colors: ThemeColors,
-  palette: InboxPalette,
-  systemInset: number
-) {
+function createStyles(colors: ThemeColors, systemInset: number) {
   return StyleSheet.create({
     wrap: {
-      backgroundColor: palette.sheet,
+      backgroundColor: colors.brand,
     },
     bar: {
       flexDirection: 'row',
@@ -315,16 +294,15 @@ function createStyles(
       justifyContent: 'space-between',
       backgroundColor: colors.surface,
       paddingTop: 6,
-      paddingBottom: 6,
+      paddingBottom: 8,
       paddingHorizontal: 4,
-      minHeight: 56,
-      marginBottom: 8,
-      borderRadius: 20,
-      boxShadow: '0 -2px 12px rgba(40, 60, 140, 0.07)',
+      minHeight: 64,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
     },
     systemBar: {
       height: systemInset,
-      backgroundColor: palette.sheet,
+      backgroundColor: colors.brand,
     },
     item: {
       flex: 1,
@@ -355,13 +333,6 @@ function createStyles(
     },
     labelActive: {
       fontWeight: '600',
-    },
-    underline: {
-      position: 'absolute',
-      bottom: -6,
-      width: 52,
-      height: 2,
-      borderRadius: 1,
     },
     badge: {
       position: 'absolute',
