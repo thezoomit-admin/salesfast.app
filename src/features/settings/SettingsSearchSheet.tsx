@@ -93,6 +93,8 @@ export function SettingsSearchSheet({ open, onClose, items, onSelect }: Props) {
 
           <ScrollView
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
             style={styles.list}
             contentContainerStyle={styles.listContent}
           >

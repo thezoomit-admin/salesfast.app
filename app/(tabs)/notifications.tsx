@@ -306,6 +306,7 @@ function NotificationList({
         keyExtractor={(item) => item._id}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={

@@ -443,6 +443,8 @@ function CallsScreen() {
             </ScrollView>
 
             <SectionList
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
               sections={sections}
               keyExtractor={(item) => item.key}
               stickySectionHeadersEnabled={false}

@@ -47,6 +47,8 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
       contentContainerStyle={[styles.content, contentStyle]}
       keyboardShouldPersistTaps="handled"
       refreshControl={

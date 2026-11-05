@@ -39,8 +39,8 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
     ApiResponse<LeadListItem[] | { data: LeadListItem[]; meta?: Record<string, number> }>
   >('/crm/leads', {
     params: {
-      mine: true,
-      // Only the fields a list row renders (server skips heavy relations).
+      // Same leads this user can open on the web. `mine` would drop every
+      // lead that is not assigned to them, including for All Leads access.
       view: 'compact',
       page: params.page ?? 1,
       per_page: params.per_page ?? 20,
@@ -300,7 +300,7 @@ type StatusCounts = {
 async function fetchStatusCounts(params: Record<string, unknown>) {
   const { data } = await api.get<ApiResponse<StatusCounts>>(
     '/crm/leads/status-counts',
-    { params: { mine: true, ...params } }
+    { params }
   );
   return data.data;
 }

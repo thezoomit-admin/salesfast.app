@@ -79,6 +79,8 @@ function HomeScreen() {
     >
       {/* Only the sheet scrolls; its rounded top stays under the fixed hero. */}
       <ScrollView
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         refreshControl={
           <RefreshControl

@@ -1,6 +1,5 @@
 import { HomeLatestLeads } from '@/components/home/HomeLatestLeads';
 import { HomePerformance } from '@/components/home/HomePerformance';
-import { HomePipelineStages } from '@/components/home/HomePipelineStages';
 import { HomeQuickFeatures } from '@/components/home/HomeQuickFeatures';
 import { HomeUpcomingFollowUps } from '@/components/home/HomeUpcomingFollowUps';
 import type { MobileDashboard } from '@/types/api';
@@ -30,7 +29,6 @@ export function HomeDashboard({
         completedByDay={completedByDay}
       />
       <HomeUpcomingFollowUps queue={queue} />
-      <HomePipelineStages />
       <HomeLatestLeads leads={recentLeads} />
     </>
   );

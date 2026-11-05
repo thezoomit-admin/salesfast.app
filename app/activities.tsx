@@ -268,6 +268,7 @@ export default function ActivitiesScreen() {
           contentContainerStyle={styles.list}
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           refreshing={query.isRefetching && !query.isFetchingNextPage && !query.isPlaceholderData}
           onRefresh={() => query.refetch()}

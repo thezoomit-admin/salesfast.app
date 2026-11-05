@@ -157,6 +157,8 @@ export function CountryPhoneInput({
           </View>
 
           <FlatList
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
             data={filtered}
             keyExtractor={(item) => item.code}
             keyboardShouldPersistTaps="handled"

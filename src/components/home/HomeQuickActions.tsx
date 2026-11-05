@@ -7,6 +7,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -18,7 +19,7 @@ import {
 } from '@/components/home/QuickActionIcons';
 import { ArrowDown01Icon } from '@/components/icons/hugeicons';
 import { requestTabIntent, type TabIntent } from '@/lib/tabIntent';
-import { typography, useTheme, type ThemeColors } from '@/theme';
+import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
 type Tile = {
   key: QuickActionIconKey;
@@ -29,6 +30,7 @@ type Tile = {
 
 const TILE = 56;
 const ICON = 34;
+const COLUMNS = 4;
 /** Other services tiles — a bit smaller than the main grid. */
 const OTHER_ICON = 30;
 
@@ -87,6 +89,16 @@ const TILES: Tile[] = [
 
 const MAIN_TILES = TILES.slice(0, COLLAPSED_COUNT);
 const EXTRA_TILES = TILES.slice(COLLAPSED_COUNT);
+
+/**
+ * Home scroll insets the sheet by spacing.lg, and each icon is centered in
+ * its column, so the outer icons sit in from the banner. Pull the grid out
+ * until those icons line up with the banner edges.
+ */
+function sideBleed(windowWidth: number) {
+  const content = windowWidth - spacing.lg * 2;
+  return Math.max(0, (content - COLUMNS * TILE) / (2 * (COLUMNS - 1)));
+}
 
 const OTHER_TILES: Tile[] = [
   { key: 'profile', label: 'Edit Profile', href: '/settings/edit' },
@@ -148,6 +160,7 @@ function TileGrid({
 function HomeQuickActionsBase() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const bleed = sideBleed(useWindowDimensions().width);
   const [expanded, setExpanded] = useState(false);
   const [extraHeight, setExtraHeight] = useState(ONE_ROW_HEIGHT);
   /** Height and margin can't run on the native driver, so all of it stays on JS. */
@@ -165,7 +178,7 @@ function HomeQuickActionsBase() {
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { marginHorizontal: -bleed }]}>
       <TileGrid tiles={MAIN_TILES} />
 
       <Animated.View

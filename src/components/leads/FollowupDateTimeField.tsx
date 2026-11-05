@@ -312,6 +312,8 @@ export function FollowupDateTimeField({
                   </Pressable>
                 </View>
                 <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  showsHorizontalScrollIndicator={false}
                   style={styles.timeList}
                   contentContainerStyle={styles.timeGrid}
                   nestedScrollEnabled

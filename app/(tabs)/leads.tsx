@@ -374,6 +374,8 @@ function LeadsScreen() {
       ) : (
         <FlatList
           // New tab or filter starts at the top, not the old scroll offset.
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
           key={JSON.stringify([tab, filters])}
           data={items}
           keyExtractor={(item) => String(item.id)}
@@ -418,7 +420,6 @@ function LeadsScreen() {
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={7}
-          removeClippedSubviews
         />
       )}
 
