@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { HomeSection } from '@/components/home/HomeSection';
 import {
   QuickActionIcons,
+  QuickActionTints,
   type QuickActionIconKey,
 } from '@/components/home/QuickActionIcons';
 import { ArrowDown01Icon } from '@/components/icons/hugeicons';
@@ -19,10 +20,10 @@ type Tile = {
   intent?: TabIntent;
 };
 
-const CIRCLE = 54;
-const ICON = 38;
+const TILE = 56;
+const ICON = 34;
 /** Other services tiles — a bit smaller than the main grid. */
-const OTHER_ICON = 34;
+const OTHER_ICON = 30;
 
 /** Two full rows when collapsed; the row after them peeks under the toggle. */
 const COLLAPSED_COUNT = 8;
@@ -83,10 +84,9 @@ function TileGrid({
   iconSize?: number;
 }) {
   const { colors, resolved } = useTheme();
-  const styles = useMemo(
-    () => createStyles(colors, resolved === 'dark'),
-    [colors, resolved],
-  );
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const isDark = resolved === 'dark';
+  const tintMode = isDark ? 'dark' : 'light';
   const router = useRouter();
 
   return (
@@ -104,10 +104,19 @@ function TileGrid({
             }}
             style={({ pressed }) => [styles.tile, pressed && styles.pressed]}
           >
-            <View style={styles.circle}>
+            <View
+              collapsable={false}
+              style={[
+                styles.iconTile,
+                { backgroundColor: QuickActionTints[tile.key][tintMode] },
+              ]}
+            >
               <Icon size={iconSize} />
             </View>
-            <Text style={styles.label} numberOfLines={1}>
+            <Text
+              style={[styles.label, !isDark && styles.labelInk]}
+              numberOfLines={1}
+            >
               {tile.label}
             </Text>
           </Pressable>
@@ -118,11 +127,8 @@ function TileGrid({
 }
 
 function HomeQuickActionsBase() {
-  const { colors, resolved } = useTheme();
-  const styles = useMemo(
-    () => createStyles(colors, resolved === 'dark'),
-    [colors, resolved],
-  );
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -180,40 +186,41 @@ function HomeOtherServicesBase() {
 
 export const HomeOtherServices = memo(HomeOtherServicesBase);
 
-function createStyles(colors: ThemeColors, isDark: boolean) {
+function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: { alignItems: 'center', gap: 14 },
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignSelf: 'stretch',
-      rowGap: 16,
+      rowGap: 20,
     },
     tile: {
       width: '25%',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
     },
     pressed: { opacity: 0.7 },
-    circle: {
-      width: CIRCLE,
-      height: CIRCLE,
-      borderRadius: CIRCLE / 2,
+    iconTile: {
+      width: TILE,
+      height: TILE,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      // Soft wash like bKash tiles — lighter than surfaceMuted.
-      backgroundColor: isDark ? '#222222' : '#F5F6F8',
     },
     label: {
       ...typography.caption,
       fontSize: 13,
       lineHeight: 18,
+      fontWeight: '600',
       color: colors.text,
       textAlign: 'center',
     },
+    /** Darker than colors.text, so the labels hold up beside the tinted tiles. */
+    labelInk: { color: '#15202C' },
     peek: {
       alignSelf: 'stretch',
-      height: CIRCLE,
+      height: TILE,
       marginTop: 2,
       overflow: 'hidden',
       opacity: 0.22,
@@ -229,7 +236,7 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
       borderColor: colors.border,
       backgroundColor: colors.surface,
     },
-    toggleOverPeek: { marginTop: -(CIRCLE / 2 + 32) },
+    toggleOverPeek: { marginTop: -(TILE / 2 + 32) },
     toggleText: {
       ...typography.caption,
       fontSize: 14,
