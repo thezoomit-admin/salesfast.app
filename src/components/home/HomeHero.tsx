@@ -22,10 +22,10 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { requestTabIntent } from "@/lib/tabIntent";
 import { radii, spacing, useTheme } from "@/theme";
 
-const SCENE = require("../../../assets/images/home-hero.png");
-/** home-hero.png height / width (1672 x 941). The hero is at least this
+const SCENE = require("../../../assets/images/home-hero.jpg");
+/** home-hero.jpg height / width (1280 x 720). The hero is at least this
  * tall, so the whole picture shows. */
-const SCENE_RATIO = 941 / 1672;
+const SCENE_RATIO = 720 / 1280;
 
 /** How far the sheet below rides up over the scene. */
 const SHEET_OVERLAP = 20;

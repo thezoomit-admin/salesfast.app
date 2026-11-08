@@ -26,11 +26,11 @@ import { HeroGradient } from "@/components/ui/HeroGradient";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { radii, spacing, useTheme } from "@/theme";
 
-const NOTIFICATIONS_SCENE = require("../../../assets/images/notifications-hero.png");
+const NOTIFICATIONS_SCENE = require("../../../assets/images/notifications-hero.jpg");
 /** Each tab gets its own buildings over the same sky. */
-export const LEADS_SCENE = require("../../../assets/images/leads-hero.png");
+export const LEADS_SCENE = require("../../../assets/images/leads-hero.jpg");
 
-/** Banner height / width (the pictures are about 1774 x 887). The hero is
+/** Banner height / width (the pictures are about 1280 x 640). The hero is
  * this tall, so the whole picture shows. */
 const SCENE_RATIO = 0.5;
 

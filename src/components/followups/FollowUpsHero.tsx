@@ -21,9 +21,9 @@ import { SettingsIconButton } from "@/components/ui/SettingsIconButton";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { radii, spacing, useTheme } from "@/theme";
 
-const SCENE = require("../../../assets/images/followups-hero.png");
+const SCENE = require("../../../assets/images/followups-hero.jpg");
 
-/** Banner height / width (the pictures are about 1774 x 887). The hero is
+/** Banner height / width (the pictures are about 1280 x 640). The hero is
  * this tall, so the whole picture shows. */
 const SCENE_RATIO = 0.5;
 

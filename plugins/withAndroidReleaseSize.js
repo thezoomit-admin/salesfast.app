@@ -10,6 +10,10 @@ const MARKER = 'SalesFast release size: locale filter';
  * - Locale filter: the UI is English-only; AndroidX / Play Services otherwise
  *   ship translations for ~80 locales in resources.arsc. Add a locale here if
  *   the app gets translated.
+ *
+ * The Hermes bundle must stay uncompressed. React Native opens it with
+ * AAsset_getBuffer, which returns null for a compressed asset and then
+ * crashes the process on launch ("keeps stopping").
  */
 function withAndroidReleaseSize(config) {
   config = withGradleProperties(config, (cfg) => {
@@ -23,6 +27,8 @@ function withAndroidReleaseSize(config) {
     set('expo.gif.enabled', 'false');
     set('expo.webp.enabled', 'false');
     set('expo.webp.animated', 'false');
+    // Must stay false. See the note above.
+    set('android.enableBundleCompression', 'false');
     return cfg;
   });
 
