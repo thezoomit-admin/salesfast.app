@@ -4,7 +4,7 @@ import { isThisYear } from 'date-fns/isThisYear';
 import { isToday } from 'date-fns/isToday';
 import { isTomorrow } from 'date-fns/isTomorrow';
 import { isYesterday } from 'date-fns/isYesterday';
-import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -24,7 +24,6 @@ import {
 import { FollowUpItemCard } from '@/components/followups/FollowUpCard';
 import { FollowUpEmpty } from '@/components/followups/FollowUpEmpty';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { leadRowOfFollowUp } from '@/features/leads/leadDetailCache';
 import { followUpBucketQuery, type FollowUpBucket } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
@@ -35,7 +34,6 @@ type Section = { key: string; title: string; data: DayFollowUp[] };
 
 type Props = {
   bucket: FollowUpBucket;
-  tabs: ReactNode;
   onMore: (item: MyFollowUp) => void;
   onComplete: (item: MyFollowUp) => void;
 };
@@ -61,7 +59,7 @@ function toSections(items: readonly MyFollowUp[]) {
 }
 
 /** Everything overdue or upcoming across all dates, unlike the one-day timeline. */
-function FollowUpBucketViewImpl({ bucket, tabs, onMore, onComplete }: Props) {
+function FollowUpBucketViewImpl({ bucket, onMore, onComplete }: Props) {
   const { colors, resolved } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const tones = useMemo(() => kindTones(resolved === 'dark'), [resolved]);
@@ -91,8 +89,6 @@ function FollowUpBucketViewImpl({ bucket, tabs, onMore, onComplete }: Props) {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Follow-ups" showBack={false} />
-      {tabs}
       {query.data ? (
         <SectionList
           style={styles.list}
@@ -152,11 +148,7 @@ export const FollowUpBucketView = memo(FollowUpBucketViewImpl);
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.surface },
-    list: {
-      flex: 1,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-    },
+    list: { flex: 1 },
     listContent: { flexGrow: 1, paddingBottom: 24 },
     dayTitle: {
       paddingHorizontal: 16,

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { type RefObject, useEffect, useState } from 'react';
 import {
   Image,
+  type ImageSourcePropType,
   Pressable,
   StyleSheet,
   Text,
@@ -24,8 +25,10 @@ import {
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { radii, spacing, useTheme } from '@/theme';
 
-const SCENE = require('../../../assets/images/notifications-hero.jpg');
-/** Image height / width. Its top is spare sky for tall status bars. */
+const NOTIFICATIONS_SCENE = require('../../../assets/images/notifications-hero.jpg');
+/** Each tab gets its own buildings over the same sky. */
+export const LEADS_SCENE = require('../../../assets/images/leads-hero.jpg');
+/** Image height / width, the same for every scene. Its top is spare sky for tall status bars. */
 const SCENE_RATIO = 0.87;
 
 /** How far the sheet below rides up over the scene. */
@@ -51,6 +54,14 @@ type Props = {
   onToggleSearch: () => void;
   onOpenFilter: () => void;
   filterCount: number;
+  /** Lets other list pages (Leads) share this hero with their own copy. */
+  title?: string;
+  tagline?: string;
+  searchPlaceholder?: string;
+  /** Plural noun read out on the buttons: "Search leads", "Filter leads". */
+  itemsLabel?: string;
+  /** Background picture; must share SCENE_RATIO. */
+  scene?: ImageSourcePropType;
 };
 
 export function NotificationsHero({
@@ -65,6 +76,11 @@ export function NotificationsHero({
   onToggleSearch,
   onOpenFilter,
   filterCount,
+  title = 'Notifications',
+  tagline = 'Stay updated with\nlatest activities',
+  searchPlaceholder = 'Search notifications',
+  itemsLabel = 'notifications',
+  scene = NOTIFICATIONS_SCENE,
 }: Props) {
   const { resolved } = useTheme();
   const insets = useSafeAreaInsets();
@@ -83,7 +99,7 @@ export function NotificationsHero({
       {/* Sized from the width alone and pinned to the bottom, so the status
           bar height can't zoom the scene or shift it against the sheet. */}
       <Image
-        source={SCENE}
+        source={scene}
         fadeDuration={0}
         style={[styles.scene, { width, height: width * SCENE_RATIO }]}
       />
@@ -142,7 +158,7 @@ export function NotificationsHero({
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={searchOpen ? 'Close search' : 'Search notifications'}
+          accessibilityLabel={searchOpen ? 'Close search' : `Search ${itemsLabel}`}
           onPress={onToggleSearch}
           hitSlop={4}
           style={({ pressed }) => [styles.action, pressed && styles.pressed]}
@@ -158,8 +174,8 @@ export function NotificationsHero({
           accessibilityRole="button"
           accessibilityLabel={
             filterCount
-              ? `Filter notifications, ${filterCount} selected`
-              : 'Filter notifications'
+              ? `Filter ${itemsLabel}, ${filterCount} selected`
+              : `Filter ${itemsLabel}`
           }
           onPress={onOpenFilter}
           hitSlop={4}
@@ -193,7 +209,7 @@ export function NotificationsHero({
               ref={searchRef}
               value={search}
               onChangeText={onSearchChange}
-              placeholder="Search notifications"
+              placeholder={searchPlaceholder}
               placeholderTextColor="#7A7EA3"
               returnKeyType="search"
               autoCorrect={false}
@@ -204,11 +220,9 @@ export function NotificationsHero({
         ) : (
           <>
             <Text style={styles.headline} numberOfLines={1}>
-              Notifications
+              {title}
             </Text>
-            <Text style={styles.tagline}>
-              Stay updated with{'\n'}latest activities
-            </Text>
+            <Text style={styles.tagline}>{tagline}</Text>
           </>
         )}
       </View>

@@ -4,26 +4,31 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { radii, useTheme } from '@/theme';
 
 import { type InboxPalette, inboxPalette } from './inboxPalette';
-import type { NotificationTab } from './notificationsApi';
 
-type Props = {
-  tabs: { key: NotificationTab; label: string }[];
-  /** A count shows only while a tab has unread items. */
-  unread?: Record<NotificationTab, number>;
-  active: NotificationTab;
-  onChange: (tab: NotificationTab) => void;
+type Props<K extends string> = {
+  tabs: { key: K; label: string }[];
+  /** A count shows only while a tab has a non-zero number. */
+  unread?: Partial<Record<K, number>>;
+  /** Read out after the count, e.g. "Overdue, 3 unread". */
+  countLabel?: string;
+  active: K;
+  onChange: (tab: K) => void;
   /** Sits past the divider at the far end of the track. */
   right?: ReactNode;
 };
 
-/** Pill tabs on a rounded track, unread count beside the label. */
-export function NotificationTabs({
+/**
+ * Pill tabs on a rounded track, count beside the label. The inbox's design,
+ * also used by Follow-ups so the two hero pages match.
+ */
+export function NotificationTabs<K extends string>({
   tabs,
   unread,
+  countLabel = 'unread',
   active,
   onChange,
   right,
-}: Props) {
+}: Props<K>) {
   const { resolved } = useTheme();
   const palette = inboxPalette(resolved === 'dark');
   const styles = useMemo(() => createStyles(palette), [palette]);
@@ -39,7 +44,7 @@ export function NotificationTabs({
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             accessibilityLabel={
-              count ? `${tab.label}, ${count} unread` : tab.label
+              count ? `${tab.label}, ${count} ${countLabel}` : tab.label
             }
             onPress={() => onChange(tab.key)}
             style={({ pressed }) => [

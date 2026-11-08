@@ -1,5 +1,4 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { HugeiconsIcon } from '@hugeicons/react-native';
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -7,41 +6,33 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   FlatList,
   type NativeScrollEvent,
-  type LayoutChangeEvent,
   type NativeSyntheticEvent,
   Pressable,
-  type ScrollViewInstance,
   StyleSheet,
-  TextInput,
   type TextInputInstance,
   View,
 } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
-import {
-  MultiplicationSignIcon,
-  Search02Icon,
-} from '@/components/icons/hugeicons';
+import { heroBase } from '@/components/home/HomeHero';
 import { LeadEmpty } from '@/components/leads/LeadEmpty';
 import { LeadFilterPills } from '@/components/leads/LeadFilterPills';
 import { LeadFilterSheet } from '@/components/leads/LeadFilterSheet';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
+import { type LeadTabItem, LeadTabs } from '@/components/leads/LeadTabs';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
-import { ChipScroll } from '@/components/ui/ChipScroll';
-import { CountTab, CountTabDivider } from '@/components/ui/CountTab';
-import {
-  HeaderFilterButton,
-  HeaderIconButton,
-  ScreenHeader,
-} from '@/components/ui/ScreenHeader';
+import { Screen } from '@/components/ui/Screen';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
+import { useAuth } from '@/features/auth/AuthContext';
+import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
   NO_LEAD_FILTERS,
   leadFilterCount,
@@ -57,10 +48,24 @@ import {
   type LeadListTab,
 } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
+import {
+  type InboxPalette,
+  inboxPalette,
+} from '@/features/notifications/inboxPalette';
+import {
+  LEADS_SCENE,
+  NotificationsHero,
+} from '@/features/notifications/NotificationsHero';
 import { useTabIntent } from '@/lib/tabIntent';
 import { useDebounced } from '@/lib/useDebounced';
 import type { LeadListItem, LeadStatus } from '@/types/api';
-import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
+import {
+  radii,
+  spacing,
+  useTheme,
+  useThemeColors,
+  type ThemeColors,
+} from '@/theme';
 
 // Name fallback until every server sends `code`.
 const isAssignStatus = (s: LeadStatus) =>
@@ -68,8 +73,15 @@ const isAssignStatus = (s: LeadStatus) =>
 
 function LeadsScreen() {
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const palette = inboxPalette(isDark);
+  const styles = useMemo(
+    () => createStyles(colors, palette),
+    [colors, palette]
+  );
   const router = useRouter();
+  const { user } = useAuth();
   const searchRef = useRef<TextInputInstance>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -99,6 +111,20 @@ function LeadsScreen() {
       requestAnimationFrame(() => searchRef.current?.focus());
     }, [])
   );
+
+  // The hero is dark enough to need light icons in both themes.
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('light');
+      return () => setStatusBarStyle(isDark ? 'light' : 'dark');
+    }, [isDark])
+  );
+
+  // Shares the Home dashboard cache, so this adds no extra request.
+  const { data: dashboard } = useQuery(dashboardQuery);
+  const summary = dashboard
+    ? `${dashboard.kpis.todayFollowUps} due · ${dashboard.kpis.overdueFollowUps} overdue`
+    : null;
 
   const statuses = useQuery(leadStatusesQuery);
   const counts = useQuery({
@@ -210,45 +236,21 @@ function LeadsScreen() {
     [setFabShown]
   );
 
-  // Picking a tab slides the row so that tab sits in the middle — the
-  // neighbours on the side you moved toward scroll into view.
-  const tabScrollRef = useRef<ScrollViewInstance>(null);
-  const tabLayouts = useRef(new Map<string, { x: number; width: number }>());
-  const tabRow = useRef({ viewport: 0, content: 0 });
-  const centerTab = useCallback((t: LeadListTab) => {
-    const item = tabLayouts.current.get(String(t));
-    const { viewport, content } = tabRow.current;
-    if (!item || !viewport) return;
-    const max = Math.max(0, content - viewport);
-    const x = Math.min(max, Math.max(0, item.x + item.width / 2 - viewport / 2));
-    tabScrollRef.current?.scrollTo({ x, animated: true });
-  }, []);
-  // A tab opened from Home can be set before its chip has been measured.
-  const activeTabRef = useRef(tab);
-  useEffect(() => {
-    activeTabRef.current = tab;
-    centerTab(tab);
-  }, [tab, centerTab]);
-  const onTabLayout = useCallback(
-    (t: LeadListTab) => (e: LayoutChangeEvent) => {
-      const { x, width } = e.nativeEvent.layout;
-      tabLayouts.current.set(String(t), { x, width });
-      if (t === activeTabRef.current) centerTab(t);
-    },
-    [centerTab]
-  );
-
-  const renderStatusTab = (status: LeadStatus) => (
-    <CountTab
-      key={status.id}
-      label={status.name}
-      count={counts.data ? (counts.data.byStatus[status.id] ?? 0) : undefined}
-      active={tab === status.id}
-      onPress={() => setTab(status.id)}
-      onPressIn={() => prefetchTab(status.id)}
-      onLayout={onTabLayout(status.id)}
-    />
-  );
+  // All, Assign, Unread, then the other statuses.
+  const tabItems = useMemo(() => {
+    const byStatus = counts.data?.byStatus;
+    const statusItem = (s: LeadStatus): LeadTabItem => ({
+      key: s.id,
+      label: s.name,
+      count: byStatus?.[s.id],
+    });
+    return [
+      { key: 'all', label: 'All', count: counts.data?.all },
+      ...(assignTab ? [statusItem(assignTab)] : []),
+      { key: 'unread', label: 'Unread', count: counts.data?.unread },
+      ...statusTabs.map(statusItem),
+    ] satisfies LeadTabItem[];
+  }, [counts.data, assignTab, statusTabs]);
 
   const toggleSearch = () => {
     setSearchOpen((open) => {
@@ -264,98 +266,37 @@ function LeadsScreen() {
   };
 
   return (
-    <View style={styles.safe}>
-      <ScreenHeader
-        title="Leads"
-        showBack={false}
-        right={
-          <>
-            <HeaderIconButton label="Search leads" onPress={toggleSearch}>
-              <HugeiconsIcon
-                icon={searchOpen ? MultiplicationSignIcon : Search02Icon}
-                size={22}
-                color={colors.text}
-                strokeWidth={1.5}
-              />
-            </HeaderIconButton>
-            <HeaderFilterButton
-              label="Filter leads"
-              count={pickedFilters}
-              onPress={() => setFilterOpen(true)}
-            />
-          </>
-        }
-      />
-
-      {searchOpen ? (
-        <View style={styles.searchWrap}>
-          <HugeiconsIcon
-            icon={Search02Icon}
-            size={16}
-            color={colors.textMuted}
-            strokeWidth={1.5}
-          />
-          <TextInput
-            ref={searchRef}
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search name or phone"
-            placeholderTextColor={colors.textMuted}
-            returnKeyType="search"
-            style={styles.searchInput}
-            autoCorrect={false}
-            autoCapitalize="none"
-          />
-          {search.length > 0 ? (
-            <Pressable
-              onPress={() => setSearch('')}
-              hitSlop={8}
-              accessibilityLabel="Clear search"
-            >
-              <HugeiconsIcon
-                icon={MultiplicationSignIcon}
-                size={18}
-                color={colors.textMuted}
-                strokeWidth={1.5}
-              />
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
-
-      <ChipScroll
-        style={styles.chips}
-        contentContainerStyle={styles.tabsContent}
-        scrollRef={tabScrollRef}
-        onLayout={(e) => {
-          tabRow.current.viewport = e.nativeEvent.layout.width;
-          centerTab(activeTabRef.current);
-        }}
-        onContentSizeChange={(w) => {
-          tabRow.current.content = w;
-          centerTab(activeTabRef.current);
-        }}
-      >
-        <CountTab
-          label="All"
-          count={counts.data?.all}
-          active={tab === 'all'}
-          onPress={() => setTab('all')}
-          onPressIn={() => prefetchTab('all')}
-          onLayout={onTabLayout('all')}
+    <Screen
+      header={
+        <NotificationsHero
+          name={user?.name?.trim() || 'Agent'}
+          photo={user?.profilePhoto}
+          summary={summary}
+          searchOpen={searchOpen}
+          search={search}
+          searchRef={searchRef}
+          onSearchChange={setSearch}
+          onToggleSearch={toggleSearch}
+          onOpenFilter={() => setFilterOpen(true)}
+          filterCount={pickedFilters}
+          title="Leads"
+          tagline={'Track every lead &\nclose more deals'}
+          searchPlaceholder="Search name or phone"
+          itemsLabel="leads"
+          scene={LEADS_SCENE}
         />
-        <CountTabDivider />
-        {assignTab ? renderStatusTab(assignTab) : null}
-        <CountTab
-          label="Unread"
-          count={counts.data?.unread}
-          active={tab === 'unread'}
-          onPress={() => setTab('unread')}
-          onPressIn={() => prefetchTab('unread')}
-          onLayout={onTabLayout('unread')}
+      }
+      style={{ backgroundColor: heroBase(isDark) }}
+      contentStyle={styles.sheet}
+    >
+      <View style={styles.tabs}>
+        <LeadTabs
+          tabs={tabItems}
+          active={tab}
+          onChange={setTab}
+          onPressIn={prefetchTab}
         />
-        {statusTabs.map(renderStatusTab)}
-      </ChipScroll>
+      </View>
 
       {filterPills.length > 0 ? (
         <LeadFilterPills
@@ -466,40 +407,29 @@ function LeadsScreen() {
         onApply={setFilters}
         onClose={closeFilter}
       />
-    </View>
+    </Screen>
   );
 }
 
 export default memo(LeadsScreen);
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, palette: InboxPalette) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background },
-    searchWrap: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.sm,
-      marginHorizontal: spacing.lg,
-      marginTop: spacing.sm,
-      marginBottom: spacing.sm,
-      minHeight: 44,
-      borderRadius: radii.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-      paddingHorizontal: spacing.md,
-    },
-    searchInput: {
+    sheet: {
+      // flex, not Screen's flexGrow: the sheet must not grow to its content,
+      // or the list has nothing to scroll.
       flex: 1,
-      color: colors.text,
-      fontSize: 15,
-      paddingVertical: spacing.sm,
+      padding: 0,
+      gap: 0,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      overflow: 'hidden',
+      backgroundColor: palette.sheet,
     },
-    chips: {
-      marginVertical: 10,
-    },
-    tabsContent: {
-      gap: spacing.md,
+    tabs: {
+      paddingHorizontal: 12,
+      paddingTop: 10,
+      paddingBottom: spacing.md,
     },
     list: {
       paddingHorizontal: spacing.lg,
