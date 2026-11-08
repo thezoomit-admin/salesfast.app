@@ -22,6 +22,7 @@ import {
   MultiplicationSignIcon,
   Search02Icon,
 } from "@/components/icons/hugeicons";
+import { HeroGradient } from "@/components/ui/HeroGradient";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { radii, spacing, useTheme } from "@/theme";
 
@@ -118,6 +119,7 @@ export function NotificationsHero({
           { width, height: Math.max(bannerHeight, heroHeight) },
         ]}
       />
+      <HeroGradient />
       {resolved === "dark" ? <View style={styles.dim} /> : null}
 
       <View style={styles.row}>

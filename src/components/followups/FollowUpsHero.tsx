@@ -16,6 +16,7 @@ import {
   Calendar03Icon,
   HomeSolidIcon,
 } from "@/components/icons/hugeicons";
+import { HeroGradient } from "@/components/ui/HeroGradient";
 import { SettingsIconButton } from "@/components/ui/SettingsIconButton";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { radii, spacing, useTheme } from "@/theme";
@@ -78,6 +79,7 @@ function FollowUpsHeroBase({ name, photo, summary, onPickDate }: Props) {
           { width, height: Math.max(bannerHeight, heroHeight) },
         ]}
       />
+      <HeroGradient />
       {resolved === "dark" ? <View style={styles.dim} /> : null}
 
       <View style={styles.row}>
