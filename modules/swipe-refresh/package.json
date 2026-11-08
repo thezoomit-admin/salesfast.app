@@ -1,0 +1,10 @@
+{
+  "name": "swipe-refresh",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Android pull-to-refresh that ignores sideways swipes.",
+  "peerDependencies": {
+    "expo": "*",
+    "react-native": "*"
+  }
+}

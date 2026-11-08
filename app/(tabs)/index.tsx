@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { memo, useCallback, useEffect, useMemo } from 'react';
-import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { getErrorMessage } from '@/api/client';
 import { HomeBannerCarousel } from '@/components/home/HomeBannerCarousel';
@@ -13,6 +13,7 @@ import {
   HomeQuickActions,
 } from '@/components/home/HomeQuickActions';
 import { HomeTips } from '@/components/home/HomeTips';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { Screen } from '@/components/ui/Screen';
 import { HomeSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
@@ -83,7 +84,7 @@ function HomeScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={query.isRefetching}
             onRefresh={() => void query.refetch()}
             tintColor={colors.brand}

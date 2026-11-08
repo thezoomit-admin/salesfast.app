@@ -28,9 +28,14 @@ import { LeadFilterSheet } from '@/components/leads/LeadFilterSheet';
 import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { type LeadTabItem, LeadTabs } from '@/components/leads/LeadTabs';
 import { useLeadCardSheets } from '@/components/leads/useLeadCardSheets';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { Screen } from '@/components/ui/Screen';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
+import {
+  type SwipeDirection,
+  SwipeTabArea,
+} from '@/components/ui/SwipeTabArea';
 import { useAuth } from '@/features/auth/AuthContext';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
@@ -179,7 +184,11 @@ function LeadsScreen() {
   );
   useEffect(() => {
     if (!listReady || !tabIds) return;
-    const all: LeadListTab[] = ['all', 'unread', ...tabIds.split(',').map(Number)];
+    const all: LeadListTab[] = [
+      'all',
+      'unread',
+      ...tabIds.split(',').map(Number),
+    ];
     for (const t of all) {
       void queryClient.prefetchInfiniteQuery(myLeadsQuery('', t));
     }
@@ -252,6 +261,18 @@ function LeadsScreen() {
     ] satisfies LeadTabItem[];
   }, [counts.data, assignTab, statusTabs]);
 
+  // Swiping the list moves to the neighbouring tab, in the tab row's order.
+  const tabIndex = tabItems.findIndex((t) => t.key === tab);
+  const swipeTab = useCallback(
+    (direction: SwipeDirection) => {
+      const next = tabItems[tabIndex + direction];
+      if (!next) return;
+      prefetchTab(next.key);
+      setTab(next.key);
+    },
+    [tabItems, tabIndex, prefetchTab]
+  );
+
   const toggleSearch = () => {
     setSearchOpen((open) => {
       const next = !open;
@@ -306,63 +327,73 @@ function LeadsScreen() {
         />
       ) : null}
 
-      {!leads.data ? (
-        <QueryPlaceholder
-          query={leads}
-          errorMessage={getErrorMessage(leads.error)}
-          skeleton={<LeadListSkeleton />}
-        />
-      ) : (
-        <FlatList
-          // New tab or filter starts at the top, not the old scroll offset.
-          showsVerticalScrollIndicator={false}
-          showsHorizontalScrollIndicator={false}
-          key={JSON.stringify([tab, filters])}
-          data={items}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.list}
-          style={leads.isPlaceholderData && styles.stale}
-          refreshing={leads.isRefetching && !leads.isPlaceholderData}
-          onRefresh={() => leads.refetch()}
-          onEndReached={() => {
-            if (leads.hasNextPage && !leads.isFetchingNextPage) {
-              void leads.fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.4}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          ListEmptyComponent={
-            <LeadEmpty
-              kind={
-                pickedFilters > 0 || debouncedSearch.trim()
-                  ? 'filtered'
-                  : tab === 'unread'
-                    ? 'unread'
-                    : 'all'
-              }
-              onClearFilters={() => {
-                clearFilters();
-                setSearch('');
-              }}
-            />
-          }
-          ListFooterComponent={
-            leads.isFetchingNextPage ? (
-              <ActivityIndicator
-                color={colors.brand}
-                style={{ margin: spacing.lg }}
+      <SwipeTabArea
+        canPrev={tabIndex > 0}
+        canNext={tabIndex < tabItems.length - 1}
+        onSwipe={swipeTab}
+      >
+        {!leads.data ? (
+          <QueryPlaceholder
+            query={leads}
+            errorMessage={getErrorMessage(leads.error)}
+            skeleton={<LeadListSkeleton />}
+          />
+        ) : (
+          <FlatList
+            // New tab or filter starts at the top, not the old scroll offset.
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
+            key={JSON.stringify([tab, filters])}
+            data={items}
+            keyExtractor={(item) => String(item.id)}
+            contentContainerStyle={styles.list}
+            style={leads.isPlaceholderData && styles.stale}
+            refreshControl={
+              <AppRefreshControl
+                refreshing={leads.isRefetching && !leads.isPlaceholderData}
+                onRefresh={() => void leads.refetch()}
               />
-            ) : (
-              <View />
-            )
-          }
-          renderItem={renderLead}
-          initialNumToRender={8}
-          maxToRenderPerBatch={8}
-          windowSize={7}
-        />
-      )}
+            }
+            onEndReached={() => {
+              if (leads.hasNextPage && !leads.isFetchingNextPage) {
+                void leads.fetchNextPage();
+              }
+            }}
+            onEndReachedThreshold={0.4}
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            ListEmptyComponent={
+              <LeadEmpty
+                kind={
+                  pickedFilters > 0 || debouncedSearch.trim()
+                    ? 'filtered'
+                    : tab === 'unread'
+                      ? 'unread'
+                      : 'all'
+                }
+                onClearFilters={() => {
+                  clearFilters();
+                  setSearch('');
+                }}
+              />
+            }
+            ListFooterComponent={
+              leads.isFetchingNextPage ? (
+                <ActivityIndicator
+                  color={colors.brand}
+                  style={{ margin: spacing.lg }}
+                />
+              ) : (
+                <View />
+              )
+            }
+            renderItem={renderLead}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={7}
+          />
+        )}
+      </SwipeTabArea>
 
       <Animated.View
         pointerEvents="box-none"

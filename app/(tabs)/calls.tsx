@@ -25,6 +25,7 @@ import {
   PhoneOutgoingIcon,
 } from '@/components/icons/hugeicons';
 import { DayGroupHeader } from '@/components/leads/LeadSectionShell';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { Button } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/FilterChip';
 import {
@@ -449,10 +450,14 @@ function CallsScreen() {
               keyExtractor={(item) => item.key}
               stickySectionHeadersEnabled={false}
               contentContainerStyle={styles.list}
-              refreshing={calls.isRefetching}
-              onRefresh={() => {
-                void calls.refetch();
-              }}
+              refreshControl={
+                <AppRefreshControl
+                  refreshing={calls.isRefetching}
+                  onRefresh={() => {
+                    void calls.refetch();
+                  }}
+                />
+              }
               ListEmptyComponent={
                 <EmptyState
                   title={emptyCopy || 'No lead calls yet'}

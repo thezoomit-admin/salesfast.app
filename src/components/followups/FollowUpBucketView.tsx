@@ -7,7 +7,6 @@ import { isYesterday } from 'date-fns/isYesterday';
 import { memo, useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  RefreshControl,
   SectionList,
   StyleSheet,
   Text,
@@ -23,6 +22,7 @@ import {
 } from '@/components/followups/followUpCalendar';
 import { FollowUpItemCard } from '@/components/followups/FollowUpCard';
 import { FollowUpEmpty } from '@/components/followups/FollowUpEmpty';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
 import { leadRowOfFollowUp } from '@/features/leads/leadDetailCache';
 import { followUpBucketQuery, type FollowUpBucket } from '@/features/leads/leadsApi';
@@ -115,7 +115,7 @@ function FollowUpBucketViewImpl({ bucket, onMore, onComplete }: Props) {
             </View>
           )}
           refreshControl={
-            <RefreshControl
+            <AppRefreshControl
               refreshing={pulling}
               onRefresh={() => void onRefresh()}
               tintColor={colors.brand}

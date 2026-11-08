@@ -20,7 +20,6 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   type TextInputInstance,
   View,
@@ -36,6 +35,7 @@ import {
   Search02Icon,
   UserAdd01Icon,
 } from '@/components/icons/hugeicons';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { FilterChip } from '@/components/ui/FilterChip';
@@ -308,7 +308,7 @@ function NotificationList({
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
+          <AppRefreshControl
             refreshing={
               query.isRefetching &&
               !query.isFetchingNextPage &&

@@ -5,7 +5,6 @@ import { memo, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,6 +26,7 @@ import {
 } from '@/components/icons/hugeicons';
 import { FollowUpItemCard } from '@/components/followups/FollowUpCard';
 import { WeekStrip, type WeekStripHandle } from '@/components/followups/WeekStrip';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import type { MyFollowUp } from '@/types/api';
 import { radii, useTheme, type ThemeColors } from '@/theme';
 
@@ -144,7 +144,7 @@ function FollowUpWeekViewImpl({
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {loading && items.length === 0 ? (
