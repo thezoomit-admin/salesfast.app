@@ -20,8 +20,7 @@ import { SettingsIconButton } from '@/components/ui/SettingsIconButton';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { radii, spacing, useTheme } from '@/theme';
 
-/** Shares the Leads scene. */
-const SCENE = require('../../../assets/images/leads-hero.jpg');
+const SCENE = require('../../../assets/images/followups-hero.jpg');
 /** Image height / width. Its top is spare sky for tall status bars. */
 const SCENE_RATIO = 0.87;
 
@@ -41,7 +40,7 @@ type Props = {
   onPickDate: () => void;
 };
 
-/** Same banner layout as the Notifications hero, with the Leads scene and follow-up copy. */
+/** Same banner layout as the Notifications hero, with its own scene and copy. */
 function FollowUpsHeroBase({ name, photo, summary, onPickDate }: Props) {
   const { resolved } = useTheme();
   const insets = useSafeAreaInsets();
