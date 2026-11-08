@@ -6,6 +6,7 @@ import android.view.MotionEvent
 import android.view.ViewConfiguration
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.views.swiperefresh.ReactSwipeRefreshLayout
+import expo.modules.core.interfaces.DoNotStrip
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import kotlin.math.abs
@@ -19,9 +20,12 @@ import kotlin.math.abs
  * gesture is judged once, when the finger first leaves the slop: unless it is
  * mostly downward, this layout leaves the whole gesture alone.
  */
+@DoNotStrip
 @SuppressLint("ViewConstructor")
-class StrictSwipeRefreshLayout(context: Context, appContext: AppContext) :
-  ReactSwipeRefreshLayout(context as ReactContext) {
+class StrictSwipeRefreshLayout @DoNotStrip constructor(
+  context: Context,
+  @Suppress("UNUSED_PARAMETER") appContext: AppContext,
+) : ReactSwipeRefreshLayout(context as ReactContext) {
 
   private val onRefresh by EventDispatcher()
 

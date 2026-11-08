@@ -134,6 +134,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           // com.facebook.react.** stopped R8 from shrinking the whole RN layer.
           extraProguardRules: [
             '-keep class expo.modules.androidcalllog.** { *; }',
+            // Expo creates this view by reflection. R8 otherwise drops the
+            // constructor and login (pull-to-refresh) crashes on open.
+            '-keep class expo.modules.swiperefresh.** { *; }',
+            '-keepclassmembers class expo.modules.swiperefresh.** { public <init>(...); }',
             '-dontwarn com.facebook.react.**',
           ].join('\n'),
         },
