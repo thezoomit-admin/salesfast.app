@@ -1,7 +1,7 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { HugeiconsIcon } from '@hugeicons/react-native';
-import { useRouter } from 'expo-router';
-import { type RefObject, useEffect, useState } from 'react';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { HugeiconsIcon } from "@hugeicons/react-native";
+import { useRouter } from "expo-router";
+import { type RefObject, useEffect, useState } from "react";
 import {
   Image,
   type ImageSourcePropType,
@@ -12,8 +12,8 @@ import {
   type TextInputInstance,
   useWindowDimensions,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   ArrowDown01Icon,
@@ -21,15 +21,17 @@ import {
   HomeSolidIcon,
   MultiplicationSignIcon,
   Search02Icon,
-} from '@/components/icons/hugeicons';
-import { UserAvatar } from '@/components/ui/UserAvatar';
-import { radii, spacing, useTheme } from '@/theme';
+} from "@/components/icons/hugeicons";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+import { radii, spacing, useTheme } from "@/theme";
 
-const NOTIFICATIONS_SCENE = require('../../../assets/images/notifications-hero.jpg');
+const NOTIFICATIONS_SCENE = require("../../../assets/images/notifications-hero.png");
 /** Each tab gets its own buildings over the same sky. */
-export const LEADS_SCENE = require('../../../assets/images/leads-hero.jpg');
-/** Image height / width, the same for every scene. Its top is spare sky for tall status bars. */
-const SCENE_RATIO = 0.87;
+export const LEADS_SCENE = require("../../../assets/images/leads-hero.png");
+
+/** Banner height / width (the pictures are about 1774 x 887). The hero is
+ * this tall, so the whole picture shows. */
+const SCENE_RATIO = 0.5;
 
 /** How far the sheet below rides up over the scene. */
 const SHEET_OVERLAP = 20;
@@ -37,8 +39,8 @@ const SHEET_OVERLAP = 20;
 const SUMMARY_MS = 4000;
 
 /** Buttons stay white in dark mode, so their ink can't follow the theme. */
-const INK = '#14184A';
-const ALERT = '#F73823';
+const INK = "#14184A";
+const ALERT = "#F73823";
 
 type Props = {
   name: string;
@@ -60,7 +62,7 @@ type Props = {
   searchPlaceholder?: string;
   /** Plural noun read out on the buttons: "Search leads", "Filter leads". */
   itemsLabel?: string;
-  /** Background picture; must share SCENE_RATIO. */
+  /** Background picture, a wide banner like the default. */
   scene?: ImageSourcePropType;
 };
 
@@ -76,10 +78,10 @@ export function NotificationsHero({
   onToggleSearch,
   onOpenFilter,
   filterCount,
-  title = 'Notifications',
-  tagline = 'Stay updated with\nlatest activities',
-  searchPlaceholder = 'Search notifications',
-  itemsLabel = 'notifications',
+  title = "Notifications",
+  tagline = "Stay updated with\nlatest activities",
+  searchPlaceholder = "Search notifications",
+  itemsLabel = "notifications",
   scene = NOTIFICATIONS_SCENE,
 }: Props) {
   const { resolved } = useTheme();
@@ -87,6 +89,8 @@ export function NotificationsHero({
   const { width } = useWindowDimensions();
   const router = useRouter();
   const [revealed, setRevealed] = useState(false);
+  const [heroHeight, setHeroHeight] = useState(0);
+  const bannerHeight = width * SCENE_RATIO;
 
   useEffect(() => {
     if (!revealed) return;
@@ -95,15 +99,26 @@ export function NotificationsHero({
   }, [revealed]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 6 }]}>
-      {/* Sized from the width alone and pinned to the bottom, so the status
-          bar height can't zoom the scene or shift it against the sheet. */}
+    <View
+      onLayout={(e) => setHeroHeight(e.nativeEvent.layout.height)}
+      style={[
+        styles.root,
+        { paddingTop: insets.top + 6, minHeight: bannerHeight },
+      ]}
+    >
+      {/* Explicit size: on Android an absolute Image sized only by its insets
+          draws nothing. The hero is the banner's height, so cover shows it
+          whole; a very tall status bar trims the sides a little. */}
       <Image
         source={scene}
         fadeDuration={0}
-        style={[styles.scene, { width, height: width * SCENE_RATIO }]}
+        resizeMode="cover"
+        style={[
+          styles.scene,
+          { width, height: Math.max(bannerHeight, heroHeight) },
+        ]}
       />
-      {resolved === 'dark' ? <View style={styles.dim} /> : null}
+      {resolved === "dark" ? <View style={styles.dim} /> : null}
 
       <View style={styles.row}>
         {onBack ? (
@@ -120,10 +135,15 @@ export function NotificationsHero({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Open profile"
-            onPress={() => router.navigate('/(tabs)/profile')}
+            onPress={() => router.navigate("/(tabs)/profile")}
             style={({ pressed }) => pressed && styles.pressed}
           >
-            <UserAvatar uri={photo} name={name} size={45} style={styles.avatar} />
+            <UserAvatar
+              uri={photo}
+              name={name}
+              size={45}
+              style={styles.avatar}
+            />
           </Pressable>
         )}
 
@@ -142,7 +162,7 @@ export function NotificationsHero({
           >
             <HugeiconsIcon icon={HomeSolidIcon} size={14} color={INK} />
             <Text style={styles.pillText} numberOfLines={1}>
-              {revealed && summary ? summary : 'Real Estate CRM'}
+              {revealed && summary ? summary : "Real Estate CRM"}
             </Text>
             {summary ? (
               <HugeiconsIcon
@@ -158,7 +178,9 @@ export function NotificationsHero({
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={searchOpen ? 'Close search' : `Search ${itemsLabel}`}
+          accessibilityLabel={
+            searchOpen ? "Close search" : `Search ${itemsLabel}`
+          }
           onPress={onToggleSearch}
           hitSlop={4}
           style={({ pressed }) => [styles.action, pressed && styles.pressed]}
@@ -233,117 +255,117 @@ export function NotificationsHero({
 const styles = StyleSheet.create({
   root: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: SHEET_OVERLAP + 24,
+    paddingBottom: SHEET_OVERLAP + 8,
     // The sheet is the next sibling, so this pulls it up over the scene.
     marginBottom: -SHEET_OVERLAP,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   scene: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     bottom: 0,
   },
   dim: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(5, 14, 38, 0.45)',
+    backgroundColor: "rgba(5, 14, 38, 0.45)",
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   avatar: {
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
   },
   identity: {
     flex: 1,
     minWidth: 0,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
     gap: 3,
     marginLeft: 3,
   },
   name: {
     fontSize: 13.5,
     lineHeight: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
-    maxWidth: '100%',
+    maxWidth: "100%",
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: radii.pill,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   pillText: {
     flexShrink: 1,
     fontSize: 10.5,
     lineHeight: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     color: INK,
   },
-  chevronOpen: { transform: [{ rotate: '180deg' }] },
+  chevronOpen: { transform: [{ rotate: "180deg" }] },
   action: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
   },
   filterBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -3,
     right: -3,
     minWidth: 16,
     height: 16,
     paddingHorizontal: 4,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: ALERT,
   },
   filterBadgeText: {
     fontSize: 9,
     lineHeight: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   copy: {
-    height: 68,
-    marginTop: 24,
+    height: 64,
+    marginTop: 10,
     marginLeft: 8,
     gap: 2,
   },
   headline: {
     fontSize: 23,
     lineHeight: 30,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: -0.2,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   tagline: {
     fontSize: 11,
     lineHeight: 16,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 40, 120, 0.45)',
+    fontWeight: "500",
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0, 40, 120, 0.45)",
     textShadowRadius: 4,
   },
   searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     height: 44,
     marginTop: 8,
     marginLeft: -8,
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   searchInput: {
     flex: 1,
