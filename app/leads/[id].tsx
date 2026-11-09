@@ -222,7 +222,13 @@ export default function LeadDetailScreen() {
     return (
       <Screen
         style={screenBg}
-        header={<ScreenHeader title="Lead" right={headerRight} />}
+        header={
+          <ScreenHeader
+            title="Lead"
+            titleCentered={false}
+            right={headerRight}
+          />
+        }
         footer={
           <LeadDetailTabBar active={activeTab} onChange={setActiveTab} />
         }
@@ -281,7 +287,13 @@ export default function LeadDetailScreen() {
   return (
     <Screen
       style={screenBg}
-      header={<ScreenHeader title={headerTitle} right={headerRight} />}
+      header={
+        <ScreenHeader
+          title={headerTitle}
+          titleCentered={false}
+          right={headerRight}
+        />
+      }
       footer={
         <LeadDetailTabBar active={activeTab} onChange={setActiveTab} />
       }
