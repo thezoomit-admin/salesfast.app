@@ -33,7 +33,7 @@ type FieldDef = {
   value?: string | null;
 };
 
-const COLUMNS = 3;
+const COLUMNS = 2;
 
 export function LeadBuyerProfilePanel({ lead, meta }: Props) {
   const { user } = useAuth();

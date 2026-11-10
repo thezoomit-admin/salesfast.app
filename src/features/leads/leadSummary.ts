@@ -87,15 +87,16 @@ export function summarizeLead(
   };
 }
 
+/** Same 14 fields shown in LeadBuyerProfilePanel — keep order in sync with the grid. */
 const PROFILE_ITEMS: {
   label: string;
   filled: (lead: LeadDetail, s: LeadSummary) => boolean;
 }[] = [
+  { label: 'Occupation', filled: (_l, s) => !!s.occupation },
   {
     label: 'NID',
     filled: (l) => !!String(l.buyerPersona?.profile?.nid ?? '').trim(),
   },
-  { label: 'Occupation', filled: (_l, s) => !!s.occupation },
   { label: 'Property type', filled: (_l, s) => !!s.propertyType },
   { label: 'Preferred location', filled: (_l, s) => !!s.location },
   { label: 'Size / unit', filled: (_l, s) => !!s.size },
@@ -103,6 +104,27 @@ const PROFILE_ITEMS: {
   { label: 'Budget max', filled: (_l, s) => s.budgetMax != null },
   { label: 'Financing', filled: (_l, s) => !!s.financing },
   { label: 'Timeline', filled: (_l, s) => !!s.timeline },
+  {
+    label: 'Source',
+    filled: (l) => !!String(l.leadSource?.name ?? '').trim(),
+  },
+  {
+    label: 'Assigned to',
+    filled: (l) =>
+      !!String(l.assignedToName ?? '').trim() || !!String(l.assignedTo ?? '').trim(),
+  },
+  {
+    label: 'Next follow-up',
+    filled: (l) => !!(l.pendingFollowUp?.dueAt ?? l.nextFollowupDate),
+  },
+  {
+    label: 'Email',
+    filled: (l) => !!String(l.buyerPersona?.email ?? '').trim(),
+  },
+  {
+    label: 'Address',
+    filled: (l) => !!String(l.buyerPersona?.address ?? '').trim(),
+  },
 ];
 
 export function profileCompletion(
