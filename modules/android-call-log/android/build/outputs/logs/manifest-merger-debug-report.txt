@@ -1,20 +1,20 @@
 -- Merging decision tree log ---
 manifest
-ADDED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:1-3:12
-INJECTED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:1-3:12
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:1-3:12
+INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:1-3:12
 	package
-		INJECTED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml
+		INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml
 	xmlns:android
-		ADDED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:11-69
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:11-69
 uses-permission#android.permission.READ_CALL_LOG
-ADDED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:3-70
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:3-70
 	android:name
-		ADDED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:20-67
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:20-67
 uses-sdk
-INJECTED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml
-INJECTED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml
+INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml
+INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml
 	android:targetSdkVersion
-		INJECTED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml
+		INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml
+		INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml

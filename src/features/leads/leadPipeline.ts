@@ -1,7 +1,7 @@
 import type { IconSvgElement } from '@hugeicons/react-native';
 
 import {
-  ApartmentIcon,
+  Calendar03Icon,
   Call02Icon,
   CancelCircleIcon,
   FileEditIcon,
@@ -58,7 +58,7 @@ export function iconForStageName(name: string): IconSvgElement {
   if (n === 'assign') return UserAdd01Icon;
   if (n === 'cold calling' || n === 'new/contacted') return Call02Icon;
   if (n === 'site visit') return Location01Icon;
-  if (n === 'visited') return ApartmentIcon;
+  if (n === 'visited') return Calendar03Icon;
   if (n === 'negotiation' || n === 'qualified/interested') return HandshakeIcon;
   if (n === 'won' || n === 'booked/won') return TrophyIcon;
   if (n === 'lost') return CancelCircleIcon;
