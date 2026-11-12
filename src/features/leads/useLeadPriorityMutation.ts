@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 import { useAuth } from '@/features/auth/AuthContext';
 import { patchLeadInLists } from '@/features/leads/leadDetailCache';
 import { updateLeadPriority } from '@/features/leads/leadsApi';
+import { normalizeLeadTemperature } from '@/features/leads/leadPriority';
 import type { LeadPriority, MobileDashboard } from '@/types/api';
 
 type Vars = {
@@ -69,9 +70,9 @@ export function useLeadPriorityMutation(onSaved?: () => void) {
     onSuccess: (updated, { leadId }) => {
       if (updated) {
         queryClient.setQueryData(['lead', leadId], updated);
-        const next =
-          ((updated.temperature ?? updated.priority) as LeadPriority | null) ??
-          null;
+        const next = normalizeLeadTemperature(
+          updated.temperature ?? updated.priority
+        );
         if (next) {
           queryClient.setQueryData<MobileDashboard>(
             ['mobile-dashboard'],

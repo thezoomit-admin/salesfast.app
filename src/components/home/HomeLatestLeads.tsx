@@ -28,7 +28,7 @@ import {
 import { useLeadPriorityMutation } from '@/features/leads/useLeadPriorityMutation';
 import { useAuth } from '@/features/auth/AuthContext';
 import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
-import type { LeadPriority, MobileDashboard } from '@/types/api';
+import type { MobileDashboard } from '@/types/api';
 import { followupWhenLabel } from '@/utils/dates';
 import { openPhoneDialer, openWhatsApp } from '@/utils/phone';
 

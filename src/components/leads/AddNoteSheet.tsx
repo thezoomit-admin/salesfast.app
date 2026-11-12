@@ -57,6 +57,7 @@ import { iconForStageName } from '@/features/leads/leadPipeline';
 import {
   PRIORITIES,
   PRIORITY_META,
+  normalizeLeadTemperature,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
 import {
@@ -80,9 +81,9 @@ type Props = {
 };
 
 const PRIORITY_ICON = {
-  LOW: ArrowDownDoubleIcon,
-  MEDIUM: MinusSignIcon,
-  HIGH: FlameIcon,
+  COLD: ArrowDownDoubleIcon,
+  WARM: MinusSignIcon,
+  HOT: FlameIcon,
 } as const;
 
 export function AddNoteSheet({
@@ -161,7 +162,7 @@ export function AddNoteSheet({
     setClips([]);
     setRecording(false);
     setRating(
-      ((lead.temperature ?? lead.priority) as LeadPriority | null) ?? null,
+      normalizeLeadTemperature(lead.temperature ?? lead.priority),
     );
     versionRef.current = lead.version ?? undefined;
     const preset =

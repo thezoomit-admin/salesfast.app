@@ -69,6 +69,7 @@ import {
 import {
   PRIORITIES,
   PRIORITY_META,
+  normalizeLeadTemperature,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
 import {
@@ -90,9 +91,9 @@ import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 const PRIORITY_ICON = {
-  LOW: ArrowDownDoubleIcon,
-  MEDIUM: MinusSignIcon,
-  HIGH: FlameIcon,
+  COLD: ArrowDownDoubleIcon,
+  WARM: MinusSignIcon,
+  HOT: FlameIcon,
 } as const;
 
 export default function LeadDetailScreen() {
@@ -314,7 +315,9 @@ export default function LeadDetailScreen() {
       ? user.name?.trim() || lead.assignedToName
       : lead.assignedToName;
   const currentStatusId = lead.leadStatus?.id ?? null;
-  const priority = (lead.temperature ?? lead.priority ?? null) as LeadPriority | null;
+  const priority = normalizeLeadTemperature(
+    lead.temperature ?? lead.priority
+  );
   const priorityMeta = priority ? PRIORITY_META[priority] : null;
   const priorityBadge = priority
     ? priorityBadgeColors(priority, isDark)
