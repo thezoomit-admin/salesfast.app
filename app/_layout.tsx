@@ -80,19 +80,21 @@ function ThemedStack() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
-          // Hisab-style native push/pop — slide + edge swipe back.
-          animation: 'slide_from_right',
+          // Every push (leads → detail, settings, etc.): smooth card slide.
+          // Android ios_from_right ≈ iOS push; iOS default keeps parallax + edge back.
+          // fullScreenGestureEnabled is off — it forces a flatter simple_push on iOS.
+          animation:
+            Platform.OS === 'android' ? 'ios_from_right' : 'default',
           gestureEnabled: true,
-          fullScreenGestureEnabled: true,
-          animationDuration: 280,
+          animationMatchesGesture: true,
           animationTypeForReplace: 'push',
+          freezeOnBlur: true,
         }}
       >
         {/* Auth ↔ app: fade so the gate doesn't slide over tabs. */}
         <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-        {/* Folder route: Overview / History / Calls / Views under leads/[id]/ */}
-        <Stack.Screen name="leads/[id]" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="leads/[id]" />
         <Stack.Screen name="leads/new" />
         <Stack.Screen name="activities" />
         <Stack.Screen name="call-sync/setup" />

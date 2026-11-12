@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 
 import { useTheme } from '@/theme';
@@ -16,10 +17,11 @@ export default function AuthLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle,
-        animation: 'slide_from_right',
+        animation:
+          Platform.OS === 'android' ? 'ios_from_right' : 'default',
         gestureEnabled: true,
-        fullScreenGestureEnabled: true,
-        animationDuration: 280,
+        animationMatchesGesture: true,
+        freezeOnBlur: true,
       }}
     >
       <Stack.Screen name="index" />
