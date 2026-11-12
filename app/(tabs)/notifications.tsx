@@ -52,6 +52,7 @@ import {
 import { NotificationCard } from '@/features/notifications/NotificationCard';
 import { NotificationsHero } from '@/features/notifications/NotificationsHero';
 import { NotificationTabs } from '@/features/notifications/NotificationTabs';
+import { PushStatusBanner } from '@/features/notifications/PushStatusBanner';
 import {
   type AppNotification,
   dismissNotification,
@@ -485,6 +486,7 @@ export function NotificationsScreen({
       style={{ backgroundColor: heroBase(isDark) }}
       contentStyle={styles.sheet}
     >
+      <PushStatusBanner />
       <View style={styles.tabs}>
         <NotificationTabs
           tabs={TABS}
