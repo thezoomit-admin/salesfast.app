@@ -16,19 +16,21 @@ import {
 } from '@/features/notifications/inboxPalette';
 import { radii, useTheme } from '@/theme';
 
-export type LeadTabItem = {
-  key: LeadListTab;
+export type LeadTabItem<K extends string | number = LeadListTab> = {
+  key: K;
   label: string;
   /** Hidden until known, and while it is zero (as on the Notifications pills). */
   count?: number;
 };
 
-type Props = {
-  tabs: LeadTabItem[];
-  active: LeadListTab;
-  onChange: (tab: LeadListTab) => void;
+type Props<K extends string | number> = {
+  tabs: LeadTabItem<K>[];
+  active: K;
+  onChange: (tab: K) => void;
   /** Finger down: lets the screen start the tab's request ahead of the tap. */
-  onPressIn?: (tab: LeadListTab) => void;
+  onPressIn?: (tab: K) => void;
+  /** Read out after a count: "Missed, 3 calls". */
+  countLabel?: string;
 };
 
 /**
@@ -36,7 +38,13 @@ type Props = {
  * too many to share one row. Picking a tab slides it to the middle so its
  * neighbours come into view.
  */
-function LeadTabsBase({ tabs, active, onChange, onPressIn }: Props) {
+function LeadTabsBase<K extends string | number>({
+  tabs,
+  active,
+  onChange,
+  onPressIn,
+  countLabel = 'leads',
+}: Props<K>) {
   const { resolved } = useTheme();
   const palette = inboxPalette(resolved === 'dark');
   const styles = useMemo(() => createStyles(palette), [palette]);
@@ -47,7 +55,7 @@ function LeadTabsBase({ tabs, active, onChange, onPressIn }: Props) {
   // A tab opened from Home can be set before its pill has been measured.
   const activeRef = useRef(active);
 
-  const center = useCallback((t: LeadListTab) => {
+  const center = useCallback((t: K) => {
     const item = layouts.current.get(String(t));
     const { viewport, content } = row.current;
     if (!item || !viewport) return;
@@ -62,7 +70,7 @@ function LeadTabsBase({ tabs, active, onChange, onPressIn }: Props) {
   }, [active, center]);
 
   const onTabLayout = useCallback(
-    (t: LeadListTab) => (e: LayoutChangeEvent) => {
+    (t: K) => (e: LayoutChangeEvent) => {
       const { x, width } = e.nativeEvent.layout;
       layouts.current.set(String(t), { x, width });
       if (t === activeRef.current) center(t);
@@ -97,7 +105,7 @@ function LeadTabsBase({ tabs, active, onChange, onPressIn }: Props) {
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               accessibilityLabel={
-                count ? `${tab.label}, ${count} leads` : tab.label
+                count ? `${tab.label}, ${count} ${countLabel}` : tab.label
               }
               onPress={() => onChange(tab.key)}
               onPressIn={onPressIn ? () => onPressIn(tab.key) : undefined}
@@ -129,7 +137,8 @@ function LeadTabsBase({ tabs, active, onChange, onPressIn }: Props) {
   );
 }
 
-export const LeadTabs = memo(LeadTabsBase);
+/** Calls shares this track, keyed by its own tab type. */
+export const LeadTabs = memo(LeadTabsBase) as typeof LeadTabsBase;
 
 function createStyles(palette: InboxPalette) {
   return StyleSheet.create({

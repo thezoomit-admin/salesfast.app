@@ -29,6 +29,8 @@ import { radii, spacing, useTheme } from "@/theme";
 const NOTIFICATIONS_SCENE = require("../../../assets/images/notifications-hero.jpg");
 /** Each tab gets its own buildings over the same sky. */
 export const LEADS_SCENE = require("../../../assets/images/leads-hero.jpg");
+/** No art of its own yet: borrows the Follow-ups scene (not a next-door tab). */
+export const CALLS_SCENE = require("../../../assets/images/followups-hero.jpg");
 
 /** Banner height / width (the pictures are about 1280 x 640). The hero is
  * this tall, so the whole picture shows. */

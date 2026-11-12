@@ -1,71 +1,58 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
+import {
+  inboxPalette,
+  type InboxPalette,
+} from '@/features/notifications/inboxPalette';
+import { spacing, useTheme } from '@/theme';
 
 import { SkeletonBone, SkeletonPulse } from './primitives';
 
-/** Mirrors calls list rows under the sync toolbar. */
+/** Mirrors the call cards on the Calls sheet, under its tab track. */
 export function CallsSkeleton({ rows = 7 }: { rows?: number }) {
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { resolved } = useTheme();
+  const palette = inboxPalette(resolved === 'dark');
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   return (
     <SkeletonPulse style={styles.root}>
-      <View style={styles.tabs}>
-        {[72, 56, 64].map((w, i) => (
-          <SkeletonBone
-            key={i}
-            width={w}
-            height={32}
-            radius={radii.md}
-            style={styles.tab}
-          />
-        ))}
-      </View>
+      <SkeletonBone width={64} height={11} style={styles.day} />
       {Array.from({ length: rows }, (_, i) => (
-        <View key={i} style={styles.row}>
-          <SkeletonBone width={40} height={40} radius={radii.pill} />
+        <View key={i} style={styles.card}>
+          <SkeletonBone width={41} height={41} radius={21} />
           <View style={styles.body}>
-            <SkeletonBone width="52%" height={14} />
-            <SkeletonBone width="38%" height={11} />
+            <SkeletonBone width="62%" height={13} />
+            <SkeletonBone width="40%" height={10} />
+            <SkeletonBone width="34%" height={10} />
           </View>
-          <View style={styles.meta}>
-            <SkeletonBone width={48} height={11} />
-            <SkeletonBone width={36} height={10} />
-          </View>
+          <SkeletonBone width={58} height={20} radius={10} />
         </View>
       ))}
     </SkeletonPulse>
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(palette: InboxPalette) {
   return StyleSheet.create({
     root: {
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
-      paddingBottom: spacing.xxl,
-      gap: spacing.sm,
+      paddingHorizontal: 12,
+      paddingTop: spacing.xs,
+      gap: 5,
     },
-    tabs: {
-      flexDirection: 'row',
-      gap: spacing.sm,
-      marginBottom: spacing.sm,
-    },
-    tab: { flexGrow: 0 },
-    row: {
+    day: { marginLeft: 4, marginTop: 4, marginBottom: 4 },
+    card: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: spacing.md,
-      backgroundColor: colors.surface,
-      borderRadius: radii.md,
+      minHeight: 53,
+      paddingVertical: 7,
+      paddingHorizontal: 12,
+      gap: 13,
+      borderRadius: 16,
       borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
+      borderColor: palette.cardBorder,
+      backgroundColor: palette.card,
     },
-    body: { flex: 1, gap: 6, minWidth: 0 },
-    meta: { alignItems: 'flex-end', gap: 6 },
+    body: { flex: 1, gap: 6 },
   });
 }

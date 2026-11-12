@@ -4,7 +4,7 @@
  * the inbox don't pick them up.
  */
 
-export type InboxTone = 'blue' | 'red' | 'sky' | 'green' | 'purple';
+export type InboxTone = 'blue' | 'red' | 'sky' | 'green' | 'purple' | 'amber';
 
 type ToneColors = { fg: string; bg: string };
 
@@ -46,6 +46,7 @@ const light: InboxPalette = {
     sky: { fg: '#0B8FE0', bg: '#DFF1FD' },
     green: { fg: '#0F8F5F', bg: '#E5F5EF' },
     purple: { fg: '#5B21E6', bg: '#EEE8FF' },
+    amber: { fg: '#B54708', bg: '#FEF0DC' },
   },
 };
 
@@ -69,6 +70,7 @@ const dark: InboxPalette = {
     sky: { fg: '#5CC3F7', bg: '#0F2A3A' },
     green: { fg: '#3DD598', bg: '#10302A' },
     purple: { fg: '#A98BFF', bg: '#251C47' },
+    amber: { fg: '#F5B451', bg: '#3A2A10' },
   },
 };
 
