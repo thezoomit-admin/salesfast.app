@@ -8,7 +8,7 @@ const isDevClientBuild = process.env.EAS_BUILD_PROFILE === 'development';
 
 /**
  * Firebase config for Android push (FCM). Download it from the Firebase
- * console (Android app id com.salesfastcrm). On EAS it can come from a
+ * console (Android app id com.salesfast.crm). On EAS it can come from a
  * file env var (GOOGLE_SERVICES_JSON) so the file never needs to be committed.
  */
 const googleServicesFile =
@@ -33,7 +33,7 @@ if (
   throw new Error(
     'google-services.json is missing, so this APK could not receive push ' +
       'notifications. Add it to salesfast.app/ or set the GOOGLE_SERVICES_JSON ' +
-      'EAS file variable (Firebase Android app com.salesfastcrm).'
+      'EAS file variable (Firebase Android app com.salesfast.crm).'
   );
 }
 
@@ -55,7 +55,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     buildNumber: '3',
   },
   android: {
-    package: 'com.salesfastcrm',
+    package: 'com.salesfast.crm',
     versionCode: 3,
     adaptiveIcon: {
       // Match the blue plate in salesfast-app-logo.png (corners under Android mask).

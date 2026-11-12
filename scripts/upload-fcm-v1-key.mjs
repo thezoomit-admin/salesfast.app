@@ -1,6 +1,6 @@
 /**
  * Non-interactive: upload FCM V1 Google Service Account key to EAS
- * and assign it to com.salesfastcrm for push notifications.
+ * and assign it to com.salesfast.crm for push notifications.
  *
  * Uses the logged-in eas-cli session (same as `eas whoami`).
  */
@@ -42,7 +42,7 @@ const {
 
 const ACCOUNT_NAME = 'zoomits-team';
 const PROJECT_NAME = 'salesfast';
-const ANDROID_PACKAGE = 'com.salesfastcrm';
+const ANDROID_PACKAGE = 'com.salesfast.crm';
 
 const analyticsStub = {
   setActor() {},
