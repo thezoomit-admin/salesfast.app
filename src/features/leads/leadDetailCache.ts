@@ -43,7 +43,8 @@ export function leadRowOfFollowUp(f: MyFollowUp): LeadListItem {
     id: f.lead.id,
     buyerPersona: { fullName: f.lead.name, phone: f.lead.phone },
     leadStatus: f.lead.status,
-    priority: f.lead.priority,
+    temperature: f.lead.temperature ?? f.lead.priority,
+    priority: f.lead.temperature ?? f.lead.priority,
     updatedAt: f.lead.updatedAt,
   };
 }

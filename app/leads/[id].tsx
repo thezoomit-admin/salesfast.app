@@ -164,7 +164,7 @@ export default function LeadDetailScreen() {
           queryClient.setQueryData(key, data);
         }
       }
-      Alert.alert('Could not update priority');
+      Alert.alert('Could not update temperature');
     },
     onSuccess: (updated) => {
       if (!updated) return;
@@ -314,7 +314,7 @@ export default function LeadDetailScreen() {
       ? user.name?.trim() || lead.assignedToName
       : lead.assignedToName;
   const currentStatusId = lead.leadStatus?.id ?? null;
-  const priority = (lead.priority ?? null) as LeadPriority | null;
+  const priority = (lead.temperature ?? lead.priority ?? null) as LeadPriority | null;
   const priorityMeta = priority ? PRIORITY_META[priority] : null;
   const priorityBadge = priority
     ? priorityBadgeColors(priority, isDark)
@@ -416,7 +416,7 @@ export default function LeadDetailScreen() {
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Change priority"
+                accessibilityLabel="Change temperature"
                 disabled={partial}
                 hitSlop={6}
                 onPress={() => setPriorityOpen(true)}
@@ -448,7 +448,7 @@ export default function LeadDetailScreen() {
                     { color: priorityBadge?.color ?? palette.muted },
                   ]}
                 >
-                  {priorityMeta?.label ?? 'Priority'}
+                  {priorityMeta?.label ?? 'Temperature'}
                 </Text>
                 <Ionicons
                   name="chevron-down"
@@ -569,7 +569,7 @@ export default function LeadDetailScreen() {
             style={styles.dropdownCard}
             onPress={(e) => e.stopPropagation?.()}
           >
-            <Text style={styles.modalTitle}>Priority</Text>
+            <Text style={styles.modalTitle}>Temperature</Text>
             {PRIORITIES.map((p) => {
               const meta = PRIORITY_META[p];
               const opt = priorityBadgeColors(p, isDark);

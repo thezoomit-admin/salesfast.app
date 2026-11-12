@@ -36,15 +36,15 @@ const CLOSE_MS = 240;
 const ICON_RADIUS = 10;
 
 const PRIORITY_ICON = {
-  LOW: ArrowDownDoubleIcon,
-  MEDIUM: MinusSignIcon,
-  HIGH: FlameIcon,
+  COLD: ArrowDownDoubleIcon,
+  WARM: MinusSignIcon,
+  HOT: FlameIcon,
 } as const;
 
 const PRIORITY_HINT: Record<LeadPriority, string> = {
-  LOW: 'Can wait a bit',
-  MEDIUM: 'Follow up soon',
-  HIGH: 'Needs attention now',
+  COLD: 'Can wait a bit',
+  WARM: 'Follow up soon',
+  HOT: 'Needs attention now',
 };
 
 type Props = {
@@ -228,7 +228,7 @@ export function PriorityPickerSheet({
           <View {...panResponder.panHandlers} style={styles.dragZone}>
             <View style={styles.handle} />
             <Text style={styles.title} numberOfLines={1}>
-              Set priority
+              Set temperature
             </Text>
             <Text style={styles.subtitle} numberOfLines={1}>
               {leadName || 'Lead'}
@@ -243,7 +243,7 @@ export function PriorityPickerSheet({
                 key={p}
                 accessibilityRole="button"
                 accessibilityState={{ selected, disabled: saving }}
-                accessibilityLabel={`${PRIORITY_META[p].label} priority`}
+                accessibilityLabel={`${PRIORITY_META[p].label} temperature`}
                 disabled={saving}
                 onPress={() => handleSelect(p)}
                 style={({ pressed }) => [

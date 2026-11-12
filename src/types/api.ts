@@ -69,7 +69,9 @@ export type LeadStatus = {
   stageOptions?: string[] | null;
 };
 
-export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type LeadTemperature = 'COLD' | 'WARM' | 'HOT';
+/** @deprecated Use LeadTemperature */
+export type LeadPriority = LeadTemperature;
 
 export type BuyerPersonaProfile = {
   nid?: string | null;
@@ -97,8 +99,10 @@ export type LeadListItem = {
   leadSource?: { id: number; name: string } | null;
   assignedTo?: string | null;
   assignedToName?: string | null;
-  /** Lead priority (Low / Medium / High). */
-  priority?: LeadPriority | null;
+  /** Lead temperature (COLD / WARM / HOT). */
+  temperature?: LeadTemperature | null;
+  /** @deprecated Use temperature */
+  priority?: LeadTemperature | null;
   nextFollowupDate?: string | null;
   lastContactDate?: string | null;
   updatedAt?: string;
@@ -258,7 +262,9 @@ export type MobileDashboard = {
     source: { id: number; name: string } | null;
     assignedTo?: string | null;
     assignedToName: string | null;
-    priority: LeadPriority | null;
+    temperature: LeadTemperature | null;
+    /** @deprecated Use temperature */
+    priority?: LeadTemperature | null;
     nextFollowupDate: string | null;
     updatedAt: string;
   }>;
@@ -327,7 +333,9 @@ export type MyFollowUp = {
     id: number;
     name: string;
     phone: string | null;
-    priority: LeadPriority | null;
+    temperature: LeadTemperature | null;
+    /** @deprecated Use temperature */
+    priority?: LeadTemperature | null;
     status: { id: number; name: string } | null;
     updatedAt?: string;
   };

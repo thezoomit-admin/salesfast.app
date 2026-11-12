@@ -76,7 +76,7 @@ export function LeadFilterSheet({
         ))}
       </FilterSection>
 
-      <FilterSection title="Priority">
+      <FilterSection title="Temperature">
         {PRIORITY_OPTIONS.map((option) => (
           <FilterChip
             key={option.key}

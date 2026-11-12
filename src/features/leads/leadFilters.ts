@@ -148,6 +148,8 @@ function createdRange(key: LeadCreatedFilter, now: Date): Range {
 
 export type LeadFilterParams = {
   sort?: LeadSort;
+  temperature?: string;
+  /** @deprecated Use temperature */
   priority?: string;
   leadSourceId?: string;
   engagement?: LeadEngagementFilter;
@@ -167,7 +169,7 @@ export function leadFilterParams(
   const created = filters.created ? createdRange(filters.created, now) : {};
   return {
     sort: filters.sort === 'newest' ? undefined : filters.sort,
-    priority: filters.priorities.join(',') || undefined,
+    temperature: filters.priorities.join(',') || undefined,
     leadSourceId: filters.sourceIds.join(',') || undefined,
     engagement: filters.engagement ?? undefined,
     followupNone: filters.followUp === 'none' ? true : undefined,
@@ -204,7 +206,7 @@ export function leadFilterPills(
   for (const priority of filters.priorities) {
     pills.push({
       key: `priority-${priority}`,
-      label: `${PRIORITY_META[priority].label} priority`,
+      label: PRIORITY_META[priority].label,
       without: {
         ...filters,
         priorities: filters.priorities.filter((p) => p !== priority),

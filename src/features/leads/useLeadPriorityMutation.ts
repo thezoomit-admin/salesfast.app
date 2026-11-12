@@ -23,19 +23,23 @@ function patchDashboardPriority(
   const recentLeads = data.recentLeads.map((row) => {
     if (row.id !== leadId) return row;
     changed = true;
-    return { ...row, priority };
+    return { ...row, temperature: priority, priority };
   });
   return changed ? { ...data, recentLeads } : data;
 }
 
-/** Optimistic priority change — patches the dashboard and every lead list. */
+/** Optimistic temperature change — patches the dashboard and every lead list. */
 export function useLeadPriorityMutation(onSaved?: () => void) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ leadId, priority }: Vars) =>
-      updateLeadPriority(leadId, { priority }, { accountId: user?.id }),
+      updateLeadPriority(
+        leadId,
+        { temperature: priority },
+        { accountId: user?.id }
+      ),
     onMutate: async ({ leadId, priority }) => {
       await queryClient.cancelQueries({ queryKey: ['mobile-dashboard'] });
       const prev = queryClient.getQueryData<MobileDashboard>([
@@ -44,7 +48,10 @@ export function useLeadPriorityMutation(onSaved?: () => void) {
       queryClient.setQueryData<MobileDashboard>(['mobile-dashboard'], (cur) =>
         patchDashboardPriority(cur, leadId, priority)
       );
-      patchLeadInLists(queryClient, leadId, { priority });
+      patchLeadInLists(queryClient, leadId, {
+        temperature: priority,
+        priority,
+      });
       return { prev };
     },
     onError: (_e, { leadId, previous }, ctx) => {
@@ -52,20 +59,26 @@ export function useLeadPriorityMutation(onSaved?: () => void) {
         queryClient.setQueryData(['mobile-dashboard'], ctx.prev);
       }
       if (previous !== undefined) {
-        patchLeadInLists(queryClient, leadId, { priority: previous });
+        patchLeadInLists(queryClient, leadId, {
+          temperature: previous,
+          priority: previous,
+        });
       }
-      Alert.alert('Could not update priority');
+      Alert.alert('Could not update temperature');
     },
     onSuccess: (updated, { leadId }) => {
       if (updated) {
         queryClient.setQueryData(['lead', leadId], updated);
-        const next = (updated.priority as LeadPriority | null) ?? null;
+        const next =
+          ((updated.temperature ?? updated.priority) as LeadPriority | null) ??
+          null;
         if (next) {
           queryClient.setQueryData<MobileDashboard>(
             ['mobile-dashboard'],
             (cur) => patchDashboardPriority(cur, leadId, next)
           );
           patchLeadInLists(queryClient, leadId, {
+            temperature: next,
             priority: next,
             updatedAt: updated.updatedAt,
           });

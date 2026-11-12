@@ -22,6 +22,7 @@ import { LeadHistorySheet } from '@/components/home/LeadHistorySheet';
 import { PriorityPickerSheet } from '@/components/home/PriorityPickerSheet';
 import {
   PRIORITY_META,
+  normalizeLeadTemperature,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
 import { useLeadPriorityMutation } from '@/features/leads/useLeadPriorityMutation';
@@ -45,9 +46,9 @@ type HistoryTarget = {
 const MAX = 5;
 
 const PRIORITY_ICON = {
-  LOW: ArrowDownDoubleIcon,
-  MEDIUM: MinusSignIcon,
-  HIGH: FlameIcon,
+  COLD: ArrowDownDoubleIcon,
+  WARM: MinusSignIcon,
+  HOT: FlameIcon,
 } as const;
 
 function whenLabel(lead: RecentLead) {
@@ -92,7 +93,9 @@ export function HomeLatestLeads({ leads }: Props) {
           {items.map((lead) => {
             const statusName = lead.status?.name || 'Lead';
             const statusColor = lead.status?.color || colors.brand;
-            const priority = (lead.priority as LeadPriority | null) ?? null;
+            const priority = normalizeLeadTemperature(
+              lead.temperature ?? lead.priority
+            );
             const priorityMeta = priority ? PRIORITY_META[priority] : null;
             const priorityBadge = priority
               ? priorityBadgeColors(priority, isDark)
@@ -141,7 +144,7 @@ export function HomeLatestLeads({ leads }: Props) {
 
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Change priority"
+                      accessibilityLabel="Change temperature"
                       accessibilityState={{
                         expanded: priorityLeadId === lead.id,
                       }}
@@ -181,7 +184,7 @@ export function HomeLatestLeads({ leads }: Props) {
                           },
                         ]}
                       >
-                        {priorityMeta?.label ?? 'Priority'}
+                        {priorityMeta?.label ?? 'Temperature'}
                       </Text>
                       <Ionicons
                         name="chevron-down"
@@ -331,7 +334,9 @@ export function HomeLatestLeads({ leads }: Props) {
       <PriorityPickerSheet
         open={!!openLead}
         leadName={openLead?.name || 'Lead'}
-        value={(openLead?.priority as LeadPriority | null) ?? null}
+        value={normalizeLeadTemperature(
+          openLead?.temperature ?? openLead?.priority
+        )}
         saving={priorityMutation.isPending}
         onClose={() => setPriorityLeadId(null)}
         onSelect={(priority) => {
@@ -339,7 +344,9 @@ export function HomeLatestLeads({ leads }: Props) {
           priorityMutation.mutate({
             leadId: openLead.id,
             priority,
-            previous: (openLead.priority as LeadPriority | null) ?? null,
+            previous: normalizeLeadTemperature(
+              openLead.temperature ?? openLead.priority
+            ),
           });
         }}
       />

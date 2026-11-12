@@ -15,7 +15,7 @@ function toTarget(lead: LeadListItem): Target {
   return {
     leadId: lead.id,
     leadName: lead.buyerPersona?.fullName || 'Lead',
-    priority: lead.priority ?? null,
+    priority: lead.temperature ?? lead.priority ?? null,
   };
 }
 

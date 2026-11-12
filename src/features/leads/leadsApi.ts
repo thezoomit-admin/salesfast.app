@@ -52,7 +52,7 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
       viewed: params.viewed ?? undefined,
       followupNone: params.followupNone || undefined,
       sort: params.sort,
-      priority: params.priority,
+      temperature: params.temperature ?? params.priority,
       leadSourceId: params.leadSourceId,
       engagement: params.engagement,
       dateFrom: params.dateFrom,
@@ -121,7 +121,7 @@ export async function updateLeadStatus(
   return data.data;
 }
 
-/** Generic lead PUT (priority, stageRating, full status change, …). */
+/** Generic lead PUT (temperature, stageRating, full status change, …). */
 export async function updateLead(
   id: number | string,
   payload: Record<string, unknown>,
@@ -135,10 +135,10 @@ export async function updateLead(
   return data.data;
 }
 
-export async function updateLeadPriority(
+export async function updateLeadTemperature(
   id: number | string,
   payload: {
-    priority: 'LOW' | 'MEDIUM' | 'HIGH';
+    temperature: 'COLD' | 'WARM' | 'HOT';
     expectedVersion?: number;
   },
   options: WriteOptions = {}
@@ -149,6 +149,33 @@ export async function updateLeadPriority(
     { accountId: options.accountId }
   );
   return data.data;
+}
+
+/** @deprecated Use updateLeadTemperature */
+export async function updateLeadPriority(
+  id: number | string,
+  payload: {
+    priority?: 'COLD' | 'WARM' | 'HOT' | 'LOW' | 'MEDIUM' | 'HIGH';
+    temperature?: 'COLD' | 'WARM' | 'HOT';
+    expectedVersion?: number;
+  },
+  options: WriteOptions = {}
+) {
+  return updateLeadTemperature(
+    id,
+    {
+      temperature: (payload.temperature ??
+        (payload.priority === 'LOW'
+          ? 'COLD'
+          : payload.priority === 'MEDIUM'
+            ? 'WARM'
+            : payload.priority === 'HIGH'
+              ? 'HOT'
+              : payload.priority)) as 'COLD' | 'WARM' | 'HOT',
+      expectedVersion: payload.expectedVersion,
+    },
+    options
+  );
 }
 
 export async function addLeadNote(

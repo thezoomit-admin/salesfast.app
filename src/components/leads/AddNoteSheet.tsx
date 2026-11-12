@@ -160,7 +160,9 @@ export function AddNoteSheet({
     setPriorityOpen(false);
     setClips([]);
     setRecording(false);
-    setRating((lead.priority as LeadPriority | null) ?? null);
+    setRating(
+      ((lead.temperature ?? lead.priority) as LeadPriority | null) ?? null,
+    );
     versionRef.current = lead.version ?? undefined;
     const preset =
       initialStageId != null &&
@@ -210,7 +212,7 @@ export function AddNoteSheet({
           queryClient.setQueryData(key, data);
         }
       }
-      Alert.alert('Could not update priority');
+      Alert.alert('Could not update temperature');
     },
   });
 
@@ -408,7 +410,7 @@ export function AddNoteSheet({
                     { color: priorityBadge?.color ?? colors.textMuted },
                   ]}
                 >
-                  {priorityMeta?.label ?? 'Priority'}
+                  {priorityMeta?.label ?? 'Temperature'}
                 </Text>
                 <Ionicons
                   name="chevron-down"
