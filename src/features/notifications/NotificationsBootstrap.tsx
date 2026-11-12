@@ -18,6 +18,7 @@ import {
   isPushSupported,
   registerForPushNotifications,
 } from './pushRegistration';
+import { useNotificationSocket } from './useNotificationSocket';
 
 /**
  * While the app is open, still show the system pop-up (heads-up banner).
@@ -52,6 +53,9 @@ export function NotificationsBootstrap() {
   const queryClient = useQueryClient();
   const handledResponse = useRef<string | null>(null);
   const pushOk = isPushSupported();
+
+  // Real-time inbox while the app is open.
+  useNotificationSocket(userId);
 
   // Register this install's push token for the signed-in user; re-register
   // when the OS rotates the token or the app returns to the foreground
