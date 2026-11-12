@@ -80,11 +80,8 @@ function ThemedStack() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
-          // Every push (leads → detail, settings, etc.): smooth card slide.
-          // Android ios_from_right ≈ iOS push; iOS default keeps parallax + edge back.
-          // fullScreenGestureEnabled is off — it forces a flatter simple_push on iOS.
-          animation:
-            Platform.OS === 'android' ? 'ios_from_right' : 'default',
+          // All pushes: page slides in from the right (leads → detail, settings, …).
+          animation: 'slide_from_right',
           gestureEnabled: true,
           animationMatchesGesture: true,
           animationTypeForReplace: 'push',
@@ -94,14 +91,38 @@ function ThemedStack() {
         {/* Auth ↔ app: fade so the gate doesn't slide over tabs. */}
         <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-        <Stack.Screen name="leads/[id]" />
-        <Stack.Screen name="leads/new" />
-        <Stack.Screen name="activities" />
-        <Stack.Screen name="call-sync/setup" />
-        <Stack.Screen name="settings/edit" />
-        <Stack.Screen name="settings/about" />
-        <Stack.Screen name="settings/notifications" />
-        <Stack.Screen name="+not-found" />
+        <Stack.Screen
+          name="leads/[id]"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="leads/new"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="activities"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="call-sync/setup"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="settings/edit"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="settings/about"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="settings/notifications"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="+not-found"
+          options={{ animation: 'slide_from_right' }}
+        />
       </Stack>
     </>
   );
