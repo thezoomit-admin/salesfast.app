@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-type IntentScreen = 'leads' | 'follow-ups';
+type IntentScreen = 'my-leads' | 'leads' | 'follow-ups';
 
 export type TabIntent = { screen: IntentScreen; value: string };
 

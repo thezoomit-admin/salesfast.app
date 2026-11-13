@@ -15,13 +15,15 @@ import { LeadListItemCard } from '@/components/leads/LeadListItemCard';
 import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { LeadListSkeleton } from '@/components/ui/skeletons';
 import { QueryPlaceholder } from '@/components/ui/StateViews';
+import type { LeadListMode } from '@/features/auth/leadAccess';
 import type { LeadFilters } from '@/features/leads/leadFilters';
-import { myLeadsQuery, type LeadListTab } from '@/features/leads/leadsApi';
+import { leadsListQuery, type LeadListTab } from '@/features/leads/leadsApi';
 import { useLeadRowHandlers } from '@/features/leads/useLeadDetail';
 import type { LeadListItem } from '@/types/api';
 import { spacing, useThemeColors } from '@/theme';
 
 type Props = {
+  mode: LeadListMode;
   tab: LeadListTab;
   search: string;
   filters: LeadFilters;
@@ -42,6 +44,7 @@ type Props = {
  * drags it in. A page stays mounted once built, keeping its scroll position.
  */
 function LeadTabPageBase({
+  mode,
   tab,
   search,
   filters,
@@ -57,7 +60,7 @@ function LeadTabPageBase({
   // A new search keeps this tab's rows on screen (dimmed) until the new ones
   // land. The key only ever changes by search or filters, never by tab.
   const leads = useInfiniteQuery({
-    ...myLeadsQuery(search, tab, filters),
+    ...leadsListQuery(mode, search, tab, filters),
     enabled,
     placeholderData: keepPreviousData,
   });

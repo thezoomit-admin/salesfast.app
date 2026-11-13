@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 
 import { api } from '@/api/client';
+import type { LeadListMode } from '@/features/auth/leadAccess';
 import {
   detailOrNull,
   leadDetailKey,
@@ -32,15 +33,18 @@ export type LeadListParams = LeadFilterParams & {
   followupTo?: string;
   /** false → Unread (nobody has opened the lead yet). */
   viewed?: boolean;
+  /**
+   * My Leads → true (assigned to the JWT user).
+   * All Leads → omit/false (server still applies canViewAll scope).
+   */
+  mine?: boolean;
 };
 
-export async function fetchMyLeads(params: LeadListParams = {}) {
+export async function fetchLeads(params: LeadListParams = {}) {
   const { data } = await api.get<
     ApiResponse<LeadListItem[] | { data: LeadListItem[]; meta?: Record<string, number> }>
   >('/crm/leads', {
     params: {
-      // Same leads this user can open on the web. `mine` would drop every
-      // lead that is not assigned to them, including for All Leads access.
       view: 'compact',
       page: params.page ?? 1,
       per_page: params.per_page ?? 20,
@@ -57,6 +61,7 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
       engagement: params.engagement,
       dateFrom: params.dateFrom,
       dateTo: params.dateTo,
+      ...(params.mine ? { mine: true } : {}),
     },
   });
   const payload = data.data;
@@ -71,6 +76,14 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
     {};
   return { items, meta };
 }
+
+/** @deprecated Prefer fetchLeads({ mine: true }) for My Leads. */
+export async function fetchMyLeads(params: LeadListParams = {}) {
+  return fetchLeads({ ...params, mine: true });
+}
+
+/** Root query key for both My Leads and All Leads list caches. */
+export const LEADS_QUERY_ROOT = 'leads' as const;
 
 /** Pins a request to one account (see AxiosRequestConfig.accountId). */
 type WriteOptions = { accountId?: string };
@@ -295,21 +308,23 @@ export const leadViewsQuery = (leadId: number) =>
 /** Lead list tab — All, Unread, or one lead status id. */
 export type LeadListTab = 'all' | 'unread' | number;
 
-export const myLeadsQuery = (
+export const leadsListQuery = (
+  mode: LeadListMode,
   search: string,
   tab: LeadListTab = 'all',
   filters: LeadFilters = NO_LEAD_FILTERS
 ) =>
   infiniteQueryOptions({
-    // Tab before search so ['my-leads', 'unread'] matches every search.
-    queryKey: ['my-leads', tab, search, filters],
+    // Mode + tab before search so ['leads', 'mine', 'unread'] matches every search.
+    queryKey: [LEADS_QUERY_ROOT, mode, tab, search, filters],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
-      fetchMyLeads({
+      fetchLeads({
         page: pageParam,
         search,
         leadStatusId: typeof tab === 'number' ? tab : undefined,
         viewed: tab === 'unread' ? false : undefined,
+        mine: mode === 'mine',
         ...leadFilterParams(filters),
       }),
     getNextPageParam: (last) => {
@@ -318,6 +333,13 @@ export const myLeadsQuery = (
       return current < lastPage ? current + 1 : undefined;
     },
   });
+
+/** @deprecated Prefer leadsListQuery('mine', ...). */
+export const myLeadsQuery = (
+  search: string,
+  tab: LeadListTab = 'all',
+  filters: LeadFilters = NO_LEAD_FILTERS
+) => leadsListQuery('mine', search, tab, filters);
 
 type StatusCounts = {
   total: number;
@@ -340,21 +362,27 @@ export type LeadTabCounts = {
 
 /** Badge counts for the lead list tabs (same search and filters as the list). */
 export const leadTabCountsQuery = (
+  mode: LeadListMode,
   search: string,
   filters: LeadFilters = NO_LEAD_FILTERS
 ) =>
   queryOptions({
-    // Under 'my-leads' so every list invalidation refreshes the badges too.
+    // Under LEADS_QUERY_ROOT so every list invalidation refreshes the badges too.
     // Sort never changes a count, so it stays out of the key.
     queryKey: [
-      'my-leads',
+      LEADS_QUERY_ROOT,
+      mode,
       'counts',
       search,
       { ...filters, sort: NO_LEAD_FILTERS.sort },
     ],
     queryFn: async (): Promise<LeadTabCounts> => {
       const { sort: _sort, ...params } = leadFilterParams(filters);
-      const shared = { ...params, search: search || undefined };
+      const shared = {
+        ...params,
+        search: search || undefined,
+        ...(mode === 'mine' ? { mine: true } : {}),
+      };
       const [all, unread] = await Promise.all([
         fetchStatusCounts(shared),
         fetchStatusCounts({ ...shared, viewed: false }),
