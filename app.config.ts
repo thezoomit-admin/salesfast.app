@@ -1,4 +1,4 @@
-import { ExpoConfig, ConfigContext } from 'expo/config';
+import type { ExpoConfig, ConfigContext } from 'expo/config';
 
 // app.config runs in Node, but the app tsconfig has no @types/node.
 declare const require: (id: 'fs') => { existsSync: (path: string) => boolean };
@@ -52,11 +52,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.salesfastcrm',
-    buildNumber: '5',
+    buildNumber: '7',
   },
   android: {
     package: 'com.salesfast.crm',
-    versionCode: 5,
+    versionCode: 7,
     adaptiveIcon: {
       // Match the blue plate in salesfast-app-logo.png (corners under Android mask).
       backgroundColor: '#3A83F7',
@@ -165,4 +165,3 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
 });
-
