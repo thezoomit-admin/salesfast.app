@@ -52,11 +52,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.salesfastcrm',
-    buildNumber: '5',
+    buildNumber: '9',
   },
   android: {
     package: 'com.salesfast.crm',
-    versionCode: 5,
+    versionCode: 9,
     adaptiveIcon: {
       // Match the blue plate in salesfast-app-logo.png (corners under Android mask).
       backgroundColor: '#3A83F7',

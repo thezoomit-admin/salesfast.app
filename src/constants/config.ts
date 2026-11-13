@@ -83,7 +83,7 @@ export const API_BASE_URL = resolveApiUrl();
 export const APP_NAME = 'Salesfast- CRM';
 export const APP_VERSION = '1.0.2';
 /** Matches android.versionCode / ios.buildNumber in app.config.ts */
-export const APP_BUILD = '5';
+export const APP_BUILD = '9';
 
 /** Dokploy staging API — used by installed APKs. */
 export const STAGING_API_URL = 'https://salesfastapi-dev.thezoomit.com/api';
