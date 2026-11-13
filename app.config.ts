@@ -41,7 +41,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Salesfast- CRM',
   slug: 'salesfast',
-  version: '1.0.1',
+  version: '1.0.2',
   // Android versionCode / iOS buildNumber — shown on App info.
   // Bump with each store / APK release.
   owner: 'zoomits-team',
@@ -52,11 +52,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.salesfastcrm',
-    buildNumber: '3',
+    buildNumber: '5',
   },
   android: {
     package: 'com.salesfast.crm',
-    versionCode: 3,
+    versionCode: 5,
     adaptiveIcon: {
       // Match the blue plate in salesfast-app-logo.png (corners under Android mask).
       backgroundColor: '#3A83F7',
