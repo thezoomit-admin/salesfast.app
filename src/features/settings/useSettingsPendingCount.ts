@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import { useCallLeadPromptStatus } from '@/features/call-tracking/callLeadPrompt';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 
 /**
@@ -8,6 +9,7 @@ import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
  */
 export function useSettingsPendingCount() {
   const callSync = useCallSyncStatus();
+  const callLeads = useCallLeadPromptStatus();
 
   const items = useMemo(() => {
     const list: string[] = [];
@@ -18,13 +20,23 @@ export function useSettingsPendingCount() {
     ) {
       list.push('call-sync');
     }
+    // Never decided, or on but a permission was revoked.
+    if (callLeads.undecided || callLeads.needsPermission) {
+      list.push('call-leads');
+    }
     return list;
-  }, [callSync.status]);
+  }, [callSync.status, callLeads.undecided, callLeads.needsPermission]);
+
+  const { refresh: refreshCallSync } = callSync;
+  const { refresh: refreshCallLeads } = callLeads;
+  const refresh = useCallback(async () => {
+    await Promise.all([refreshCallSync(), refreshCallLeads()]);
+  }, [refreshCallSync, refreshCallLeads]);
 
   return {
     count: items.length,
     items,
     loading: callSync.loading,
-    refresh: callSync.refresh,
+    refresh,
   };
 }

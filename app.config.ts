@@ -67,6 +67,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...(googleServicesFile ? { googleServicesFile } : {}),
     permissions: [
       'READ_CALL_LOG',
+      // "Is this your lead?" prompt: who is calling, and skip saved contacts.
+      'READ_PHONE_STATE',
+      'READ_CONTACTS',
       'POST_NOTIFICATIONS',
       'RECORD_AUDIO',
       'MODIFY_AUDIO_SETTINGS',

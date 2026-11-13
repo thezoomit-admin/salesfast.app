@@ -20,6 +20,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { APP_NAME, APP_VERSION } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
+import { useCallLeadPromptStatus } from '@/features/call-tracking/callLeadPrompt';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { usePendingWriteCount } from '@/lib/accountWrites';
 import {
@@ -204,6 +205,7 @@ function ProfileScreen() {
   const more = useMemo(() => makeMore(colors), [colors]);
   const styles = useMemo(() => createStyles(more), [more]);
   const callSync = useCallSyncStatus();
+  const callLeads = useCallLeadPromptStatus();
   const pendingSetup = useSettingsPendingCount();
   const [accounts, setAccounts] = useState<SavedMobileAccount[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -219,8 +221,9 @@ function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       void callSync.refresh();
+      void callLeads.refresh();
       void refreshAccounts();
-    }, [callSync.refresh, refreshAccounts])
+    }, [callSync.refresh, callLeads.refresh, refreshAccounts])
   );
 
   const displayName = user?.name?.trim() || APP_NAME;
@@ -360,6 +363,12 @@ function ProfileScreen() {
       ? `${otherAccounts.length} saved`
       : 'This device';
 
+  const callLeadsLabel = !callLeads.config?.enabled
+    ? 'Off'
+    : callLeads.needsPermission
+      ? 'Needs permission'
+      : 'On';
+
   const sections: MenuSectionData[] = useMemo(
     () => [
       {
@@ -386,6 +395,18 @@ function ProfileScreen() {
             value: callSync.label,
             badge: pendingSetup.items.includes('call-sync') ? 1 : 0,
           },
+          ...(callLeads.available
+            ? [
+                {
+                  key: 'callLeads',
+                  label: 'Leads from calls',
+                  icon: 'call-outline' as const,
+                  href: '/settings/call-leads' as const,
+                  value: callLeadsLabel,
+                  badge: pendingSetup.items.includes('call-leads') ? 1 : 0,
+                },
+              ]
+            : []),
         ],
       },
       {
@@ -454,7 +475,7 @@ function ProfileScreen() {
         ],
       },
     ],
-    [callSync.label, mode, accountsValue, pendingSetup.items]
+    [callSync.label, callLeads.available, callLeadsLabel, mode, accountsValue, pendingSetup.items]
   );
 
   const searchItems: SettingsSearchItem[] = useMemo(

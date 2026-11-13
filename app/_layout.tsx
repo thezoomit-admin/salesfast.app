@@ -14,6 +14,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { BrandSplash } from '@/features/auth/components/BrandSplash';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
+import { CallLeadPromptBootstrap } from '@/features/call-tracking/CallLeadPromptBootstrap';
 import { CallSyncBootstrap } from '@/features/call-tracking/CallSyncBootstrap';
 import { installLeadWriteDefaults } from '@/features/leads/leadWrites';
 import { NotificationsBootstrap } from '@/features/notifications/NotificationsBootstrap';
@@ -107,6 +108,15 @@ function ThemedStack() {
           name="call-sync/setup"
           options={{ animation: 'slide_from_right' }}
         />
+        {/* Opened from the "Is this your lead?" call notification. */}
+        <Stack.Screen
+          name="call-lead"
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="settings/call-leads"
+          options={{ animation: 'slide_from_right' }}
+        />
         <Stack.Screen
           name="settings/edit"
           options={{ animation: 'slide_from_right' }}
@@ -153,6 +163,7 @@ export default function RootLayout() {
         <AuthProvider>
           <AuthGate>
             <CallSyncBootstrap />
+            <CallLeadPromptBootstrap />
             <NotificationsBootstrap />
             <ThemedStack />
           </AuthGate>
