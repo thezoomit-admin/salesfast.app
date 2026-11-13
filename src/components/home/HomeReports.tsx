@@ -278,7 +278,7 @@ export function HomeReports({ kpis, recentLeads }: Props) {
         <ReportCard
           styles={styles}
           title="Pipeline pulse"
-          href="/(tabs)/leads"
+          href="/(tabs)/my-leads"
           chevronColor={colors.textMuted}
           onPress={(href) => router.navigate(href)}
         >

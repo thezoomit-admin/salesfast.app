@@ -85,5 +85,59 @@ class AndroidCallLogModule : Module() {
 
       rows
     }
+
+    // ---- "Is this your lead?" call prompt ----
+
+    AsyncFunction("getCallLeadPromptConfig") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val config = CallLeadPromptStore.config(context)
+      mapOf(
+        "enabled" to config.enabled,
+        "skipContacts" to config.skipContacts,
+        "sessionActive" to config.sessionActive,
+        "configuredAtMs" to config.configuredAt.toDouble(),
+        "knownCount" to config.knownCount,
+        "knownSyncedAtMs" to config.knownSyncedAt.toDouble(),
+        "ignoredCount" to config.ignoredCount
+      )
+    }
+
+    AsyncFunction("setCallLeadPromptConfig") { enabled: Boolean, skipContacts: Boolean ->
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      CallLeadPromptStore.setConfig(context, enabled, skipContacts)
+      // Visible under App info → Notifications as soon as the feature is on.
+      if (enabled) CallLeadPrompter.ensureChannel(context.applicationContext)
+    }
+
+    AsyncFunction("setCallLeadSessionActive") { active: Boolean ->
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      CallLeadPromptStore.setSessionActive(context, active)
+    }
+
+    AsyncFunction("setKnownLeadPhoneKeys") { keys: List<String> ->
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      CallLeadPromptStore.setKnownKeys(context, keys)
+    }
+
+    /** A lead now exists for this number: stop asking and clear its prompt. */
+    AsyncFunction("markLeadPhoneKnown") { phone: String ->
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val key = CallLeadPromptStore.phoneKey(phone) ?: return@AsyncFunction
+      CallLeadPromptStore.addKnownKey(context, key)
+      CallLeadPrompter.cancel(context, key)
+    }
+
+    /** "Not a lead" from inside the app. */
+    AsyncFunction("ignoreLeadPhone") { phone: String ->
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val key = CallLeadPromptStore.phoneKey(phone) ?: return@AsyncFunction
+      CallLeadPromptStore.addIgnoredKey(context, key)
+      CallLeadPrompter.cancel(context, key)
+    }
+
+    AsyncFunction("clearIgnoredLeadPhones") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      CallLeadPromptStore.clearIgnored(context)
+    }
   }
 }

@@ -72,7 +72,7 @@ export default function NewLeadScreen() {
         },
         { idempotencyKey }
       );
-      void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
+      void queryClient.invalidateQueries({ queryKey: ['leads'] });
       void queryClient.invalidateQueries({ queryKey: ['mobile-dashboard'] });
       if (lead?.id) router.replace(`/leads/${lead.id}`);
       else router.back();

@@ -48,15 +48,15 @@ const PEEK_OPACITY = 0.22;
 const TOGGLE_MS = 280;
 
 const TILES: Tile[] = [
-  { key: 'leads', label: 'Leads', href: '/(tabs)/leads' },
+  { key: 'leads', label: 'My Leads', href: '/(tabs)/my-leads' },
   { key: 'add-lead', label: 'Add Lead', href: '/leads/new' },
   { key: 'follow-ups', label: 'Follow-ups', href: '/(tabs)/follow-ups' },
   { key: 'calls', label: 'Calls', href: '/(tabs)/calls' },
   {
     key: 'search',
     label: 'Search',
-    href: '/(tabs)/leads',
-    intent: { screen: 'leads', value: 'search' },
+    href: '/(tabs)/my-leads',
+    intent: { screen: 'my-leads', value: 'search' },
   },
   { key: 'activities', label: 'Activities', href: '/activities' },
   { key: 'inbox', label: 'Inbox', href: '/(tabs)/notifications' },
@@ -82,8 +82,8 @@ const TILES: Tile[] = [
   {
     key: 'unread',
     label: 'Unread',
-    href: '/(tabs)/leads',
-    intent: { screen: 'leads', value: 'unread' },
+    href: '/(tabs)/my-leads',
+    intent: { screen: 'my-leads', value: 'unread' },
   },
 ];
 

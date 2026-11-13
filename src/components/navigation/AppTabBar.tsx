@@ -26,20 +26,24 @@ import {
   Notification01Icon,
   PermanentJobIcon,
 } from '@/components/icons/hugeicons';
+import { useAuth } from '@/features/auth/AuthContext';
+import { canViewAllLeads } from '@/features/auth/leadAccess';
 import { useTheme, type ThemeColors } from '@/theme';
 
 /** Visual tab order — Home centered. Also the page order of the pager. */
-export const TAB_ORDER = [
-  'leads',
-  'follow-ups',
-  'index',
-  'calls',
-  'notifications',
-] as const;
+export function getTabOrder(canViewAll: boolean): readonly string[] {
+  return canViewAll
+    ? ['my-leads', 'leads', 'follow-ups', 'index', 'calls', 'notifications']
+    : ['my-leads', 'follow-ups', 'index', 'calls', 'notifications'];
+}
+
+/** Default order for warm/prefetch when auth is not ready yet. */
+export const TAB_ORDER = getTabOrder(false);
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 
 const TAB_ICONS: Record<string, HugeIconData> = {
+  'my-leads': PermanentJobIcon,
   leads: PermanentJobIcon,
   'follow-ups': Calendar03Icon,
   index: Home03Icon,
@@ -48,6 +52,7 @@ const TAB_ICONS: Record<string, HugeIconData> = {
 };
 
 const TAB_LABELS: Record<string, string> = {
+  'my-leads': 'My Leads',
   leads: 'Leads',
   'follow-ups': 'Follow-ups',
   index: 'Home',
@@ -69,6 +74,9 @@ export function AppTabBar({
   badges,
 }: AppTabBarProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const canViewAll = canViewAllLeads(user);
+  const tabOrder = useMemo(() => getTabOrder(canViewAll), [canViewAll]);
   // Real system inset only — edge-to-edge paints brand under the nav buttons.
   const systemInset = insets.bottom;
   const styles = useMemo(
@@ -99,9 +107,12 @@ export function AppTabBar({
     []
   );
 
-  const paintActive = useCallback((name: string) => {
-    for (const tab of TAB_ORDER) paints.current.get(tab)?.(tab === name);
-  }, []);
+  const paintActive = useCallback(
+    (name: string) => {
+      for (const tab of tabOrder) paints.current.get(tab)?.(tab === name);
+    },
+    [tabOrder]
+  );
 
   useEffect(() => {
     if (pressedName != null && pressedName === focusedName) {
@@ -184,7 +195,7 @@ export function AppTabBar({
   return (
     <View style={styles.wrap} accessibilityRole="tablist">
       <View style={styles.bar}>
-        {TAB_ORDER.map((name) => {
+        {tabOrder.map((name) => {
           const route = routesByName[name];
           if (!route) return null;
 

@@ -127,8 +127,8 @@ function HomeHeroBase({ name, photo, summary }: Props) {
           accessibilityRole="button"
           accessibilityLabel="Search leads"
           onPress={() => {
-            requestTabIntent({ screen: "leads", value: "search" });
-            router.navigate("/(tabs)/leads");
+            requestTabIntent({ screen: "my-leads", value: "search" });
+            router.navigate("/(tabs)/my-leads");
           }}
           hitSlop={4}
           style={({ pressed }) => [styles.action, pressed && styles.pressed]}

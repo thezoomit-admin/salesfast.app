@@ -74,7 +74,7 @@ export function HomeQuickFeatures({ kpis, trends }: Props) {
       icon: <HugeiconsIcon icon={HomeSolidIcon} size={ICON_SIZE} color="#5A4FF0" />,
       tint: { circle: '#ECE9FE', waveBack: '#E6E1FD', waveFront: '#C9C1F9' },
       darkTint: { circle: '#6B63F733', waveBack: '#6B63F726', waveFront: '#6B63F74D' },
-      href: '/(tabs)/leads',
+      href: '/(tabs)/my-leads',
     },
     {
       key: 'follow-ups',
@@ -108,7 +108,7 @@ export function HomeQuickFeatures({ kpis, trends }: Props) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="View all leads"
-          onPress={() => router.navigate('/(tabs)/leads')}
+          onPress={() => router.navigate('/(tabs)/my-leads')}
           hitSlop={8}
           style={({ pressed }) => [styles.viewAll, pressed && styles.pressed]}
         >

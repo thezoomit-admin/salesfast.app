@@ -31,8 +31,8 @@ export async function detailOrNull(
 
 type ListPage = { items: LeadListItem[] };
 
-/** List caches whose rows are LeadListItem (Leads tab). */
-const LIST_ROOTS = ['my-leads'] as const;
+/** List caches whose rows are LeadListItem (My Leads / All Leads tabs). */
+const LIST_ROOTS = ['leads'] as const;
 
 /** Follow-ups tab cache — rows are follow-ups that carry a lead summary. */
 const FOLLOW_UP_ROOT = 'my-follow-ups';

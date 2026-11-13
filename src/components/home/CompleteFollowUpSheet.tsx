@@ -198,7 +198,7 @@ export function CompleteFollowUpSheet({
     onSettled: (_data, _err, vars) => {
       void queryClient.invalidateQueries({ queryKey: dashboardQuery.queryKey });
       void queryClient.invalidateQueries({ queryKey: ['my-follow-ups'] });
-      void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
+      void queryClient.invalidateQueries({ queryKey: ['leads'] });
       void queryClient.invalidateQueries({ queryKey: ['lead', vars.leadId] });
     },
   });

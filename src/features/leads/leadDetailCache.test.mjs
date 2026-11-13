@@ -43,7 +43,7 @@ const newClient = () =>
 afterEach(() => client?.clear());
 
 function seedLists(c) {
-  c.setQueryData(['my-leads', '', undefined], {
+  c.setQueryData(['leads', 'mine', 'all', '', undefined], {
     pages: [
       { items: [row(1, '2026-11-01T10:00:00Z'), row(2, '2026-11-01T10:00:00Z')], meta: {} },
       { items: [row(3, '2026-11-01T10:00:00Z')], meta: {} },
@@ -95,7 +95,7 @@ describe('findListLead', () => {
   it('returns undefined for an unknown lead or malformed cache data', () => {
     const c = newClient();
     seedLists(c);
-    c.setQueryData(['my-leads', 'broken'], { pages: null });
+    c.setQueryData(['leads', 'broken'], { pages: null });
     c.setQueryData(['my-follow-ups', 'odd'], 'not a list');
     assert.equal(findListLead(c, 99), undefined);
   });
@@ -113,11 +113,11 @@ describe('findListLead', () => {
 });
 
 describe('patchLeadInLists', () => {
-  it('updates the lead row in the infinite my-leads list', () => {
+  it('updates the lead row in the infinite leads list', () => {
     const c = newClient();
     seedLists(c);
     patchLeadInLists(c, 2, { priority: 'LOW' });
-    const myLeads = c.getQueryData(['my-leads', '', undefined]);
+    const myLeads = c.getQueryData(['leads', 'mine', 'all', '', undefined]);
     assert.equal(myLeads.pages[0].items[1].priority, 'LOW');
   });
 

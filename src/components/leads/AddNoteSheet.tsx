@@ -188,7 +188,7 @@ export function AddNoteSheet({
     onMutate: (next) => {
       const prev = rating;
       const prevLists = queryClient
-        .getQueriesData({ queryKey: ['my-leads'] })
+        .getQueriesData({ queryKey: ['leads'] })
         .concat(queryClient.getQueriesData({ queryKey: ['my-follow-ups'] }));
       setRating(next);
       setPriorityOpen(false);
@@ -326,7 +326,7 @@ export function AddNoteSheet({
       }
 
       void queryClient.invalidateQueries({ queryKey: ['lead', lead.id] });
-      void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
+      void queryClient.invalidateQueries({ queryKey: ['leads'] });
       onSaved?.();
       setSuccessOpen(true);
     } catch (err) {

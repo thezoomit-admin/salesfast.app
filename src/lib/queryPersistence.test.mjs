@@ -84,7 +84,7 @@ describe('per-account disk cache', () => {
   it('never writes list-row placeholder data as a lead detail', async () => {
     const a = newClient();
     const stopA = persistQueryCache(a, 'A');
-    await load(a, ['my-leads', ''], { pages: [{ items: [lead(5, 'A')] }], pageParams: [1] });
+    await load(a, ['leads', 'mine', 'all', ''], { pages: [{ items: [lead(5, 'A')] }], pageParams: [1] });
     const observer = new QueryObserver(a, {
       queryKey: ['lead', 5],
       queryFn: () => new Promise(() => {}), // detail still loading

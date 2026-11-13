@@ -41,8 +41,7 @@ export function useLeadDetail(leadId: number) {
         // Row loses its unread look as soon as the user goes back.
         patchLeadInLists(queryClient, leadId, { viewed: true });
         // The lead is no longer unread — refresh that tab and the badges.
-        void queryClient.invalidateQueries({ queryKey: ['my-leads', 'unread'] });
-        void queryClient.invalidateQueries({ queryKey: ['my-leads', 'counts'] });
+        void queryClient.invalidateQueries({ queryKey: ['leads'] });
       })
       .catch(() => {
         // Best effort.

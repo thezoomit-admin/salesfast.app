@@ -77,7 +77,7 @@ export function HomeLatestLeads({ leads }: Props) {
   return (
     <HomeSection
       title="Latest leads"
-      onSeeAll={() => router.navigate('/(tabs)/leads')}
+      onSeeAll={() => router.navigate('/(tabs)/my-leads')}
     >
       {items.length === 0 ? (
         <Text style={styles.empty}>

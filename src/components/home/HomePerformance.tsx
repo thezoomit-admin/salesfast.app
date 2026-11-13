@@ -200,7 +200,7 @@ export function HomePerformance({ kpis, trends, completedByDay }: Props) {
       background: isDark ? palette.tones.blue.bg : '#E9F0FE',
       border: isDark ? palette.tones.blue.bg : '#D8E5FC',
       circle: isDark ? '#005BED33' : '#D5E3FC',
-      href: '/(tabs)/leads',
+      href: '/(tabs)/my-leads',
     },
   ];
 

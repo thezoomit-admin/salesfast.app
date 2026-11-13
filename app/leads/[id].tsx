@@ -147,7 +147,7 @@ export default function LeadDetailScreen() {
     onMutate: async (priority) => {
       await queryClient.cancelQueries({ queryKey: ['lead', leadId] });
       const prevDetail = leadQuery.data;
-      const prevLists = queryClient.getQueriesData({ queryKey: ['my-leads'] })
+      const prevLists = queryClient.getQueriesData({ queryKey: ['leads'] })
         .concat(queryClient.getQueriesData({ queryKey: ['my-follow-ups'] }));
       if (prevDetail) {
         queryClient.setQueryData(['lead', leadId], { ...prevDetail, priority });

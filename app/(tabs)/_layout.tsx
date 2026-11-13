@@ -4,6 +4,8 @@ import { CommonActions } from 'expo-router/react-navigation';
 import { useEffect, useState } from 'react';
 
 import { AppTabBar } from '@/components/navigation/AppTabBar';
+import { useAuth } from '@/features/auth/AuthContext';
+import { canViewAllLeads } from '@/features/auth/leadAccess';
 import { dashboardQuery } from '@/features/dashboard/dashboardApi';
 import {
   fetchUnreadByTab,
@@ -14,7 +16,7 @@ import {
   followUpMonthQuery,
   leadStatusesQuery,
   leadTabCountsQuery,
-  myLeadsQuery,
+  leadsListQuery,
   noteChannelsQuery,
 } from '@/features/leads/leadsApi';
 
@@ -27,7 +29,11 @@ type TabNavigation = {
 };
 
 /** Nearest to Home first. Profile last: only the Home header opens it. */
-const WARM_ORDER = ['follow-ups', 'calls', 'leads', 'notifications', 'profile'];
+function warmOrder(canViewAll: boolean) {
+  return canViewAll
+    ? ['follow-ups', 'calls', 'my-leads', 'leads', 'notifications', 'profile']
+    : ['follow-ups', 'calls', 'my-leads', 'notifications', 'profile'];
+}
 const WARM_START_MS = 120;
 const WARM_STEP_MS = 80;
 
@@ -36,10 +42,14 @@ const WARM_STEP_MS = 80;
  * never has to build a page. Mounting on press blocks the JS thread right when
  * the page and the tab colour need to change.
  */
-function useWarmTabs(navigation: TabNavigation | null, ready: boolean) {
+function useWarmTabs(
+  navigation: TabNavigation | null,
+  ready: boolean,
+  canViewAll: boolean
+) {
   useEffect(() => {
     if (!navigation || !ready) return;
-    const pending = [...WARM_ORDER];
+    const pending = [...warmOrder(canViewAll)];
     let timer: ReturnType<typeof setTimeout>;
     const warmNext = () => {
       const name = pending.shift();
@@ -52,10 +62,13 @@ function useWarmTabs(navigation: TabNavigation | null, ready: boolean) {
     };
     timer = setTimeout(warmNext, WARM_START_MS);
     return () => clearTimeout(timer);
-  }, [navigation, ready]);
+  }, [navigation, ready, canViewAll]);
 }
 
 export default function TabLayout() {
+  const { user } = useAuth();
+  const canViewAll = canViewAllLeads(user);
+
   // Shares the Home dashboard cache, so this adds no extra request.
   const dashboard = useQuery(dashboardQuery);
   const overdue = dashboard.data?.kpis.overdueFollowUps ?? 0;
@@ -64,9 +77,12 @@ export default function TabLayout() {
   const queryClient = useQueryClient();
   const homeReady = !dashboard.isPending;
 
-  // Same cache as the Leads screen's Unread tab count, so opening a lead
-  // (which invalidates ['my-leads', 'counts']) updates this badge too.
-  const leadCounts = useQuery({ ...leadTabCountsQuery(''), enabled: homeReady });
+  // Same cache as My Leads Unread tab count, so opening a lead
+  // (which invalidates ['leads', …]) updates this badge too.
+  const leadCounts = useQuery({
+    ...leadTabCountsQuery('mine', ''),
+    enabled: homeReady,
+  });
   const unread = leadCounts.data?.unread ?? 0;
 
   // Urgent only: an Info count would keep the badge lit and teach people to
@@ -81,16 +97,19 @@ export default function TabLayout() {
 
   useEffect(() => {
     if (!homeReady) return;
-    void queryClient.prefetchInfiniteQuery(myLeadsQuery(''));
+    void queryClient.prefetchInfiniteQuery(leadsListQuery('mine', ''));
+    if (canViewAll) {
+      void queryClient.prefetchInfiniteQuery(leadsListQuery('all', ''));
+    }
     void queryClient.prefetchQuery(
       followUpMonthQuery(followUpMonthKey(new Date()))
     );
     void queryClient.prefetchQuery(leadStatusesQuery);
     void queryClient.prefetchQuery(noteChannelsQuery);
-  }, [homeReady, queryClient]);
+  }, [homeReady, queryClient, canViewAll]);
 
   const [tabNavigation, setTabNavigation] = useState<TabNavigation | null>(null);
-  useWarmTabs(tabNavigation, homeReady);
+  useWarmTabs(tabNavigation, homeReady, canViewAll);
 
   return (
     <TopTabs
@@ -101,7 +120,7 @@ export default function TabLayout() {
         <AppTabBar
           {...props}
           badges={{
-            leads: unread,
+            'my-leads': unread,
             'follow-ups': overdue,
             notifications: urgent,
           }}
@@ -120,9 +139,10 @@ export default function TabLayout() {
         focus: () => setTabNavigation((current) => current ?? navigation),
       })}
     >
-      {/* Declaration order is the pager order — keep it equal to TAB_ORDER.
+      {/* Declaration order is the pager order — keep it aligned with getTabOrder.
           Profile comes last: a page with the bar but no bar item, opened
           from the Home header. */}
+      <TopTabs.Screen name="my-leads" options={{ title: 'My Leads' }} />
       <TopTabs.Screen name="leads" options={{ title: 'Leads' }} />
       <TopTabs.Screen name="follow-ups" options={{ title: 'Follow-ups' }} />
       <TopTabs.Screen name="index" options={{ title: 'Home' }} />
