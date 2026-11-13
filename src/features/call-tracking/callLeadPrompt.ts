@@ -8,14 +8,14 @@ import {
   type CallLeadPromptConfig,
 } from 'android-call-log';
 
-const P = PermissionsAndroid.PERMISSIONS;
+// PermissionsAndroid is undefined on web: read it only inside Android paths.
+const perms = () => PermissionsAndroid.PERMISSIONS;
 
 /** Without these the phone cannot tell us who is calling, or show the prompt. */
 function requiredPermissions(): Permission[] {
+  const P = perms();
   const list: Permission[] = [P.READ_PHONE_STATE, P.READ_CALL_LOG];
-  if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
-    list.push(P.POST_NOTIFICATIONS);
-  }
+  if (Number(Platform.Version) >= 33) list.push(P.POST_NOTIFICATIONS);
   return list;
 }
 
@@ -32,7 +32,7 @@ export async function checkCallLeadPermissions(): Promise<CallLeadPermissions> {
   );
   return {
     required: required.every(Boolean),
-    contacts: await PermissionsAndroid.check(P.READ_CONTACTS),
+    contacts: await PermissionsAndroid.check(perms().READ_CONTACTS),
   };
 }
 
@@ -42,12 +42,13 @@ export async function checkCallLeadPermissions(): Promise<CallLeadPermissions> {
  */
 export async function requestCallLeadPermissions(withContacts: boolean) {
   if (Platform.OS !== 'android') return { required: false, contacts: false };
-  const wanted = [...requiredPermissions(), ...(withContacts ? [P.READ_CONTACTS] : [])];
+  const contacts = perms().READ_CONTACTS;
+  const wanted = [...requiredPermissions(), ...(withContacts ? [contacts] : [])];
   const result = await PermissionsAndroid.requestMultiple(wanted);
   const ok = (p: Permission) => result[p] === PermissionsAndroid.RESULTS.GRANTED;
   return {
     required: requiredPermissions().every(ok),
-    contacts: withContacts ? ok(P.READ_CONTACTS) : await PermissionsAndroid.check(P.READ_CONTACTS),
+    contacts: withContacts ? ok(contacts) : await PermissionsAndroid.check(contacts),
     /** A required permission was "Don't ask again" — only system settings can fix it. */
     blocked: requiredPermissions().some(
       (p) => result[p] === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN

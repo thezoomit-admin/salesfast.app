@@ -207,6 +207,8 @@ function ProfileScreen() {
   const callSync = useCallSyncStatus();
   const callLeads = useCallLeadPromptStatus();
   const pendingSetup = useSettingsPendingCount();
+  const { refresh: refreshCallSync } = callSync;
+  const { refresh: refreshCallLeads } = callLeads;
   const [accounts, setAccounts] = useState<SavedMobileAccount[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -220,10 +222,10 @@ function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void callSync.refresh();
-      void callLeads.refresh();
+      void refreshCallSync();
+      void refreshCallLeads();
       void refreshAccounts();
-    }, [callSync.refresh, callLeads.refresh, refreshAccounts])
+    }, [refreshCallSync, refreshCallLeads, refreshAccounts])
   );
 
   const displayName = user?.name?.trim() || APP_NAME;

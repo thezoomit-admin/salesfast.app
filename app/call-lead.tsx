@@ -49,7 +49,10 @@ export default function CallLeadScreen() {
   const ringAt = parseRingAt(params.at);
 
   const sources = useQuery(leadSourcesQuery);
-  const sourceList = Array.isArray(sources.data) ? sources.data : [];
+  const sourceList = useMemo(
+    () => (Array.isArray(sources.data) ? sources.data : []),
+    [sources.data]
+  );
   const defaultSourceId = useMemo(() => pickCallLeadSourceId(sourceList), [sourceList]);
 
   const [fullName, setFullName] = useState('');
