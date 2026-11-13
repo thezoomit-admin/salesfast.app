@@ -7,6 +7,7 @@ import { describe, it } from 'node:test';
 
 import {
   callLeadIdempotencyKey,
+  callLeadName,
   parseRingAt,
   pickCallLeadSourceId,
 } from './callLeadLogic.ts';
@@ -70,5 +71,17 @@ describe('parseRingAt', () => {
     assert.equal(parseRingAt(undefined), null);
     assert.equal(parseRingAt('abc'), null);
     assert.equal(parseRingAt('0'), null);
+  });
+});
+
+describe('callLeadName', () => {
+  it('keeps a typed name, tidied', () => {
+    assert.equal(callLeadName('  Karim   Uddin '), 'Karim Uddin');
+  });
+
+  it('saves Unknown when no name was typed', () => {
+    assert.equal(callLeadName(''), 'Unknown');
+    assert.equal(callLeadName('   '), 'Unknown');
+    assert.equal(callLeadName(undefined), 'Unknown');
   });
 });

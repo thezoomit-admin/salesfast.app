@@ -2,6 +2,7 @@ package expo.modules.androidcalllog
 
 import android.content.Context
 import android.content.SharedPreferences
+import org.json.JSONObject
 
 /**
  * Settings and number lists for the "Is this your lead?" call prompt.
@@ -28,6 +29,16 @@ internal object CallLeadPromptStore {
   private const val LAST_PROMPT_KEY = "last_prompt_key"
   private const val LAST_PROMPT_AT = "last_prompt_at"
 
+  /** Call-capture credentials (token encrypted by [SecretBox]). */
+  private const val API_URL = "capture_api_url"
+  private const val TOKEN_ENC = "capture_token_enc"
+  private const val TOKEN_USER = "capture_token_user"
+  private const val TOKEN_EXPIRES_AT = "capture_token_expires_at"
+  private const val DEVICE_ID = "capture_device_id"
+
+  /** Leads the user saved from the notification that the server has not confirmed. */
+  private const val PENDING = "pending_leads"
+
   /** A "Not a lead" list larger than this is cut to half (sets keep no order). */
   private const val MAX_IGNORED = 2_000
 
@@ -53,6 +64,7 @@ internal object CallLeadPromptStore {
     val knownCount: Int,
     val knownSyncedAt: Long,
     val ignoredCount: Int,
+    val pendingCount: Int,
   )
 
   fun config(context: Context): Config {
@@ -65,6 +77,7 @@ internal object CallLeadPromptStore {
       knownCount = p.getStringSet(KNOWN_KEYS, null)?.size ?: 0,
       knownSyncedAt = p.getLong(KNOWN_SYNCED_AT, 0L),
       ignoredCount = p.getStringSet(IGNORED_KEYS, null)?.size ?: 0,
+      pendingCount = pendingJson(context).length(),
     )
   }
 
@@ -85,9 +98,129 @@ internal object CallLeadPromptStore {
       .apply()
   }
 
-  fun setSessionActive(context: Context, active: Boolean) {
-    prefs(context).edit().putBoolean(SESSION_ACTIVE, active).apply()
+  /**
+   * Signed in (with this user) or signed out. A token that belongs to another
+   * account is dropped at once, so a call can never be saved to the wrong user.
+   */
+  fun setSessionActive(context: Context, active: Boolean, userId: String?) {
+    val p = prefs(context)
+    val editor = p.edit().putBoolean(SESSION_ACTIVE, active)
+    if (!active || (userId != null && p.getString(TOKEN_USER, null) != userId)) {
+      clearCredentials(editor)
+    }
+    editor.commit()
   }
+
+  // ---- call-capture credentials ----
+
+  data class Credentials(
+    val apiUrl: String,
+    val token: String,
+    val userId: String,
+    val expiresAt: Long,
+    val deviceId: String?,
+  )
+
+  fun setCredentials(
+    context: Context,
+    apiUrl: String,
+    token: String,
+    userId: String,
+    expiresAt: Long,
+    deviceId: String?,
+  ): Boolean {
+    val sealed = SecretBox.encrypt(token) ?: return false
+    prefs(context)
+      .edit()
+      .putString(API_URL, apiUrl)
+      .putString(TOKEN_ENC, sealed)
+      .putString(TOKEN_USER, userId)
+      .putLong(TOKEN_EXPIRES_AT, expiresAt)
+      .putString(DEVICE_ID, deviceId)
+      .commit()
+    return true
+  }
+
+  /** Usable credentials, or null (none, expired, or the Keystore key is gone). */
+  fun credentials(context: Context): Credentials? {
+    val p = prefs(context)
+    val apiUrl = p.getString(API_URL, null) ?: return null
+    val sealed = p.getString(TOKEN_ENC, null) ?: return null
+    val userId = p.getString(TOKEN_USER, null) ?: return null
+    val expiresAt = p.getLong(TOKEN_EXPIRES_AT, 0L)
+    if (expiresAt <= System.currentTimeMillis()) return null
+    val token = SecretBox.decrypt(sealed) ?: return null
+    return Credentials(apiUrl, token, userId, expiresAt, p.getString(DEVICE_ID, null))
+  }
+
+  /** userId and expiry of the stored token, without decrypting it. */
+  fun credentialsInfo(context: Context): Pair<String?, Long> {
+    val p = prefs(context)
+    if (p.getString(TOKEN_ENC, null) == null) return null to 0L
+    return p.getString(TOKEN_USER, null) to p.getLong(TOKEN_EXPIRES_AT, 0L)
+  }
+
+  fun clearCredentials(context: Context) {
+    val editor = prefs(context).edit()
+    clearCredentials(editor)
+    editor.commit()
+  }
+
+  private fun clearCredentials(editor: SharedPreferences.Editor) {
+    editor.remove(TOKEN_ENC).remove(TOKEN_USER).remove(TOKEN_EXPIRES_AT)
+  }
+
+  // ---- leads waiting for the server ----
+
+  data class PendingLead(val key: String, val phone: String, val name: String?, val ringAt: Long) {
+    /** Same key the app's capture screen sends, so the server dedupes the two. */
+    val idempotencyKey get() = "call-lead:$key:$ringAt"
+  }
+
+  @Synchronized
+  fun putPending(context: Context, lead: PendingLead) {
+    val all = pendingJson(context)
+    all.put(
+      lead.key,
+      JSONObject()
+        .put("phone", lead.phone)
+        .put("name", lead.name ?: JSONObject.NULL)
+        .put("ringAt", lead.ringAt),
+    )
+    prefs(context).edit().putString(PENDING, all.toString()).commit()
+  }
+
+  @Synchronized
+  fun removePending(context: Context, key: String) {
+    val all = pendingJson(context)
+    if (all.remove(key) == null) return
+    prefs(context).edit().putString(PENDING, all.toString()).commit()
+  }
+
+  @Synchronized
+  fun pending(context: Context, key: String): PendingLead? =
+    pendingJson(context).optJSONObject(key)?.let { toPending(key, it) }
+
+  @Synchronized
+  fun pendingLeads(context: Context): List<PendingLead> {
+    val all = pendingJson(context)
+    return all.keys().asSequence().mapNotNull { key -> all.optJSONObject(key)?.let { toPending(key, it) } }.toList()
+  }
+
+  private fun toPending(key: String, json: JSONObject) =
+    PendingLead(
+      key = key,
+      phone = json.optString("phone"),
+      name = if (json.isNull("name")) null else json.optString("name"),
+      ringAt = json.optLong("ringAt"),
+    )
+
+  private fun pendingJson(context: Context): JSONObject =
+    try {
+      JSONObject(prefs(context).getString(PENDING, null) ?: "{}")
+    } catch (_: Exception) {
+      JSONObject()
+    }
 
   /** Replaces the CRM lead numbers (match-directory keys). */
   fun setKnownKeys(context: Context, keys: Collection<String>) {

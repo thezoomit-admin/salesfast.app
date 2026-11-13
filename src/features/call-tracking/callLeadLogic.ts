@@ -31,3 +31,11 @@ export function parseRingAt(raw: string | string[] | undefined): number | null {
   const ms = Number(value);
   return Number.isFinite(ms) && ms > 0 ? ms : null;
 }
+
+/** Name saved when none was typed — same rule as the server's call capture. */
+export const UNKNOWN_LEAD_NAME = 'Unknown';
+
+export function callLeadName(raw: string | null | undefined) {
+  const name = (raw ?? '').replace(/\s+/g, ' ').trim();
+  return name ? name.slice(0, 100) : UNKNOWN_LEAD_NAME;
+}

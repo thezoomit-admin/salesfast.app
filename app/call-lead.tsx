@@ -21,6 +21,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { AuthInput } from '@/features/auth/components/AuthInput';
 import {
   callLeadIdempotencyKey,
+  callLeadName,
   parseRingAt,
   pickCallLeadSourceId,
 } from '@/features/call-tracking/callLeadLogic';
@@ -44,7 +45,8 @@ export default function CallLeadScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const queryClient = useQueryClient();
-  const params = useLocalSearchParams<{ phone?: string; at?: string }>();
+  // `name`: typed in the notification before saving had to finish here.
+  const params = useLocalSearchParams<{ phone?: string; at?: string; name?: string }>();
   const phone = (Array.isArray(params.phone) ? params.phone[0] : params.phone)?.trim() ?? '';
   const ringAt = parseRingAt(params.at);
 
@@ -55,10 +57,11 @@ export default function CallLeadScreen() {
   );
   const defaultSourceId = useMemo(() => pickCallLeadSourceId(sourceList), [sourceList]);
 
-  const [fullName, setFullName] = useState('');
+  const [fullName, setFullName] = useState(() =>
+    (Array.isArray(params.name) ? params.name[0] : params.name)?.trim() ?? ''
+  );
   const [pickedSourceId, setPickedSourceId] = useState<number | null>(null);
   const sourceId = pickedSourceId ?? defaultSourceId;
-  const [nameError, setNameError] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [existingIds, setExistingIds] = useState<number[]>([]);
@@ -89,10 +92,6 @@ export default function CallLeadScreen() {
 
   async function save() {
     setFormError('');
-    if (!fullName.trim()) {
-      setNameError('Enter the customer name');
-      return;
-    }
     if (!sourceId) {
       setFormError('Pick a lead source');
       return;
@@ -100,7 +99,7 @@ export default function CallLeadScreen() {
     setSaving(true);
     try {
       const lead = await createLead(
-        { fullName: fullName.trim(), phone, leadSourceId: sourceId },
+        { fullName: callLeadName(fullName), phone, leadSourceId: sourceId },
         { idempotencyKey: callLeadIdempotencyKey(phone, ringAt) }
       );
       void markLeadPhoneKnown(phone);
@@ -180,14 +179,10 @@ export default function CallLeadScreen() {
 
         <View style={styles.form}>
           <AuthInput
-            label="Customer name *"
+            label="Customer name"
             value={fullName}
-            onChangeText={(v) => {
-              setFullName(v);
-              setNameError('');
-            }}
-            error={nameError}
-            placeholder="Who called?"
+            onChangeText={setFullName}
+            placeholder="Leave empty to save as Unknown"
             autoCapitalize="words"
             autoCorrect={false}
             autoFocus

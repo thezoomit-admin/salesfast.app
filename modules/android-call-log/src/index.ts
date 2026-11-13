@@ -23,6 +23,15 @@ export type CallLeadPromptConfig = {
   knownSyncedAtMs: number;
   /** Numbers the user marked "Not a lead". */
   ignoredCount: number;
+  /** Leads saved from the notification that the server has not confirmed yet. */
+  pendingCount: number;
+};
+
+/** The narrow token the notification uses to save leads while the app is closed. */
+export type CallCaptureStatus = {
+  /** Account the stored token belongs to; null = no token. */
+  userId: string | null;
+  expiresAtMs: number;
 };
 
 type AndroidCallLogNative = {
@@ -30,7 +39,17 @@ type AndroidCallLogNative = {
   hasPermission(): Promise<boolean>;
   getCallLeadPromptConfig(): Promise<CallLeadPromptConfig>;
   setCallLeadPromptConfig(enabled: boolean, skipContacts: boolean): Promise<void>;
-  setCallLeadSessionActive(active: boolean): Promise<void>;
+  setCallLeadSessionActive(active: boolean, userId: string | null): Promise<void>;
+  setCallCaptureCredentials(
+    apiUrl: string,
+    token: string,
+    userId: string,
+    expiresAtMs: number,
+    deviceId: string | null
+  ): Promise<boolean>;
+  clearCallCaptureCredentials(): Promise<void>;
+  getCallCaptureStatus(): Promise<CallCaptureStatus>;
+  flushPendingCallLeads(): Promise<number>;
   setKnownLeadPhoneKeys(keys: string[]): Promise<void>;
   markLeadPhoneKnown(phone: string): Promise<void>;
   ignoreLeadPhone(phone: string): Promise<void>;
@@ -82,8 +101,40 @@ export async function setCallLeadPromptConfig(enabled: boolean, skipContacts: bo
   await getNative()?.setCallLeadPromptConfig?.(enabled, skipContacts);
 }
 
-export async function setCallLeadSessionActive(active: boolean) {
-  await getNative()?.setCallLeadSessionActive?.(active);
+/** Signed in as `userId`, or signed out. A token of another account is dropped. */
+export async function setCallLeadSessionActive(active: boolean, userId: string | null) {
+  await getNative()?.setCallLeadSessionActive?.(active, userId);
+}
+
+export async function setCallCaptureCredentials(input: {
+  apiUrl: string;
+  token: string;
+  userId: string;
+  expiresAtMs: number;
+  deviceId: string | null;
+}) {
+  return (
+    (await getNative()?.setCallCaptureCredentials?.(
+      input.apiUrl,
+      input.token,
+      input.userId,
+      input.expiresAtMs,
+      input.deviceId
+    )) ?? false
+  );
+}
+
+export async function clearCallCaptureCredentials() {
+  await getNative()?.clearCallCaptureCredentials?.();
+}
+
+export async function getCallCaptureStatus(): Promise<CallCaptureStatus | null> {
+  return (await getNative()?.getCallCaptureStatus?.()) ?? null;
+}
+
+/** Sends leads that were saved from the notification while offline. */
+export async function flushPendingCallLeads() {
+  return (await getNative()?.flushPendingCallLeads?.()) ?? 0;
 }
 
 export async function setKnownLeadPhoneKeys(keys: string[]) {

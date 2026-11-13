@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Alert, Linking, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { clearIgnoredLeadPhones } from 'android-call-log';
+import { clearCallCaptureCredentials, clearIgnoredLeadPhones } from 'android-call-log';
 
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { refreshKnownLeadPhones } from '@/features/call-tracking/CallLeadPromptBootstrap';
+import { useAuth } from '@/features/auth/AuthContext';
+import { syncCallLeadPrompt } from '@/features/call-tracking/CallLeadPromptBootstrap';
 import {
   requestCallLeadPermissions,
   useCallLeadPromptStatus,
@@ -17,6 +18,7 @@ import { radii, spacing, typography, useThemeColors, type ThemeColors } from '@/
 export default function CallLeadSettingsScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user } = useAuth();
   const status = useCallLeadPromptStatus();
   const { config, permissions, update, refresh } = status;
   const [saving, setSaving] = useState(false);
@@ -51,9 +53,12 @@ export default function CallLeadSettingsScreen() {
         }
       }
       await update(nextEnabled, nextSkipContacts);
-      if (nextEnabled) {
-        await refreshKnownLeadPhones({ force: true });
+      if (nextEnabled && user) {
+        // Token + known lead numbers now, not on the next app open.
+        await syncCallLeadPrompt(user.id, { force: true });
         await refresh();
+      } else if (!nextEnabled) {
+        await clearCallCaptureCredentials();
       }
     } finally {
       setSaving(false);
@@ -83,8 +88,9 @@ export default function CallLeadSettingsScreen() {
     <Screen scroll header={<ScreenHeader title="Leads from calls" />}>
       <Text style={styles.body}>
         When a new number calls you, SalesFast asks “Is this your lead?” in a
-        notification. Tap “Yes, add lead”, type the name, and the lead is created
-        and assigned to you.
+        notification. Tap Yes, type the name right in the notification and
+        save — the lead is created and assigned to you without opening the app.
+        Save without a name and it is saved as “Unknown”.
       </Text>
 
       <View style={styles.card}>
@@ -146,7 +152,10 @@ export default function CallLeadSettingsScreen() {
           • Contacts are only looked up on the phone, never uploaded
         </Text>
         <Text style={styles.bullet}>
-          • Nothing is sent to SalesFast until you tap Save lead
+          • Nothing is sent to SalesFast until you tap Save
+        </Text>
+        <Text style={styles.bullet}>
+          • “No” closes it and never asks about that number again
         </Text>
       </View>
 
