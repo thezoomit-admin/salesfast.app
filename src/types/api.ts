@@ -27,6 +27,8 @@ export type AuthUser = {
   designation?: {
     id: string;
     name: string;
+    /** Used for Administration full-access check (mirrors backend leadAccess). */
+    key?: string | null;
     permissions?: unknown;
   } | null;
 };
