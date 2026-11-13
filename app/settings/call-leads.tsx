@@ -6,6 +6,7 @@ import { clearIgnoredLeadPhones } from 'android-call-log';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { refreshKnownLeadPhones } from '@/features/call-tracking/CallLeadPromptBootstrap';
 import {
   requestCallLeadPermissions,
   useCallLeadPromptStatus,
@@ -50,6 +51,10 @@ export default function CallLeadSettingsScreen() {
         }
       }
       await update(nextEnabled, nextSkipContacts);
+      if (nextEnabled) {
+        await refreshKnownLeadPhones({ force: true });
+        await refresh();
+      }
     } finally {
       setSaving(false);
     }
