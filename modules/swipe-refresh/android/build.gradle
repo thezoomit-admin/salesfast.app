@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.swiperefresh'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.swiperefresh"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+dependencies {
+  // ReactSwipeRefreshLayout, and androidx swiperefreshlayout through its api.
+  implementation 'com.facebook.react:react-android'
+}

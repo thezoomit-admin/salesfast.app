@@ -61,7 +61,7 @@ export type AppReleaseConfig = {
 export const appConfig: AppReleaseConfig = {
   appName: 'SalesFast CRM',
   shortName: 'SalesFast',
-  packageName: 'com.salesfastcrm',
+  packageName: 'com.salesfast.crm',
   tagline: 'Field sales, organized.',
   description:
     'The official Android app for SalesFast CRM — manage leads, follow-ups, activities, and automatic call history from your phone.',

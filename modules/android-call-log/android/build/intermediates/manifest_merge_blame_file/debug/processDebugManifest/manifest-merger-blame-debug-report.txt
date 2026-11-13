@@ -7,7 +7,7 @@
 5-->INJECTED
 6
 7    <uses-permission android:name="android.permission.READ_CALL_LOG" />
-7-->D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:3-70
-7-->D:\ZOOMIT\SalesFast\salesapp.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:20-67
+7-->D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:3-70
+7-->D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:20-67
 8
 9</manifest>

@@ -31,8 +31,8 @@ export async function detailOrNull(
 
 type ListPage = { items: LeadListItem[] };
 
-/** List caches whose rows are LeadListItem (Leads tab). */
-const LIST_ROOTS = ['my-leads'] as const;
+/** List caches whose rows are LeadListItem (My Leads / All Leads tabs). */
+const LIST_ROOTS = ['leads'] as const;
 
 /** Follow-ups tab cache — rows are follow-ups that carry a lead summary. */
 const FOLLOW_UP_ROOT = 'my-follow-ups';
@@ -43,7 +43,8 @@ export function leadRowOfFollowUp(f: MyFollowUp): LeadListItem {
     id: f.lead.id,
     buyerPersona: { fullName: f.lead.name, phone: f.lead.phone },
     leadStatus: f.lead.status,
-    priority: f.lead.priority,
+    temperature: f.lead.temperature ?? f.lead.priority,
+    priority: f.lead.temperature ?? f.lead.priority,
     updatedAt: f.lead.updatedAt,
   };
 }

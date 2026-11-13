@@ -11,11 +11,14 @@ export function useCallSyncStatus() {
   const [prefs, setPrefs] = useState<CallSyncPrefs | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Runs on every tab focus, so it must not re-render a screen when nothing
+  // changed: `loading` stays for the first read, and equal prefs are dropped.
   const refresh = useCallback(async () => {
-    setLoading(true);
     try {
       const next = await loadCallSyncPrefs();
-      setPrefs(next);
+      setPrefs((current) =>
+        JSON.stringify(current) === JSON.stringify(next) ? current : next
+      );
     } finally {
       setLoading(false);
     }

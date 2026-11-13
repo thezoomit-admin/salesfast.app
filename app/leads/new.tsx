@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { markLeadPhoneKnown } from 'android-call-log';
+
 import { getErrorMessage } from '@/api/client';
 import { FilterChip } from '@/components/ui/FilterChip';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -72,7 +74,9 @@ export default function NewLeadScreen() {
         },
         { idempotencyKey }
       );
-      void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
+      // No "Is this your lead?" prompt for this number any more.
+      void markLeadPhoneKnown(phone.trim());
+      void queryClient.invalidateQueries({ queryKey: ['leads'] });
       void queryClient.invalidateQueries({ queryKey: ['mobile-dashboard'] });
       if (lead?.id) router.replace(`/leads/${lead.id}`);
       else router.back();

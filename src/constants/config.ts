@@ -35,15 +35,20 @@ function lanHostFromExpo(): string | null {
   return null;
 }
 
-function isLoopbackUrl(url: string) {
-  return /https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:|\/|$)/i.test(url);
+/**
+ * Loopback or private-LAN API URL. A LAN IP in .env goes stale whenever the PC
+ * joins another network or DHCP renews, so treat it like localhost. Public
+ * hosts (staging / production) never match.
+ */
+const LOCAL_API_ORIGIN =
+  /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(?=[:/]|$)/i;
+
+function isLocalApiUrl(url: string) {
+  return LOCAL_API_ORIGIN.test(url);
 }
 
 function withLanHost(url: string, lanHost: string) {
-  return url.replace(
-    /https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)/i,
-    `http://${lanHost}`
-  );
+  return url.replace(LOCAL_API_ORIGIN, `http://${lanHost}`);
 }
 
 function defaultApiUrl() {
@@ -63,8 +68,9 @@ function resolveApiUrl() {
   const configured =
     process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl ?? defaultApiUrl();
 
-  // Env often has localhost for web/dev PC — rewrite for Expo Go on phone.
-  if (Platform.OS !== 'web' && isLoopbackUrl(configured)) {
+  // Backend runs on the same PC as Metro, so follow Metro's current IP. Release
+  // builds have no Metro host and keep the configured URL.
+  if (Platform.OS !== 'web' && isLocalApiUrl(configured)) {
     const lan = lanHostFromExpo();
     if (lan) return withLanHost(configured, lan);
   }
@@ -75,9 +81,9 @@ function resolveApiUrl() {
 export const API_BASE_URL = resolveApiUrl();
 
 export const APP_NAME = 'Salesfast- CRM';
-export const APP_VERSION = '1.0.1';
+export const APP_VERSION = '1.0.2';
 /** Matches android.versionCode / ios.buildNumber in app.config.ts */
-export const APP_BUILD = '3';
+export const APP_BUILD = '5';
 
 /** Dokploy staging API — used by installed APKs. */
 export const STAGING_API_URL = 'https://salesfastapi-dev.thezoomit.com/api';

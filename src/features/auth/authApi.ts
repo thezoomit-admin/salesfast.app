@@ -92,34 +92,46 @@ type ProfileUpdatePayload = {
   phone?: string | null;
 };
 
-type ProfileUpdateResult = {
+type ProfileRow = {
   id: string;
   name: string;
   email: string;
   phone?: string | null;
   role?: string;
+  isActive?: boolean;
+  is_active?: boolean;
+  lastLogin?: string | null;
+  last_login?: string | null;
   profilePhoto?: string | null;
   profile?: { url?: string | null } | null;
   designationId?: string | null;
   designation?: AuthUser['designation'];
 };
 
-/** PATCH /users/me — name / phone (Hisab-style personal info). */
-export async function updateProfileRequest(input: ProfileUpdatePayload) {
-  const { data } = await api.patch<ApiResponse<ProfileUpdateResult>>(
-    '/users/me',
-    input
-  );
-  const row = data.data;
-  const next: AuthUser = {
+/** Login, refresh, and /users/me do not share one field shape. */
+export function mapAuthUser(row: ProfileRow): AuthUser {
+  return {
     id: String(row.id),
     name: row.name,
     email: row.email,
     phone: row.phone ?? null,
     role: row.role || 'AGENT',
+    is_active: row.is_active ?? row.isActive,
+    last_login: row.last_login ?? row.lastLogin ?? null,
     profilePhoto: row.profilePhoto ?? row.profile?.url ?? null,
     designationId: row.designationId ?? null,
     designation: row.designation ?? null,
   };
-  return next;
+}
+
+/** Live account behind the current token — not the copy saved on the phone. */
+export async function fetchMyProfile() {
+  const { data } = await api.get<ApiResponse<ProfileRow>>('/users/me');
+  return mapAuthUser(data.data);
+}
+
+/** PATCH /users/me — name / phone (Hisab-style personal info). */
+export async function updateProfileRequest(input: ProfileUpdatePayload) {
+  const { data } = await api.patch<ApiResponse<ProfileRow>>('/users/me', input);
+  return mapAuthUser(data.data);
 }

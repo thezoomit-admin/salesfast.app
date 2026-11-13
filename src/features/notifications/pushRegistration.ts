@@ -2,6 +2,7 @@ import { isRunningInExpoGo } from 'expo';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 
 import { api } from '@/api/client';
@@ -15,6 +16,31 @@ export type PushSetupResult =
       status: 'denied' | 'unsupported' | 'error';
       reason: string;
     };
+
+// ─── Last setup result, for the "notifications are off" banner ─────────────
+let lastStatus: PushSetupResult | null = null;
+const statusListeners = new Set<() => void>();
+
+const statusKey = (r: PushSetupResult | null) =>
+  r ? `${r.status}:${'reason' in r ? r.reason : ''}` : '';
+
+const publish = (result: PushSetupResult) => {
+  const changed = statusKey(lastStatus) !== statusKey(result);
+  lastStatus = result;
+  if (changed) statusListeners.forEach((l) => l());
+  return result;
+};
+
+/** Latest push setup outcome on this install (null = not tried yet). */
+export function usePushStatus() {
+  return useSyncExternalStore(
+    (listener) => {
+      statusListeners.add(listener);
+      return () => statusListeners.delete(listener);
+    },
+    () => lastStatus,
+  );
+}
 
 /** Remote push needs a real device and a dev/preview/production build. */
 export function isPushSupported() {
@@ -38,7 +64,7 @@ export async function ensureNotificationChannel() {
     description: 'Lead assignments, follow-up reminders and CRM updates',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#F2461C',
+    lightColor: '#3A83F7',
     sound: 'default',
     showBadge: true,
   });
@@ -54,8 +80,7 @@ async function ensurePermission() {
 
 function easProjectId() {
   const extra = Constants.expoConfig?.extra as
-    | { eas?: { projectId?: string } }
-    | undefined;
+    { eas?: { projectId?: string } } | undefined;
   return extra?.eas?.projectId ?? Constants.easConfig?.projectId;
 }
 
@@ -73,45 +98,46 @@ let lastRegistration: { accountId: string; token: string } | null = null;
  * and bind it to the signed-in session on the backend.
  */
 export async function registerForPushNotifications(
-  accountId?: string
+  accountId?: string,
 ): Promise<PushSetupResult> {
   if (!isPushSupported()) {
-    return {
+    return publish({
       status: 'unsupported',
-      reason: 'Push needs a physical device and an installed (non-Expo Go) build.',
-    };
+      reason:
+        'Push needs a physical device and an installed (non-Expo Go) build.',
+    });
   }
   try {
     await ensureNotificationChannel();
     const granted = await ensurePermission();
     if (!granted) {
-      return {
+      return publish({
         status: 'denied',
         reason: 'Notifications are turned off for this app in system settings.',
-      };
+      });
     }
     const projectId = easProjectId();
     const { data: token } = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined
+      projectId ? { projectId } : undefined,
     );
     if (
       accountId &&
       lastRegistration?.accountId === accountId &&
       lastRegistration.token === token
     ) {
-      return { status: 'registered', token };
+      return publish({ status: 'registered', token });
     }
     await api.put('/auth/mobile/push-token', {
       token,
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
     });
     lastRegistration = accountId ? { accountId, token } : null;
-    return { status: 'registered', token };
+    return publish({ status: 'registered', token });
   } catch (error) {
-    return {
-      status: 'error',
-      reason: error instanceof Error ? error.message : 'Push setup failed',
-    };
+    const reason = error instanceof Error ? error.message : 'Push setup failed';
+    // Callers ignore the result, so this log (adb logcat) is the only trace.
+    console.warn('[Push] Setup failed:', reason);
+    return publish({ status: 'error', reason });
   }
 }
 
@@ -119,6 +145,8 @@ export async function registerForPushNotifications(
 export async function unregisterPushNotifications() {
   // A later sign-in (new session) must bind the token again.
   lastRegistration = null;
+  lastStatus = null;
+  statusListeners.forEach((l) => l());
   if (!isPushSupported()) return;
   try {
     await api.delete('/auth/mobile/push-token');

@@ -16,19 +16,20 @@ See [Phase 0 / call sync](docs/phase-0-call-sync.md).
 ```bash
 cd salesapp.app
 npm install
-cp .env.example .env   # set EXPO_PUBLIC_API_URL
+cp .env.example .env
 npx expo start
 ```
 
 ### API URL
 
-| Environment | Example |
+| Environment | `EXPO_PUBLIC_API_URL` |
 |---|---|
-| Android emulator | `http://10.0.2.2:6001/api` |
-| Physical device | `http://<your-lan-ip>:6001/api` |
+| Expo Go / emulator / web | `http://localhost:6001/api` (default in `.env`) |
 | Production | `https://api.example.com/api` |
 
-Set `EXPO_PUBLIC_API_URL` in `.env` or `app.config.ts` `extra.apiUrl`.
+In Expo Go, any localhost or private-LAN URL is rewritten to the IP Metro is
+serving from, so the app follows the PC across networks. Never put a Wi‑Fi IP in
+`.env`. The phone and PC must be on the same network.
 
 ### Backend routes
 

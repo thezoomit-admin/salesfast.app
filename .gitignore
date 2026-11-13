@@ -17,6 +17,7 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+.keystore-export/
 
 # Metro
 .metro-health-check*
@@ -45,3 +46,7 @@ google-services.json
 
 # Gradle build output of local native modules
 modules/*/android/build/
+
+# FCM V1 service account private key: upload to Expo, never commit or bundle
+fcm-service-account.json
+*firebase-adminsdk*.json

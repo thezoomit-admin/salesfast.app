@@ -1,155 +1,144 @@
-import { Fragment, type ReactNode, useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type ReactNode, useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CountTabDivider } from '@/components/ui/CountTab';
-import { radii, spacing, useThemeColors, type ThemeColors } from '@/theme';
+import { radii, useTheme } from '@/theme';
 
-import type { NotificationTab } from './notificationsApi';
+import { type InboxPalette, inboxPalette } from './inboxPalette';
 
-type Props = {
-  tabs: { key: NotificationTab; label: string }[];
-  /** A badge shows only while a tab has unread items. */
-  unread?: Record<NotificationTab, number>;
-  active: NotificationTab;
-  onChange: (tab: NotificationTab) => void;
-  /** Sits at the far end of the row. */
+type Props<K extends string> = {
+  tabs: { key: K; label: string }[];
+  /** A count shows only while a tab has a non-zero number. */
+  unread?: Partial<Record<K, number>>;
+  /** Read out after the count, e.g. "Overdue, 3 unread". */
+  countLabel?: string;
+  active: K;
+  onChange: (tab: K) => void;
+  /** Sits past the divider at the far end of the track. */
   right?: ReactNode;
 };
 
-/** Underlined tab row on a full-width rule, unread badge beside the label. */
-export function NotificationTabs({
+/**
+ * Pill tabs on a rounded track, count beside the label. The inbox's design,
+ * also used by Follow-ups so the two hero pages match.
+ */
+export function NotificationTabs<K extends string>({
   tabs,
   unread,
+  countLabel = 'unread',
   active,
   onChange,
   right,
-}: Props) {
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+}: Props<K>) {
+  const { resolved } = useTheme();
+  const palette = inboxPalette(resolved === 'dark');
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   return (
-    <View style={styles.row}>
-      {/* Scrolls so every tab stays reachable on narrow phones. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        accessibilityRole="tablist"
-        style={styles.scroll}
-        contentContainerStyle={styles.tabs}
-      >
-        {tabs.map((tab) => {
-          const selected = tab.key === active;
-          const count = unread?.[tab.key];
-          return (
-            <Fragment key={tab.key}>
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                accessibilityLabel={
-                  count ? `${tab.label}, ${count} unread` : tab.label
-                }
-                onPress={() => onChange(tab.key)}
-                style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
-              >
-                <Text
-                  style={[styles.label, selected && styles.labelActive]}
-                  numberOfLines={1}
-                >
-                  {tab.label}
+    <View style={styles.track} accessibilityRole="tablist">
+      {tabs.map((tab) => {
+        const selected = tab.key === active;
+        const count = unread?.[tab.key];
+        return (
+          <Pressable
+            key={tab.key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            accessibilityLabel={
+              count ? `${tab.label}, ${count} ${countLabel}` : tab.label
+            }
+            onPress={() => onChange(tab.key)}
+            style={({ pressed }) => [
+              styles.tab,
+              selected && styles.tabActive,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text
+              style={[styles.label, selected && styles.labelActive]}
+              numberOfLines={1}
+            >
+              {tab.label}
+            </Text>
+            {count ? (
+              <View style={[styles.count, selected && styles.countActive]}>
+                <Text style={styles.countText}>
+                  {count > 99 ? '99+' : count}
                 </Text>
-                {count ? (
-                  <View style={[styles.badge, selected && styles.badgeActive]}>
-                    <Text
-                      style={[
-                        styles.badgeText,
-                        selected && styles.badgeTextActive,
-                      ]}
-                    >
-                      {count > 99 ? '99+' : count}
-                    </Text>
-                  </View>
-                ) : null}
-                {selected ? <View style={styles.underline} /> : null}
-              </Pressable>
-              {tab.key === 'all' ? (
-                <View style={styles.divider}>
-                  <CountTabDivider />
-                </View>
-              ) : null}
-            </Fragment>
-          );
-        })}
-      </ScrollView>
-      {right ? <View style={styles.right}>{right}</View> : null}
+              </View>
+            ) : null}
+          </Pressable>
+        );
+      })}
+      {right ? (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.right}>{right}</View>
+        </>
+      ) : null}
     </View>
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(palette: InboxPalette) {
   return StyleSheet.create({
-    row: {
-      flexDirection: 'row',
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
-    },
-    scroll: { flex: 1 },
-    tabs: {
-      flexDirection: 'row',
-      gap: 18,
-      paddingHorizontal: spacing.lg,
-    },
-    divider: { justifyContent: 'center' },
-    tab: {
+    track: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      minHeight: 44,
-    },
-    pressed: { opacity: 0.7 },
-    right: {
-      justifyContent: 'center',
-      paddingLeft: spacing.sm,
-      paddingRight: spacing.lg,
-    },
-    label: {
-      fontSize: 15,
-      lineHeight: 20,
-      fontWeight: '500',
-      color: colors.textSecondary,
-    },
-    labelActive: {
-      fontWeight: '600',
-      color: colors.brand,
-    },
-    badge: {
-      minWidth: 20,
-      height: 18,
-      paddingHorizontal: 5,
+      padding: 5,
       borderRadius: radii.pill,
+      borderWidth: 1,
+      borderColor: palette.trackBorder,
+      backgroundColor: palette.track,
+    },
+    tab: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.surfaceMuted,
+      gap: 8,
+      height: 31,
+      paddingHorizontal: 6,
+      borderRadius: radii.pill,
+      backgroundColor: palette.pill,
     },
-    badgeActive: {
-      backgroundColor: colors.brand,
-    },
-    badgeText: {
-      fontSize: 11,
-      lineHeight: 14,
+    tabActive: { backgroundColor: palette.accent },
+    pressed: { opacity: 0.7 },
+    label: {
+      flexShrink: 1,
+      fontSize: 13,
+      lineHeight: 18,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: palette.ink,
     },
-    badgeTextActive: {
-      color: colors.white,
+    labelActive: { color: palette.onAccent },
+    count: {
+      minWidth: 20,
+      height: 20,
+      paddingHorizontal: 4,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: palette.count,
     },
-    underline: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: 2,
-      borderRadius: 1,
-      backgroundColor: colors.brand,
+    countActive: { backgroundColor: palette.onAccent },
+    countText: {
+      fontSize: 12,
+      lineHeight: 15,
+      fontWeight: '700',
+      color: palette.accent,
+    },
+    divider: {
+      width: StyleSheet.hairlineWidth,
+      height: 22,
+      marginLeft: 12,
+      backgroundColor: palette.rule,
+    },
+    right: {
+      width: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });
 }

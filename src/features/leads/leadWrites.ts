@@ -117,7 +117,7 @@ function refreshAfterWrite(client: QueryClient, leadId: number, writeCount: numb
   // overwritten again; the last one refreshes.
   if (writeCount > 0) return;
   void client.invalidateQueries({ queryKey: ['lead', leadId] });
-  void client.invalidateQueries({ queryKey: ['my-leads'] });
+  void client.invalidateQueries({ queryKey: ['leads'] });
   void client.invalidateQueries({ queryKey: ['mobile-dashboard'] });
   void client.invalidateQueries({ queryKey: ['my-follow-ups'] });
 }

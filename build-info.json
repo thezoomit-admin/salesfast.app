@@ -29,7 +29,7 @@
   },
   "distribution": "INTERNAL",
   "buildProfile": "preview",
-  "appIdentifier": "com.salesfastcrm",
+  "appIdentifier": "com.salesfast.crm",
   "sdkVersion": "58.0.0",
   "appVersion": "1.0.0",
   "appBuildVersion": "1",

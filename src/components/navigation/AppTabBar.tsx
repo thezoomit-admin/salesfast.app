@@ -1,19 +1,22 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import type { MaterialTopTabBarProps } from 'expo-router/js-top-tabs';
 import {
+  memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ComponentProps,
 } from 'react';
 import {
-  Animated,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type TextInstance,
+  type ViewInstance,
 } from 'react-native';
 
 import {
@@ -23,20 +26,24 @@ import {
   Notification01Icon,
   PermanentJobIcon,
 } from '@/components/icons/hugeicons';
+import { useAuth } from '@/features/auth/AuthContext';
+import { canViewAllLeads } from '@/features/auth/leadAccess';
 import { useTheme, type ThemeColors } from '@/theme';
 
 /** Visual tab order — Home centered. Also the page order of the pager. */
-export const TAB_ORDER = [
-  'leads',
-  'follow-ups',
-  'index',
-  'calls',
-  'notifications',
-] as const;
+export function getTabOrder(canViewAll: boolean): readonly string[] {
+  return canViewAll
+    ? ['my-leads', 'leads', 'follow-ups', 'index', 'calls', 'notifications']
+    : ['my-leads', 'follow-ups', 'index', 'calls', 'notifications'];
+}
+
+/** Default order for warm/prefetch when auth is not ready yet. */
+export const TAB_ORDER = getTabOrder(false);
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 
 const TAB_ICONS: Record<string, HugeIconData> = {
+  'my-leads': PermanentJobIcon,
   leads: PermanentJobIcon,
   'follow-ups': Calendar03Icon,
   index: Home03Icon,
@@ -45,11 +52,12 @@ const TAB_ICONS: Record<string, HugeIconData> = {
 };
 
 const TAB_LABELS: Record<string, string> = {
+  'my-leads': 'My Leads',
   leads: 'Leads',
   'follow-ups': 'Follow-ups',
   index: 'Home',
   calls: 'Calls',
-  notifications: 'Notifications',
+  notifications: 'Inbox',
 };
 
 type AppTabBarProps = MaterialTopTabBarProps & {
@@ -61,237 +69,319 @@ export function AppTabBar({
   state,
   descriptors,
   emitter,
-  navigateToTab,
+  jumpTo,
   insets,
-  position,
   badges,
 }: AppTabBarProps) {
   const { colors } = useTheme();
-  const bottomInset = Math.max(insets.bottom, 8);
+  const { user } = useAuth();
+  const canViewAll = canViewAllLeads(user);
+  const tabOrder = useMemo(() => getTabOrder(canViewAll), [canViewAll]);
+  // Real system inset only — edge-to-edge paints brand under the nav buttons.
+  const systemInset = insets.bottom;
   const styles = useMemo(
-    () => createStyles(colors, bottomInset),
-    [colors, bottomInset]
+    () => createStyles(colors, systemInset),
+    [colors, systemInset]
   );
 
   const routesByName = Object.fromEntries(
     state.routes.map((route) => [route.name, route])
   );
-  const routeCount = state.routes.length;
+  const focusedName = state.routes[state.index]?.name;
 
-  // The highlighted tab is plain React state, and each tab fades its own
-  // JS-driven value to exactly 0 or 1. Binding opacity to the pager's
-  // native-driven `position` left tabs stuck half-lit: the native value is
-  // not re-applied when nodes are swapped or the bar re-renders.
-  const [active, setActive] = useState(state.index);
-  const activeRef = useRef(state.index);
-  const highlight = useCallback((index: number) => {
-    if (activeRef.current === index) return;
-    activeRef.current = index;
-    setActive(index);
-  }, []);
+  // Finger-down highlight. It stays until the pager's index catches up —
+  // clearing it on finger-up paints the previous tab again for the whole
+  // time the next page takes to commit.
+  const [pressedName, setPressedName] = useState<string | null>(null);
+  const activeName = pressedName ?? focusedName;
+  const paints = useRef(new Map<string, (active: boolean) => void>());
+  const pendingName = useRef<string | null>(null);
+  const jumpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStarted = useRef(false);
 
-  // While a tap scrolls the pager to its target, the pages it passes must
-  // not light up.
-  const tapTargetRef = useRef<number | null>(null);
-  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const endTap = useCallback(() => {
-    tapTargetRef.current = null;
-    if (tapTimerRef.current !== null) clearTimeout(tapTimerRef.current);
-    tapTimerRef.current = null;
-  }, []);
-  useEffect(() => endTap, [endTap]);
+  const registerPaint = useCallback(
+    (name: string, paint: ((active: boolean) => void) | null) => {
+      if (paint) paints.current.set(name, paint);
+      else paints.current.delete(name);
+    },
+    []
+  );
 
-  // The settled index always wins (swipe end, back button, redirect).
+  const paintActive = useCallback(
+    (name: string) => {
+      for (const tab of tabOrder) paints.current.get(tab)?.(tab === name);
+    },
+    [tabOrder]
+  );
+
   useEffect(() => {
-    if (tapTargetRef.current !== null && tapTargetRef.current !== state.index) {
-      endTap();
+    if (pressedName != null && pressedName === focusedName) {
+      setPressedName(null);
+      pendingName.current = null;
     }
-    highlight(state.index);
-  }, [state.index, endTap, highlight]);
+  }, [pressedName, focusedName]);
 
-  // Mid-swipe, follow the page nearest the finger so the highlight moves
-  // before the pager settles.
-  useEffect(() => {
-    const id = position.addListener(({ value }) => {
-      const target = tapTargetRef.current;
-      if (target !== null) {
-        if (Math.abs(value - target) < 0.01) endTap();
+  useEffect(
+    () => () => {
+      if (jumpTimer.current) clearTimeout(jumpTimer.current);
+    },
+    []
+  );
+
+  const selectTab = useCallback(
+    (name: string, routeKey: string, focused: boolean) => {
+      // Native update first, so the colour is on screen before React commits
+      // and before the next page renders.
+      paintActive(name);
+      setPressedName(name);
+      if (focused) {
+        emitter.emit({
+          type: 'tabPress',
+          target: routeKey,
+          canPreventDefault: true,
+        });
         return;
       }
-      const nearest = Math.round(value);
-      if (nearest >= 0 && nearest < routeCount) highlight(nearest);
-    });
-    return () => position.removeListener(id);
-  }, [position, routeCount, endTap, highlight]);
+      if (pendingName.current === name) return;
+      const event = emitter.emit({
+        type: 'tabPress',
+        target: routeKey,
+        canPreventDefault: true,
+      });
+      if (event.defaultPrevented) return;
+      pendingName.current = name;
+      if (jumpTimer.current) clearTimeout(jumpTimer.current);
+      // The highlight is already queued to native. jumpTo in this turn
+      // re-renders the destination page before that paint, so the colour
+      // waits on the page. The next turn moves the page.
+      jumpTimer.current = setTimeout(() => {
+        jumpTimer.current = null;
+        jumpTo(routeKey);
+      }, 0);
+    },
+    [emitter, jumpTo, paintActive]
+  );
+
+  const onTabPressIn = useCallback(
+    (name: string, routeKey: string, focused: boolean) => {
+      touchStarted.current = true;
+      selectTab(name, routeKey, focused);
+      // press follows press-in in this turn. A later keyboard press must not
+      // see a flag left behind by a cancelled touch.
+      setTimeout(() => {
+        touchStarted.current = false;
+      }, 0);
+    },
+    [selectTab]
+  );
+
+  const onTabPress = useCallback(
+    (name: string, routeKey: string, focused: boolean) => {
+      // A touch already selected on press-in. A keyboard activation only
+      // delivers press.
+      if (touchStarted.current) return;
+      selectTab(name, routeKey, focused);
+    },
+    [selectTab]
+  );
+
+  const onTabLongPress = useCallback(
+    (routeKey: string) => {
+      emitter.emit({ type: 'tabLongPress', target: routeKey });
+    },
+    [emitter]
+  );
 
   return (
     <View style={styles.wrap} accessibilityRole="tablist">
       <View style={styles.bar}>
-        {TAB_ORDER.map((name) => {
+        {tabOrder.map((name) => {
           const route = routesByName[name];
           if (!route) return null;
 
-          const routeIndex = state.routes.findIndex((r) => r.key === route.key);
-          const focused = state.index === routeIndex;
           const { options } = descriptors[route.key];
           const label = TAB_LABELS[name] ?? options.title ?? name;
 
-          const onPress = () => {
-            const event = emitter.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!focused && !event.defaultPrevented) {
-              endTap();
-              tapTargetRef.current = routeIndex;
-              // Fallback if the pager never reports reaching the target.
-              tapTimerRef.current = setTimeout(endTap, 1000);
-              highlight(routeIndex);
-              // Next frame, so the highlight paints before the navigator's
-              // re-render occupies the JS thread.
-              requestAnimationFrame(() => navigateToTab(route.key));
-            }
-          };
-
-          const onLongPress = () => {
-            emitter.emit({
-              type: 'tabLongPress',
-              target: route.key,
-            });
-          };
-
           return (
             <TabItem
-              key={route.key}
+              // By name: a route's key changes when its page is preloaded.
+              key={name}
+              name={name}
+              routeKey={route.key}
               styles={styles}
               colors={colors}
               icon={TAB_ICONS[name]}
+              label={label}
               badge={badges?.[name] || undefined}
-              active={active === routeIndex}
-              focused={focused}
+              active={activeName === name}
+              focused={focusedName === name}
               accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-              onPress={onPress}
-              onLongPress={onLongPress}
+              registerPaint={registerPaint}
+              onTabPressIn={onTabPressIn}
+              onTabPress={onTabPress}
+              onTabLongPress={onTabLongPress}
             />
           );
         })}
       </View>
+      {/* Edge-to-edge: system nav is transparent — paint brand under the inset. */}
+      {systemInset > 0 ? <View style={styles.systemBar} /> : null}
     </View>
   );
 }
 
-const FADE_MS = 180;
+const TabIcon = memo(HugeiconsIcon);
 
 type TabItemProps = {
+  name: string;
+  routeKey: string;
   styles: ReturnType<typeof createStyles>;
   colors: ThemeColors;
   icon: HugeIconData | undefined;
+  label: string;
   badge: number | undefined;
-  /** Drawn highlighted (follows taps and swipes ahead of `focused`). */
+  /** Drawn highlighted (follows the finger ahead of `focused`). */
   active: boolean;
   /** The navigator's current tab. */
   focused: boolean;
   accessibilityLabel: string;
-  onPress: () => void;
-  onLongPress: () => void;
+  registerPaint: (name: string, paint: ((active: boolean) => void) | null) => void;
+  onTabPressIn: (name: string, routeKey: string, focused: boolean) => void;
+  onTabPress: (name: string, routeKey: string, focused: boolean) => void;
+  onTabLongPress: (routeKey: string) => void;
 };
 
-function TabItem({
+/** Memoized: a tab switch re-renders only the two tabs whose colour changes. */
+const TabItem = memo(function TabItem({
+  name,
+  routeKey,
   styles,
   colors,
   icon,
+  label,
   badge,
   active,
   focused,
   accessibilityLabel,
-  onPress,
-  onLongPress,
+  registerPaint,
+  onTabPressIn,
+  onTabPress,
+  onTabLongPress,
 }: TabItemProps) {
-  const [on] = useState(() => new Animated.Value(active ? 1 : 0));
-  const off = useMemo(
-    () => on.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-    [on]
-  );
-  useEffect(() => {
-    // JS driver on purpose: the JS value stays the source of truth, so a
-    // re-render can never commit a stale opacity.
-    const animation = Animated.timing(on, {
-      toValue: active ? 1 : 0,
-      duration: FADE_MS,
-      useNativeDriver: false,
+  const idleRef = useRef<ViewInstance>(null);
+  const activeIconRef = useRef<ViewInstance>(null);
+  const labelRef = useRef<TextInstance>(null);
+
+  useLayoutEffect(() => {
+    registerPaint(name, (isActive) => {
+      // Opacity only — a partial `style` would drop the icon's layout.
+      idleRef.current?.setNativeProps({ opacity: isActive ? 0 : 1 });
+      activeIconRef.current?.setNativeProps({ opacity: isActive ? 1 : 0 });
+      labelRef.current?.setNativeProps({
+        style: {
+          fontSize: 11,
+          lineHeight: 14,
+          color: isActive ? colors.brand : colors.textSecondary,
+          fontWeight: isActive ? '600' : '500',
+        },
+      });
     });
-    animation.start();
-    return () => animation.stop();
-  }, [active, on]);
+    return () => registerPaint(name, null);
+  }, [colors.brand, colors.textSecondary, name, registerPaint]);
 
   return (
     <Pressable
       accessibilityRole="tab"
-      accessibilityState={{ selected: focused }}
+      accessibilityState={{ selected: active }}
       accessibilityLabel={accessibilityLabel}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
+      onPressIn={() => onTabPressIn(name, routeKey, focused)}
+      onPress={() => onTabPress(name, routeKey, focused)}
+      onLongPress={() => onTabLongPress(routeKey)}
+      style={styles.item}
     >
       <View style={styles.iconWrap}>
         {icon ? (
           <>
-            <Animated.View style={[styles.iconLayer, { opacity: off }]}>
-              <HugeiconsIcon
+            {/* Both colours stay drawn, so a switch is one opacity change with
+                no animation or SVG redraw. `collapsable` keeps these views
+                from being flattened away when their opacity flips. */}
+            <View
+              ref={idleRef}
+              collapsable={false}
+              style={[styles.iconLayer, active && styles.iconHidden]}
+            >
+              <TabIcon
                 icon={icon}
                 size={24}
                 color={colors.text}
                 strokeWidth={1.7}
               />
-            </Animated.View>
-            <Animated.View style={[styles.iconLayer, { opacity: on }]}>
-              <HugeiconsIcon
+            </View>
+            <View
+              ref={activeIconRef}
+              collapsable={false}
+              style={[styles.iconLayer, !active && styles.iconHidden]}
+            >
+              <TabIcon
                 icon={icon}
                 size={24}
                 color={colors.brand}
                 strokeWidth={2.1}
               />
-            </Animated.View>
+            </View>
           </>
         ) : null}
         {badge != null ? (
-          <View style={styles.badge}>
+          <View style={[styles.badge, { backgroundColor: colors.brand }]}>
             <Text style={styles.badgeText}>
               {badge > 99 ? '99+' : String(badge)}
             </Text>
           </View>
         ) : null}
       </View>
+      <Text
+        ref={labelRef}
+        style={[
+          styles.label,
+          { color: active ? colors.brand : colors.textSecondary },
+          active && styles.labelActive,
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
-}
+});
 
-function createStyles(colors: ThemeColors, bottomInset: number) {
+function createStyles(colors: ThemeColors, systemInset: number) {
   return StyleSheet.create({
     wrap: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.brand,
     },
     bar: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       backgroundColor: colors.surface,
-      paddingTop: 8,
-      paddingBottom: bottomInset,
-      paddingHorizontal: 8,
-      minHeight: 52 + bottomInset,
+      paddingTop: 6,
+      paddingBottom: 8,
+      paddingHorizontal: 4,
+      minHeight: 64,
       borderTopWidth: 1,
       borderTopColor: colors.border,
+    },
+    systemBar: {
+      height: systemInset,
+      backgroundColor: colors.brand,
     },
     item: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      gap: 2,
       minHeight: 44,
-    },
-    itemPressed: {
-      opacity: 0.72,
+      minWidth: 0,
     },
     iconWrap: {
       width: 28,
@@ -304,6 +394,17 @@ function createStyles(colors: ThemeColors, bottomInset: number) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    iconHidden: {
+      opacity: 0,
+    },
+    label: {
+      fontSize: 11,
+      lineHeight: 14,
+      fontWeight: '500',
+    },
+    labelActive: {
+      fontWeight: '600',
+    },
     badge: {
       position: 'absolute',
       top: -4,
@@ -314,7 +415,6 @@ function createStyles(colors: ThemeColors, bottomInset: number) {
       paddingHorizontal: 4,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.brand,
     },
     badgeText: {
       color: colors.white,

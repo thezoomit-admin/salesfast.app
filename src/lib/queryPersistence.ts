@@ -18,7 +18,8 @@ import { AppState, Platform } from 'react-native';
  *   Tokens are never in the query cache — they stay in SecureStore.
  * - Bump CACHE_VERSION whenever a cached API response shape changes.
  */
-const CACHE_VERSION = 1;
+/** Bumped when lead list query keys moved from `my-leads` → `leads` + mode. */
+const CACHE_VERSION = 2;
 const MAX_AGE_MS = 7 * 24 * 60 * 60_000;
 const WRITE_THROTTLE_MS = 1_500;
 /** Lead detail payloads are large — keep only the most recently viewed. */
@@ -27,7 +28,7 @@ const MAX_LEAD_DETAILS = 30;
 /** Query roots worth keeping across restarts. Device call log is excluded (Date objects, local-only). */
 const PERSISTED_ROOTS = new Set([
   'mobile-dashboard',
-  'my-leads',
+  'leads',
   'my-follow-ups',
   'lead',
   // Option labels for the lead detail sections (admin lookups, no lead data).

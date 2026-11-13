@@ -6,13 +6,15 @@ import {
   useSegments,
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { NavigationBar } from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
 import { BrandSplash } from '@/features/auth/components/BrandSplash';
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
+import { CallLeadPromptBootstrap } from '@/features/call-tracking/CallLeadPromptBootstrap';
 import { CallSyncBootstrap } from '@/features/call-tracking/CallSyncBootstrap';
 import { installLeadWriteDefaults } from '@/features/leads/leadWrites';
 import { NotificationsBootstrap } from '@/features/notifications/NotificationsBootstrap';
@@ -73,30 +75,64 @@ function ThemedStack() {
   return (
     <>
       <StatusBar style={resolved === 'dark' ? 'light' : 'dark'} />
+      {/* Light buttons on brand-colored system inset (Android). */}
+      {Platform.OS === 'android' ? <NavigationBar style="light" /> : null}
       <Stack
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
-          // Hisab-style native push/pop — slide + edge swipe back.
+          // All pushes: page slides in from the right (leads → detail, settings, …).
           animation: 'slide_from_right',
           gestureEnabled: true,
-          fullScreenGestureEnabled: true,
-          animationDuration: 280,
+          animationMatchesGesture: true,
           animationTypeForReplace: 'push',
+          freezeOnBlur: true,
         }}
       >
         {/* Auth ↔ app: fade so the gate doesn't slide over tabs. */}
         <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-        {/* Folder route: Overview / History / Calls / Views under leads/[id]/ */}
-        <Stack.Screen name="leads/[id]" options={{ animation: 'slide_from_right' }} />
-        <Stack.Screen name="leads/new" />
-        <Stack.Screen name="activities" />
-        <Stack.Screen name="call-sync/setup" />
-        <Stack.Screen name="settings/edit" />
-        <Stack.Screen name="settings/about" />
-        <Stack.Screen name="settings/notifications" />
-        <Stack.Screen name="+not-found" />
+        <Stack.Screen
+          name="leads/[id]"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="leads/new"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="activities"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="call-sync/setup"
+          options={{ animation: 'slide_from_right' }}
+        />
+        {/* Opened from the "Is this your lead?" call notification. */}
+        <Stack.Screen
+          name="call-lead"
+          options={{ animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="settings/call-leads"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="settings/edit"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="settings/about"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="settings/notifications"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="+not-found"
+          options={{ animation: 'slide_from_right' }}
+        />
       </Stack>
     </>
   );
@@ -127,6 +163,7 @@ export default function RootLayout() {
         <AuthProvider>
           <AuthGate>
             <CallSyncBootstrap />
+            <CallLeadPromptBootstrap />
             <NotificationsBootstrap />
             <ThemedStack />
           </AuthGate>

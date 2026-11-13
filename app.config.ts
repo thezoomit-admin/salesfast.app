@@ -8,7 +8,7 @@ const isDevClientBuild = process.env.EAS_BUILD_PROFILE === 'development';
 
 /**
  * Firebase config for Android push (FCM). Download it from the Firebase
- * console (Android app id com.salesfastcrm). On EAS it can come from a
+ * console (Android app id com.salesfast.crm). On EAS it can come from a
  * file env var (GOOGLE_SERVICES_JSON) so the file never needs to be committed.
  */
 const googleServicesFile =
@@ -18,11 +18,30 @@ const googleServicesFile =
     ? './google-services.json'
     : undefined);
 
+/**
+ * An Android build without Firebase still installs and shows the in-app inbox,
+ * but it can never get a push token, so no notification reaches the phone.
+ * Stop that build on EAS instead of shipping it. Checked only on the build
+ * server, where GOOGLE_SERVICES_JSON is available; dev clients may skip push.
+ */
+if (
+  process.env.EAS_BUILD === 'true' &&
+  process.env.EAS_BUILD_PLATFORM === 'android' &&
+  !isDevClientBuild &&
+  !googleServicesFile
+) {
+  throw new Error(
+    'google-services.json is missing, so this APK could not receive push ' +
+      'notifications. Add it to salesfast.app/ or set the GOOGLE_SERVICES_JSON ' +
+      'EAS file variable (Firebase Android app com.salesfast.crm).'
+  );
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Salesfast- CRM',
   slug: 'salesfast',
-  version: '1.0.1',
+  version: '1.0.2',
   // Android versionCode / iOS buildNumber — shown on App info.
   // Bump with each store / APK release.
   owner: 'zoomits-team',
@@ -33,14 +52,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.salesfastcrm',
-    buildNumber: '3',
+    buildNumber: '5',
   },
   android: {
-    package: 'com.salesfastcrm',
-    versionCode: 3,
+    package: 'com.salesfast.crm',
+    versionCode: 5,
     adaptiveIcon: {
-      // Match the orange plate in salesfast-app-logo.png (corners under Android mask).
-      backgroundColor: '#F2461C',
+      // Match the blue plate in salesfast-app-logo.png (corners under Android mask).
+      backgroundColor: '#3A83F7',
       foregroundImage: './assets/images/salesfast-app-logo.png',
       monochromeImage: './assets/images/favicon.png',
     },
@@ -48,6 +67,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...(googleServicesFile ? { googleServicesFile } : {}),
     permissions: [
       'READ_CALL_LOG',
+      // "Is this your lead?" prompt: who is calling, and skip saved contacts.
+      'READ_PHONE_STATE',
+      'READ_CONTACTS',
       'POST_NOTIFICATIONS',
       'RECORD_AUDIO',
       'MODIFY_AUDIO_SETTINGS',
@@ -63,7 +85,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     'expo-router',
-    '@react-native-community/datetimepicker',
     [
       'expo-audio',
       {
@@ -83,10 +104,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-secure-store',
     [
+      // Transparent system nav (edge-to-edge). Don't force a contrast scrim
+      // so the brand strip under AppTabBar stays visible (bKash-style).
+      'expo-navigation-bar',
+      {
+        enforceContrast: false,
+        style: 'light',
+      },
+    ],
+    [
       'expo-notifications',
       {
         icon: './assets/images/favicon.png',
-        color: '#F2461C',
+        color: '#3A83F7',
         defaultChannel: 'default',
       },
     ],
@@ -107,6 +137,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           // com.facebook.react.** stopped R8 from shrinking the whole RN layer.
           extraProguardRules: [
             '-keep class expo.modules.androidcalllog.** { *; }',
+            // Expo creates this view by reflection. R8 otherwise drops the
+            // constructor and login (pull-to-refresh) crashes on open.
+            '-keep class expo.modules.swiperefresh.** { *; }',
+            '-keepclassmembers class expo.modules.swiperefresh.** { public <init>(...); }',
             '-dontwarn com.facebook.react.**',
           ].join('\n'),
         },

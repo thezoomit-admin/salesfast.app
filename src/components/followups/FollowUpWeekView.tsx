@@ -1,10 +1,10 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { format } from 'date-fns/format';
 import { isToday } from 'date-fns/isToday';
-import { memo, useMemo, useRef, type ReactNode } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
-  RefreshControl,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,14 +20,15 @@ import {
 } from '@/components/followups/followUpCalendar';
 import { FollowUpEmpty } from '@/components/followups/FollowUpEmpty';
 import {
+  ArrowDown01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
 } from '@/components/icons/hugeicons';
 import { FollowUpItemCard } from '@/components/followups/FollowUpCard';
 import { WeekStrip, type WeekStripHandle } from '@/components/followups/WeekStrip';
-import { HeaderIconButton, ScreenHeader } from '@/components/ui/ScreenHeader';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import type { MyFollowUp } from '@/types/api';
-import { useTheme, type ThemeColors } from '@/theme';
+import { radii, useTheme, type ThemeColors } from '@/theme';
 
 /** The timeline always covers working hours; earlier/later slots appear when used. */
 const DAY_START_HOUR = 8;
@@ -36,7 +37,6 @@ const HOUR_MIN_HEIGHT = 112;
 const NOW_DASHES = 80;
 
 type Props = {
-  tabs: ReactNode;
   selected: Date;
   byDay: Map<string, DayFollowUp[]>;
   loading: boolean;
@@ -56,7 +56,6 @@ function hourLabel(hour: number) {
 }
 
 function FollowUpWeekViewImpl({
-  tabs,
   selected,
   byDay,
   loading,
@@ -93,22 +92,45 @@ function FollowUpWeekViewImpl({
 
   return (
     <View style={styles.root}>
-      <ScreenHeader
-        title={format(selected, 'd MMM, yy EEEE')}
-        showBack={false}
-        onTitlePress={onPickDate}
-        right={
-          <>
-            <HeaderIconButton label="Previous week" onPress={() => weekStrip.current?.shiftWeek(-1)}>
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={22} color={colors.text} />
-            </HeaderIconButton>
-            <HeaderIconButton label="Next week" onPress={() => weekStrip.current?.shiftWeek(1)}>
-              <HugeiconsIcon icon={ArrowRight01Icon} size={22} color={colors.text} />
-            </HeaderIconButton>
-          </>
-        }
-      />
-      {tabs}
+      {/* The old page header's date picker and week arrows, now in the sheet. */}
+      <View style={styles.dateBar}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${format(selected, 'EEEE d MMMM yyyy')}, pick a date`}
+          onPress={onPickDate}
+          hitSlop={8}
+          style={({ pressed }) => [styles.dateBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.dateTitle} numberOfLines={1}>
+            {format(selected, 'd MMM, yy')}
+            <Text style={styles.dateWeekday}>{`  ${format(selected, 'EEEE')}`}</Text>
+          </Text>
+          <HugeiconsIcon
+            icon={ArrowDown01Icon}
+            size={16}
+            color={colors.text}
+            strokeWidth={2}
+          />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Previous week"
+          onPress={() => weekStrip.current?.shiftWeek(-1)}
+          hitSlop={6}
+          style={({ pressed }) => [styles.arrow, pressed && styles.pressed]}
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={18} color={colors.text} strokeWidth={2} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next week"
+          onPress={() => weekStrip.current?.shiftWeek(1)}
+          hitSlop={6}
+          style={({ pressed }) => [styles.arrow, pressed && styles.pressed]}
+        >
+          <HugeiconsIcon icon={ArrowRight01Icon} size={18} color={colors.text} strokeWidth={2} />
+        </Pressable>
+      </View>
 
       <View style={styles.weekStrip}>
         <WeekStrip ref={weekStrip} selected={selected} onSelect={onSelect} />
@@ -122,7 +144,7 @@ function FollowUpWeekViewImpl({
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {loading && items.length === 0 ? (
@@ -187,6 +209,42 @@ export const FollowUpWeekView = memo(FollowUpWeekViewImpl);
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.surface },
+    dateBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 10,
+    },
+    dateBtn: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    dateTitle: {
+      flexShrink: 1,
+      fontSize: 17,
+      lineHeight: 22,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    dateWeekday: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.textMuted,
+    },
+    arrow: {
+      width: 34,
+      height: 34,
+      borderRadius: radii.pill,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceMuted,
+    },
+    pressed: { opacity: 0.7 },
     weekStrip: {
       paddingHorizontal: 16,
       paddingTop: 4,

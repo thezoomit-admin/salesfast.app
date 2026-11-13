@@ -1,6 +1,5 @@
 import { ReactNode, useMemo } from 'react';
 import {
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -8,6 +7,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { spacing, useThemeColors, type ThemeColors } from '@/theme';
 
 type Props = {
@@ -47,11 +47,13 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
+      showsVerticalScrollIndicator={false}
+      showsHorizontalScrollIndicator={false}
       contentContainerStyle={[styles.content, contentStyle]}
       keyboardShouldPersistTaps="handled"
       refreshControl={
         onRefresh ? (
-          <RefreshControl
+          <AppRefreshControl
             refreshing={!!refreshing}
             onRefresh={onRefresh}
             tintColor={colors.brand}

@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 
 import { api } from '@/api/client';
+import type { LeadListMode } from '@/features/auth/leadAccess';
 import {
   detailOrNull,
   leadDetailKey,
@@ -32,15 +33,18 @@ export type LeadListParams = LeadFilterParams & {
   followupTo?: string;
   /** false → Unread (nobody has opened the lead yet). */
   viewed?: boolean;
+  /**
+   * My Leads → true (assigned to the JWT user).
+   * All Leads → omit/false (server still applies canViewAll scope).
+   */
+  mine?: boolean;
 };
 
-export async function fetchMyLeads(params: LeadListParams = {}) {
+export async function fetchLeads(params: LeadListParams = {}) {
   const { data } = await api.get<
     ApiResponse<LeadListItem[] | { data: LeadListItem[]; meta?: Record<string, number> }>
   >('/crm/leads', {
     params: {
-      mine: true,
-      // Only the fields a list row renders (server skips heavy relations).
       view: 'compact',
       page: params.page ?? 1,
       per_page: params.per_page ?? 20,
@@ -52,11 +56,12 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
       viewed: params.viewed ?? undefined,
       followupNone: params.followupNone || undefined,
       sort: params.sort,
-      priority: params.priority,
+      temperature: params.temperature ?? params.priority,
       leadSourceId: params.leadSourceId,
       engagement: params.engagement,
       dateFrom: params.dateFrom,
       dateTo: params.dateTo,
+      ...(params.mine ? { mine: true } : {}),
     },
   });
   const payload = data.data;
@@ -71,6 +76,14 @@ export async function fetchMyLeads(params: LeadListParams = {}) {
     {};
   return { items, meta };
 }
+
+/** @deprecated Prefer fetchLeads({ mine: true }) for My Leads. */
+export async function fetchMyLeads(params: LeadListParams = {}) {
+  return fetchLeads({ ...params, mine: true });
+}
+
+/** Root query key for both My Leads and All Leads list caches. */
+export const LEADS_QUERY_ROOT = 'leads' as const;
 
 /** Pins a request to one account (see AxiosRequestConfig.accountId). */
 type WriteOptions = { accountId?: string };
@@ -121,7 +134,7 @@ export async function updateLeadStatus(
   return data.data;
 }
 
-/** Generic lead PUT (priority, stageRating, full status change, …). */
+/** Generic lead PUT (temperature, stageRating, full status change, …). */
 export async function updateLead(
   id: number | string,
   payload: Record<string, unknown>,
@@ -135,10 +148,10 @@ export async function updateLead(
   return data.data;
 }
 
-export async function updateLeadPriority(
+export async function updateLeadTemperature(
   id: number | string,
   payload: {
-    priority: 'LOW' | 'MEDIUM' | 'HIGH';
+    temperature: 'COLD' | 'WARM' | 'HOT';
     expectedVersion?: number;
   },
   options: WriteOptions = {}
@@ -149,6 +162,33 @@ export async function updateLeadPriority(
     { accountId: options.accountId }
   );
   return data.data;
+}
+
+/** @deprecated Use updateLeadTemperature */
+export async function updateLeadPriority(
+  id: number | string,
+  payload: {
+    priority?: 'COLD' | 'WARM' | 'HOT' | 'LOW' | 'MEDIUM' | 'HIGH';
+    temperature?: 'COLD' | 'WARM' | 'HOT';
+    expectedVersion?: number;
+  },
+  options: WriteOptions = {}
+) {
+  return updateLeadTemperature(
+    id,
+    {
+      temperature: (payload.temperature ??
+        (payload.priority === 'LOW'
+          ? 'COLD'
+          : payload.priority === 'MEDIUM'
+            ? 'WARM'
+            : payload.priority === 'HIGH'
+              ? 'HOT'
+              : payload.priority)) as 'COLD' | 'WARM' | 'HOT',
+      expectedVersion: payload.expectedVersion,
+    },
+    options
+  );
 }
 
 export async function addLeadNote(
@@ -220,6 +260,10 @@ export async function fetchLeadMeta() {
 /** Admin-managed lookups — change rarely, so keep them fresh for a while. */
 const LOOKUP_STALE_MS = 10 * 60_000;
 
+// Name fallback until every server sends `code`.
+export const isDraftStatus = (s: LeadStatus) =>
+  s.code === 'DRAFT' || /^draft$/i.test(s.name.trim());
+
 export const leadStatusesQuery = queryOptions({
   queryKey: ['lead-statuses'],
   queryFn: fetchLeadStatuses,
@@ -264,21 +308,23 @@ export const leadViewsQuery = (leadId: number) =>
 /** Lead list tab — All, Unread, or one lead status id. */
 export type LeadListTab = 'all' | 'unread' | number;
 
-export const myLeadsQuery = (
+export const leadsListQuery = (
+  mode: LeadListMode,
   search: string,
   tab: LeadListTab = 'all',
   filters: LeadFilters = NO_LEAD_FILTERS
 ) =>
   infiniteQueryOptions({
-    // Tab before search so ['my-leads', 'unread'] matches every search.
-    queryKey: ['my-leads', tab, search, filters],
+    // Mode + tab before search so ['leads', 'mine', 'unread'] matches every search.
+    queryKey: [LEADS_QUERY_ROOT, mode, tab, search, filters],
     initialPageParam: 1,
     queryFn: ({ pageParam }) =>
-      fetchMyLeads({
+      fetchLeads({
         page: pageParam,
         search,
         leadStatusId: typeof tab === 'number' ? tab : undefined,
         viewed: tab === 'unread' ? false : undefined,
+        mine: mode === 'mine',
         ...leadFilterParams(filters),
       }),
     getNextPageParam: (last) => {
@@ -288,6 +334,13 @@ export const myLeadsQuery = (
     },
   });
 
+/** @deprecated Prefer leadsListQuery('mine', ...). */
+export const myLeadsQuery = (
+  search: string,
+  tab: LeadListTab = 'all',
+  filters: LeadFilters = NO_LEAD_FILTERS
+) => leadsListQuery('mine', search, tab, filters);
+
 type StatusCounts = {
   total: number;
   byStatus: { leadStatusId: number | null; count: number }[];
@@ -296,7 +349,7 @@ type StatusCounts = {
 async function fetchStatusCounts(params: Record<string, unknown>) {
   const { data } = await api.get<ApiResponse<StatusCounts>>(
     '/crm/leads/status-counts',
-    { params: { mine: true, ...params } }
+    { params }
   );
   return data.data;
 }
@@ -309,21 +362,27 @@ export type LeadTabCounts = {
 
 /** Badge counts for the lead list tabs (same search and filters as the list). */
 export const leadTabCountsQuery = (
+  mode: LeadListMode,
   search: string,
   filters: LeadFilters = NO_LEAD_FILTERS
 ) =>
   queryOptions({
-    // Under 'my-leads' so every list invalidation refreshes the badges too.
+    // Under LEADS_QUERY_ROOT so every list invalidation refreshes the badges too.
     // Sort never changes a count, so it stays out of the key.
     queryKey: [
-      'my-leads',
+      LEADS_QUERY_ROOT,
+      mode,
       'counts',
       search,
       { ...filters, sort: NO_LEAD_FILTERS.sort },
     ],
     queryFn: async (): Promise<LeadTabCounts> => {
       const { sort: _sort, ...params } = leadFilterParams(filters);
-      const shared = { ...params, search: search || undefined };
+      const shared = {
+        ...params,
+        search: search || undefined,
+        ...(mode === 'mine' ? { mine: true } : {}),
+      };
       const [all, unread] = await Promise.all([
         fetchStatusCounts(shared),
         fetchStatusCounts({ ...shared, viewed: false }),

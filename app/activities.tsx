@@ -20,6 +20,7 @@ import {
   MultiplicationSignIcon,
   Search02Icon,
 } from '@/components/icons/hugeicons';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import {
   HeaderFilterButton,
   HeaderIconButton,
@@ -268,9 +269,14 @@ export default function ActivitiesScreen() {
           contentContainerStyle={styles.list}
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          refreshing={query.isRefetching && !query.isFetchingNextPage && !query.isPlaceholderData}
-          onRefresh={() => query.refetch()}
+          refreshControl={
+            <AppRefreshControl
+              refreshing={query.isRefetching && !query.isFetchingNextPage && !query.isPlaceholderData}
+              onRefresh={() => void query.refetch()}
+            />
+          }
           onEndReachedThreshold={0.4}
           onEndReached={() => {
             if (query.hasNextPage && !query.isFetchingNextPage && !query.isPlaceholderData) {

@@ -1,4 +1,4 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { authColors } from '../authTheme';
@@ -16,7 +16,7 @@ export function BackButton({ onPress }: Props) {
       style={({ pressed }) => [styles.btn, pressed ? styles.pressed : null]}
       hitSlop={8}
     >
-      <FontAwesome name="angle-left" size={22} color={authColors.text} />
+      <Ionicons name="chevron-back" size={20} color={authColors.text} />
     </Pressable>
   );
 }

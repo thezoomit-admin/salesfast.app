@@ -157,6 +157,8 @@ export function CountryPhoneInput({
           </View>
 
           <FlatList
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
             data={filtered}
             keyExtractor={(item) => item.code}
             keyboardShouldPersistTaps="handled"
@@ -295,8 +297,8 @@ function createStyles(colors: ThemeColors, isDark: boolean) {
     },
     rowSelected: {
       backgroundColor: isDark
-        ? 'rgba(242, 70, 28, 0.14)'
-        : 'rgba(242, 70, 28, 0.06)',
+        ? 'rgba(58, 131, 247, 0.14)'
+        : 'rgba(58, 131, 247, 0.06)',
     },
     rowFlag: {
       fontSize: 22,

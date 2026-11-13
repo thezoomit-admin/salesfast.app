@@ -57,6 +57,7 @@ import { iconForStageName } from '@/features/leads/leadPipeline';
 import {
   PRIORITIES,
   PRIORITY_META,
+  normalizeLeadTemperature,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
 import {
@@ -80,9 +81,9 @@ type Props = {
 };
 
 const PRIORITY_ICON = {
-  LOW: ArrowDownDoubleIcon,
-  MEDIUM: MinusSignIcon,
-  HIGH: FlameIcon,
+  COLD: ArrowDownDoubleIcon,
+  WARM: MinusSignIcon,
+  HOT: FlameIcon,
 } as const;
 
 export function AddNoteSheet({
@@ -160,7 +161,9 @@ export function AddNoteSheet({
     setPriorityOpen(false);
     setClips([]);
     setRecording(false);
-    setRating((lead.priority as LeadPriority | null) ?? null);
+    setRating(
+      normalizeLeadTemperature(lead.temperature ?? lead.priority),
+    );
     versionRef.current = lead.version ?? undefined;
     const preset =
       initialStageId != null &&
@@ -185,7 +188,7 @@ export function AddNoteSheet({
     onMutate: (next) => {
       const prev = rating;
       const prevLists = queryClient
-        .getQueriesData({ queryKey: ['my-leads'] })
+        .getQueriesData({ queryKey: ['leads'] })
         .concat(queryClient.getQueriesData({ queryKey: ['my-follow-ups'] }));
       setRating(next);
       setPriorityOpen(false);
@@ -210,7 +213,7 @@ export function AddNoteSheet({
           queryClient.setQueryData(key, data);
         }
       }
-      Alert.alert('Could not update priority');
+      Alert.alert('Could not update temperature');
     },
   });
 
@@ -323,7 +326,7 @@ export function AddNoteSheet({
       }
 
       void queryClient.invalidateQueries({ queryKey: ['lead', lead.id] });
-      void queryClient.invalidateQueries({ queryKey: ['my-leads'] });
+      void queryClient.invalidateQueries({ queryKey: ['leads'] });
       onSaved?.();
       setSuccessOpen(true);
     } catch (err) {
@@ -408,7 +411,7 @@ export function AddNoteSheet({
                     { color: priorityBadge?.color ?? colors.textMuted },
                   ]}
                 >
-                  {priorityMeta?.label ?? 'Priority'}
+                  {priorityMeta?.label ?? 'Temperature'}
                 </Text>
                 <Ionicons
                   name="chevron-down"

@@ -5,7 +5,7 @@ import { useMemo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ArrowRight01Icon } from '@/components/icons/hugeicons';
-import { radii, typography, useTheme, type ThemeColors } from '@/theme';
+import { blue, radii, typography, useTheme, type ThemeColors } from '@/theme';
 import type { MobileDashboard } from '@/types/api';
 
 type Kpis = MobileDashboard['kpis'];
@@ -25,7 +25,7 @@ function formatCount(n: number) {
   return n.toLocaleString('en-US');
 }
 
-const AVATAR_COLORS = ['#0F766E', '#F2461C', '#D97706', '#6366F1', '#0891B2'];
+const AVATAR_COLORS = ['#0F766E', blue[500], blue[800], '#6366F1', '#0891B2'];
 
 export function HomeReports({ kpis, recentLeads }: Props) {
   const { colors, resolved } = useTheme();
@@ -278,7 +278,7 @@ export function HomeReports({ kpis, recentLeads }: Props) {
         <ReportCard
           styles={styles}
           title="Pipeline pulse"
-          href="/(tabs)/leads"
+          href="/(tabs)/my-leads"
           chevronColor={colors.textMuted}
           onPress={(href) => router.navigate(href)}
         >

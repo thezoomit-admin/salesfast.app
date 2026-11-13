@@ -6,12 +6,14 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   Alert,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -20,8 +22,11 @@ import {
 import { getErrorMessage } from '@/api/client';
 import {
   ArrowDownDoubleIcon,
+  ChartBarsIcon,
   FlameIcon,
   MinusSignIcon,
+  PencilEdit02Icon,
+  UserAdd01Icon,
 } from '@/components/icons/hugeicons';
 import { AddNoteSheet } from '@/components/leads/AddNoteSheet';
 import { LeadBuyerProfilePanel } from '@/components/leads/LeadBuyerProfilePanel';
@@ -31,16 +36,19 @@ import {
   LeadDetailTabBar,
   type LeadDetailTab,
 } from '@/components/leads/LeadDetailTabBar';
+import {
+  cardShadow,
+  leadDetailPalette,
+  type LeadDetailPalette,
+} from '@/components/leads/leadDetailPalette';
 import { LeadHistoryPanel } from '@/components/leads/LeadHistoryPanel';
 import { LeadPipeline } from '@/components/leads/LeadPipeline';
 import { LeadRequirementsPanel } from '@/components/leads/LeadRequirementsPanel';
 import { LeadSectionShell } from '@/components/leads/LeadSectionShell';
 import { LeadViewHistoryPanel } from '@/components/leads/LeadViewHistoryPanel';
+import { AppRefreshControl } from '@/components/ui/AppRefreshControl';
 import { Screen } from '@/components/ui/Screen';
-import {
-  HeaderAddButton,
-  ScreenHeader,
-} from '@/components/ui/ScreenHeader';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import {
   LeadDetailSkeleton,
   LeadSectionSkeleton,
@@ -61,9 +69,9 @@ import {
 import {
   PRIORITIES,
   PRIORITY_META,
+  normalizeLeadTemperature,
   priorityBadgeColors,
 } from '@/features/leads/leadPriority';
-import { summarizeLead } from '@/features/leads/leadSummary';
 import {
   ADD_NOTE_MUTATION,
   UPDATE_STATUS_MUTATION,
@@ -83,18 +91,26 @@ import { formatDateTime } from '@/utils/dates';
 import { formatPhoneDisplay, openPhoneDialer, openWhatsApp } from '@/utils/phone';
 
 const PRIORITY_ICON = {
-  LOW: ArrowDownDoubleIcon,
-  MEDIUM: MinusSignIcon,
-  HIGH: FlameIcon,
+  COLD: ArrowDownDoubleIcon,
+  WARM: MinusSignIcon,
+  HOT: FlameIcon,
 } as const;
 
 export default function LeadDetailScreen() {
   const { colors, resolved } = useTheme();
   const isDark = resolved === 'dark';
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const palette = useMemo(
+    () => leadDetailPalette(colors, isDark),
+    [colors, isDark]
+  );
+  const styles = useMemo(
+    () => createStyles(colors, palette, isDark),
+    [colors, palette, isDark]
+  );
   const { id } = useLocalSearchParams<{ id: string }>();
   const leadId = Number(id);
-  const accountId = useAuth().user?.id ?? '';
+  const { user } = useAuth();
+  const accountId = user?.id ?? '';
   const queryClient = useQueryClient();
   const [noteOpen, setNoteOpen] = useState(false);
   // The sheet (audio recorder, channel list) mounts on first use, not with
@@ -110,6 +126,14 @@ export default function LeadDetailScreen() {
   const { leadQuery, metaQuery } = useLeadDetail(leadId);
   const statusesQuery = useQuery(leadStatusesQuery);
 
+  // White status-bar icons over the blue header, in both themes.
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('light');
+      return () => setStatusBarStyle(isDark ? 'light' : 'dark');
+    }, [isDark])
+  );
+
   const priorityMutation = useMutation({
     mutationFn: (priority: LeadPriority) =>
       updateLeadPriority(
@@ -123,7 +147,7 @@ export default function LeadDetailScreen() {
     onMutate: async (priority) => {
       await queryClient.cancelQueries({ queryKey: ['lead', leadId] });
       const prevDetail = leadQuery.data;
-      const prevLists = queryClient.getQueriesData({ queryKey: ['my-leads'] })
+      const prevLists = queryClient.getQueriesData({ queryKey: ['leads'] })
         .concat(queryClient.getQueriesData({ queryKey: ['my-follow-ups'] }));
       if (prevDetail) {
         queryClient.setQueryData(['lead', leadId], { ...prevDetail, priority });
@@ -141,7 +165,7 @@ export default function LeadDetailScreen() {
           queryClient.setQueryData(key, data);
         }
       }
-      Alert.alert('Could not update priority');
+      Alert.alert('Could not update temperature');
     },
     onSuccess: (updated) => {
       if (!updated) return;
@@ -194,12 +218,30 @@ export default function LeadDetailScreen() {
     setNoteMounted(true);
   }
 
+  const noteDisabled = !lead || partial;
   const headerRight = (
-    <HeaderAddButton
-      label="Add Note"
-      disabled={!lead || partial}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Add Note"
+      accessibilityState={{ disabled: noteDisabled }}
+      disabled={noteDisabled}
       onPress={() => openNote(null)}
-    />
+      style={({ pressed }) => [
+        styles.noteBtn,
+        pressed && styles.pressed,
+        noteDisabled && styles.noteBtnDisabled,
+      ]}
+    >
+      <HugeiconsIcon
+        icon={PencilEdit02Icon}
+        size={18}
+        color={colors.white}
+        strokeWidth={1.8}
+      />
+      <Text style={styles.noteBtnText} numberOfLines={1}>
+        Add Note
+      </Text>
+    </Pressable>
   );
 
   const sectionPending = (
@@ -213,50 +255,73 @@ export default function LeadDetailScreen() {
     />
   );
 
-  const screenBg = {
-    backgroundColor: isDark ? colors.background : '#F9FAFB', // gray-50
-  };
-
-  if (!lead) {
-    return (
-      <Screen
-        style={screenBg}
-        header={<ScreenHeader title="Lead" right={headerRight} />}
-        footer={
-          <LeadDetailTabBar active={activeTab} onChange={setActiveTab} />
+  // Blue band with the title, then a rounded sheet that alone scrolls.
+  const shell = (title: string, body: ReactNode, refreshable: boolean) => (
+    <Screen
+      style={{ backgroundColor: palette.header }}
+      header={
+        <ScreenHeader
+          title={title}
+          titleCentered={false}
+          tone="brand"
+          right={headerRight}
+        />
+      }
+      footer={<LeadDetailTabBar active={activeTab} onChange={setActiveTab} />}
+      contentStyle={styles.sheet}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          refreshable ? (
+            <AppRefreshControl
+              refreshing={leadQuery.isRefetching && !partial}
+              onRefresh={() => void leadQuery.refetch()}
+              tintColor={colors.brand}
+            />
+          ) : undefined
         }
       >
-        {Number.isFinite(leadId) && lead !== null ? (
-          <QueryPlaceholder
-            query={leadQuery}
-            errorMessage={getErrorMessage(leadQuery.error, 'Lead not found')}
-            skeleton={<LeadDetailSkeleton />}
-          />
-        ) : (
-          <ErrorState message="Lead not found" />
-        )}
-      </Screen>
+        {body}
+      </ScrollView>
+    </Screen>
+  );
+
+  if (!lead) {
+    return shell(
+      'Lead',
+      Number.isFinite(leadId) && lead !== null ? (
+        <QueryPlaceholder
+          query={leadQuery}
+          errorMessage={getErrorMessage(leadQuery.error, 'Lead not found')}
+          skeleton={<LeadDetailSkeleton />}
+        />
+      ) : (
+        <ErrorState message="Lead not found" />
+      ),
+      false
     );
   }
 
   const name = lead.buyerPersona?.fullName || 'Unnamed lead';
   const phone = lead.buyerPersona?.phone;
+  const email = lead.buyerPersona?.email?.trim() || '';
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
-  const sm = summarizeLead(lead, metaQuery.data);
+  const assignee =
+    user?.id && lead.assignedTo === user.id
+      ? user.name?.trim() || lead.assignedToName
+      : lead.assignedToName;
   const currentStatusId = lead.leadStatus?.id ?? null;
-  const priority = (lead.priority ?? null) as LeadPriority | null;
+  const priority = normalizeLeadTemperature(
+    lead.temperature ?? lead.priority
+  );
   const priorityMeta = priority ? PRIORITY_META[priority] : null;
   const priorityBadge = priority
     ? priorityBadgeColors(priority, isDark)
     : null;
-
-  const prefChips = [
-    { key: 'type', label: 'Type', value: sm.propertyType },
-    { key: 'loc', label: 'Location', value: sm.location },
-    { key: 'size', label: 'Size', value: sm.size },
-    { key: 'fin', label: 'Financing', value: sm.financing },
-    { key: 'time', label: 'Timeline', value: sm.timeline },
-  ].filter((c) => c.value);
 
   async function onCall() {
     const ok = await openPhoneDialer(phone);
@@ -272,17 +337,9 @@ export default function LeadDetailScreen() {
     }
   }
 
-  return (
-    <Screen
-      style={screenBg}
-      header={<ScreenHeader title={headerTitle} right={headerRight} />}
-      footer={
-        <LeadDetailTabBar active={activeTab} onChange={setActiveTab} />
-      }
-      scroll
-      refreshing={leadQuery.isRefetching && !partial}
-      onRefresh={() => leadQuery.refetch()}
-    >
+  return shell(
+    headerTitle,
+    <>
       {refreshFailed ? (
         <Pressable
           accessibilityRole="button"
@@ -297,138 +354,135 @@ export default function LeadDetailScreen() {
       ) : null}
       {activeTab === 'overview' ? (
         <View style={styles.overviewBlock}>
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryHero}>
-              <View style={styles.nameRow}>
-                <Text style={styles.name} numberOfLines={1}>
+          <View style={[styles.card, styles.contactCard]}>
+            <View style={styles.contactTop}>
+              <View style={styles.avatar}>
+                <Ionicons name="person" size={30} color={colors.brand} />
+              </View>
+
+              <View style={styles.contactInfo}>
+                <Text style={styles.name} numberOfLines={2}>
                   {name}
                 </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Change priority"
-                  disabled={partial}
-                  onPress={() => setPriorityOpen(true)}
-                  style={({ pressed }) => [
-                    styles.priorityChip,
-                    priorityBadge
-                      ? {
-                          backgroundColor: priorityBadge.backgroundColor,
-                          borderColor: priorityBadge.borderColor,
-                        }
-                      : {
-                          backgroundColor: colors.surfaceMuted,
-                          borderColor: colors.border,
-                        },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  {priority ? (
-                    <HugeiconsIcon
-                      icon={PRIORITY_ICON[priority]}
-                      size={13}
-                      color={priorityBadge!.color}
-                      strokeWidth={1.5}
-                    />
-                  ) : null}
-                  <Text
-                    style={[
-                      styles.priorityChipText,
-                      { color: priorityBadge?.color ?? colors.textMuted },
-                    ]}
-                  >
-                    {priorityMeta?.label ?? 'Priority'}
-                  </Text>
-                  <Ionicons
-                    name="chevron-down"
-                    size={11}
-                    color={priorityBadge?.color ?? colors.textMuted}
-                  />
-                </Pressable>
+                {phone || whatsapp ? (
+                  <View style={styles.infoLine}>
+                    <Ionicons name="call" size={15} color={colors.brand} />
+                    <Text style={styles.phoneText} numberOfLines={1}>
+                      {formatPhoneDisplay(phone || whatsapp)}
+                    </Text>
+                  </View>
+                ) : null}
+                {email ? (
+                  <View style={styles.infoLine}>
+                    <Ionicons name="mail" size={15} color={colors.brand} />
+                    <Text style={styles.emailText} numberOfLines={1}>
+                      {email}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
-              <View style={styles.contactRow}>
-                {phone || whatsapp ? (
-                  <Text style={styles.subLine} numberOfLines={1}>
-                    {formatPhoneDisplay(phone || whatsapp)}
-                  </Text>
-                ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Call"
-                  hitSlop={8}
+              <View style={styles.actionsDivider} />
+
+              <View style={styles.actions}>
+                <ContactAction
+                  label="Call"
+                  icon="call"
+                  bg={colors.brand}
                   disabled={!phone}
                   onPress={() => void onCall()}
-                  style={({ pressed }) => [
-                    styles.inlineAction,
-                    (pressed || !phone) && styles.actionFaded,
-                  ]}
-                >
-                  <Ionicons
-                    name="call-outline"
-                    size={17}
-                    color={phone ? colors.textSecondary : colors.textMuted}
-                  />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="WhatsApp"
-                  hitSlop={8}
+                  styles={styles}
+                />
+                <ContactAction
+                  label="WhatsApp"
+                  icon="logo-whatsapp"
+                  bg="#25D366"
                   disabled={!whatsapp}
                   onPress={() => void onWhatsApp()}
-                  style={({ pressed }) => [
-                    styles.inlineAction,
-                    (pressed || !whatsapp) && styles.actionFaded,
+                  styles={styles}
+                />
+              </View>
+            </View>
+
+            <View style={styles.assignRow}>
+              <HugeiconsIcon
+                icon={UserAdd01Icon}
+                size={18}
+                color={colors.brand}
+                strokeWidth={2}
+              />
+              <Text style={styles.assignText} numberOfLines={1}>
+                Assign by{' '}
+                <Text style={styles.assignName}>
+                  {assignee?.trim() || '—'}
+                </Text>
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Change temperature"
+                disabled={partial}
+                hitSlop={6}
+                onPress={() => setPriorityOpen(true)}
+                style={({ pressed }) => [
+                  styles.priorityChip,
+                  priorityBadge
+                    ? {
+                        backgroundColor: priorityBadge.backgroundColor,
+                        borderColor: priorityBadge.borderColor,
+                      }
+                    : {
+                        backgroundColor: palette.tint,
+                        borderColor: palette.cardBorder,
+                      },
+                  pressed && styles.pressed,
+                ]}
+              >
+                {priority ? (
+                  <HugeiconsIcon
+                    icon={PRIORITY_ICON[priority]}
+                    size={13}
+                    color={priorityBadge!.color}
+                    strokeWidth={1.5}
+                  />
+                ) : null}
+                <Text
+                  style={[
+                    styles.priorityChipText,
+                    { color: priorityBadge?.color ?? palette.muted },
                   ]}
                 >
-                  <Ionicons
-                    name="logo-whatsapp"
-                    size={17}
-                    color={whatsapp ? '#25D366' : colors.textMuted}
-                  />
-                </Pressable>
-                {lead.leadSource?.name ? (
-                  <Text style={styles.sourceText} numberOfLines={1}>
-                    · {lead.leadSource.name}
-                  </Text>
-                ) : null}
-              </View>
-
-              <Text style={styles.assignLine} numberOfLines={1}>
-                Assign by - {lead.assignedToName?.trim() || '—'}
-              </Text>
-
-              {sm.occupation ? (
-                <Text style={styles.occupation}>{sm.occupation}</Text>
-              ) : null}
-              {pendingStatusName ? (
-                <Text style={styles.pendingText}>
-                  Changing to {pendingStatusName} · waiting to sync
+                  {priorityMeta?.label ?? 'Temperature'}
                 </Text>
-              ) : null}
+                <Ionicons
+                  name="chevron-down"
+                  size={11}
+                  color={priorityBadge?.color ?? palette.muted}
+                />
+              </Pressable>
             </View>
 
-            <View style={styles.pipelineBlock}>
-              <LeadPipeline
-                statuses={statusesQuery.data ?? []}
-                currentStatusId={currentStatusId}
-                assignedToName={lead.assignedToName}
-                onStepPress={partial ? undefined : (id) => openNote(id)}
-              />
-            </View>
-
-            {prefChips.length > 0 ? (
-              <View style={styles.prefSection}>
-                <Text style={styles.prefHeading}>Preferences</Text>
-                <View style={styles.prefRow}>
-                  {prefChips.map((c) => (
-                    <View key={c.key} style={styles.prefChip}>
-                      <Text style={styles.prefChipLabel}>{c.label}</Text>
-                      <Text style={styles.prefChipValue}>{c.value}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
+            {pendingStatusName ? (
+              <Text style={styles.pendingText}>
+                Changing to {pendingStatusName} · waiting to sync
+              </Text>
             ) : null}
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <HugeiconsIcon
+                icon={ChartBarsIcon}
+                size={20}
+                color={colors.brand}
+              />
+              <Text style={styles.cardTitle}>Lead Journey</Text>
+            </View>
+            <LeadPipeline
+              statuses={statusesQuery.data ?? []}
+              currentStatusId={currentStatusId}
+              assignedToName={lead.assignedToName}
+              onStepPress={partial ? undefined : (id) => openNote(id)}
+            />
           </View>
 
           {!partial ? (
@@ -440,8 +494,12 @@ export default function LeadDetailScreen() {
 
           <LeadSectionShell
             pills={[
-              { key: 'profile', label: 'Buyer Profile' },
-              { key: 'requirements', label: 'Requirements' },
+              { key: 'profile', label: 'Buyer Profile', icon: 'person-outline' },
+              {
+                key: 'requirements',
+                label: 'Requirements',
+                icon: 'document-text-outline',
+              },
             ]}
             activeKey={overviewPill}
             onPillChange={(k) =>
@@ -514,7 +572,7 @@ export default function LeadDetailScreen() {
             style={styles.dropdownCard}
             onPress={(e) => e.stopPropagation?.()}
           >
-            <Text style={styles.modalTitle}>Priority</Text>
+            <Text style={styles.modalTitle}>Temperature</Text>
             {PRIORITIES.map((p) => {
               const meta = PRIORITY_META[p];
               const opt = priorityBadgeColors(p, isDark);
@@ -552,40 +610,193 @@ export default function LeadDetailScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </Screen>
+    </>,
+    true
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function ContactAction({
+  label,
+  icon,
+  bg,
+  disabled,
+  onPress,
+  styles,
+}: {
+  label: string;
+  icon: 'call' | 'logo-whatsapp';
+  bg: string;
+  disabled: boolean;
+  onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      hitSlop={6}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.action,
+        (pressed || disabled) && styles.actionFaded,
+      ]}
+    >
+      <View style={[styles.actionCircle, { backgroundColor: bg }]}>
+        <Ionicons name={icon} size={icon === 'call' ? 20 : 22} color="#fff" />
+      </View>
+      <Text style={styles.actionLabel} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function createStyles(
+  colors: ThemeColors,
+  palette: LeadDetailPalette,
+  isDark: boolean
+) {
   return StyleSheet.create({
     pressed: { opacity: 0.85 },
+    sheet: {
+      // flex, not Screen's flexGrow: the sheet must not grow to its
+      // content, or the scroll view has nothing to scroll.
+      flex: 1,
+      padding: 0,
+      gap: 0,
+      borderTopLeftRadius: 22,
+      borderTopRightRadius: 22,
+      overflow: 'hidden',
+      backgroundColor: palette.sheet,
+    },
+    scroll: {
+      flexGrow: 1,
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.xl,
+      gap: spacing.md,
+    },
+    noteBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minHeight: 38,
+      paddingHorizontal: 14,
+      borderRadius: radii.pill,
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.85)',
+      flexShrink: 0,
+    },
+    noteBtnDisabled: { opacity: 0.5 },
+    noteBtnText: {
+      fontSize: 14,
+      lineHeight: 18,
+      fontWeight: '600',
+      color: colors.white,
+    },
     overviewBlock: { gap: spacing.md },
-    summaryCard: {
-      backgroundColor: colors.surface,
+    card: {
+      backgroundColor: palette.card,
       borderRadius: radii.lg,
       borderWidth: 1,
-      borderColor: colors.border,
-      overflow: 'hidden',
-    },
-    summaryHero: {
-      gap: 6,
+      borderColor: palette.cardBorder,
       padding: spacing.lg,
-      backgroundColor: colors.surface,
+      gap: spacing.md,
+      ...cardShadow(isDark),
     },
-    nameRow: {
+    contactCard: { paddingHorizontal: 14 },
+    contactTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 0,
+    },
+    avatar: {
+      width: 54,
+      height: 54,
+      borderRadius: 27,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: palette.soft,
+      flexShrink: 0,
+    },
+    contactInfo: { flex: 1, minWidth: 0, gap: 5 },
+    name: {
+      fontSize: 17,
+      lineHeight: 22,
+      fontWeight: '700',
+      color: palette.ink,
+    },
+    infoLine: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      minWidth: 0,
+    },
+    phoneText: {
+      flexShrink: 1,
+      fontSize: 14,
+      lineHeight: 18,
+      fontWeight: '500',
+      color: palette.ink,
+      fontVariant: ['tabular-nums'],
+    },
+    emailText: {
+      flexShrink: 1,
+      fontSize: 12,
+      lineHeight: 16,
+      color: palette.body,
+    },
+    actionsDivider: {
+      width: StyleSheet.hairlineWidth,
+      alignSelf: 'stretch',
+      backgroundColor: palette.divider,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: 4,
+      flexShrink: 0,
+    },
+    action: { alignItems: 'center', gap: 6, minWidth: 44 },
+    actionCircle: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    actionLabel: {
+      fontSize: 12,
+      lineHeight: 15,
+      fontWeight: '500',
+      color: palette.ink,
+    },
+    actionFaded: { opacity: 0.4 },
+    assignRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
       minWidth: 0,
-      flexWrap: 'wrap',
     },
-    name: {
-      ...typography.subtitle,
-      fontSize: 18,
+    assignText: {
+      flex: 1,
+      fontSize: 14,
+      lineHeight: 19,
+      color: palette.body,
+    },
+    assignName: { fontWeight: '700', color: colors.brand },
+    cardTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    cardTitle: {
+      fontSize: 16,
+      lineHeight: 21,
       fontWeight: '700',
-      color: colors.text,
-      flexShrink: 1,
-      minWidth: 0,
+      color: palette.ink,
     },
     priorityChip: {
       flexDirection: 'row',
@@ -602,78 +813,8 @@ function createStyles(colors: ThemeColors) {
       fontWeight: '700',
       fontSize: 12,
     },
-    contactRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      minWidth: 0,
-      flexWrap: 'wrap',
-    },
-    subLine: {
-      ...typography.caption,
-      fontSize: 13,
-      color: colors.textSecondary,
-      fontVariant: ['tabular-nums'],
-    },
-    sourceText: {
-      ...typography.caption,
-      fontSize: 13,
-      color: colors.textMuted,
-      flexShrink: 1,
-    },
-    inlineAction: {
-      width: 28,
-      height: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-    },
-    actionFaded: { opacity: 0.4 },
-    assignLine: {
-      ...typography.caption,
-      fontSize: 13,
-      color: colors.textMuted,
-    },
-    occupation: { ...typography.body, color: colors.textSecondary },
-    pipelineBlock: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-    },
-    prefSection: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      padding: spacing.lg,
-      gap: spacing.sm,
-    },
-    prefHeading: {
-      ...typography.caption,
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-      fontWeight: '600',
-    },
-    prefRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-    prefChip: {
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceMuted,
-      borderRadius: radii.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-      gap: 2,
-      maxWidth: '100%',
-    },
-    prefChipLabel: {
-      ...typography.caption,
-      color: colors.textMuted,
-      textTransform: 'uppercase',
-      fontSize: 10,
-    },
-    prefChipValue: { ...typography.body, color: colors.text, fontWeight: '500' },
     pageBlock: { gap: spacing.md },
-    pageTitle: { ...typography.subtitle, color: colors.text },
+    pageTitle: { ...typography.subtitle, color: palette.ink },
     pendingNote: {
       borderWidth: 1,
       borderColor: colors.warningSoft,

@@ -1,5 +1,10 @@
 import { HugeiconsIcon } from '@hugeicons/react-native';
-import { addMonths, format, isBefore, isSameDay, startOfDay, startOfMonth } from 'date-fns';
+import { addMonths } from 'date-fns/addMonths';
+import { format } from 'date-fns/format';
+import { isBefore } from 'date-fns/isBefore';
+import { isSameDay } from 'date-fns/isSameDay';
+import { startOfDay } from 'date-fns/startOfDay';
+import { startOfMonth } from 'date-fns/startOfMonth';
 import { useMemo, useState } from 'react';
 import {
   Modal,
@@ -312,6 +317,8 @@ export function FollowupDateTimeField({
                   </Pressable>
                 </View>
                 <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  showsHorizontalScrollIndicator={false}
                   style={styles.timeList}
                   contentContainerStyle={styles.timeGrid}
                   nestedScrollEnabled

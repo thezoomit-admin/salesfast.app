@@ -1,45 +1,51 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { spacing, useThemeColors, type ThemeColors } from '@/theme';
+import { inboxPalette, type InboxPalette } from '@/features/notifications/inboxPalette';
+import { spacing, useTheme } from '@/theme';
 
 import { SkeletonBone, SkeletonPulse } from './primitives';
 
-/** Mirrors the notification inbox rows. */
+/** Mirrors the notification inbox cards. */
 export function NotificationsSkeleton({ rows = 7 }: { rows?: number }) {
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { resolved } = useTheme();
+  const palette = inboxPalette(resolved === 'dark');
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   return (
     <SkeletonPulse style={styles.root}>
-      <SkeletonBone width={64} height={10} style={styles.section} />
       {Array.from({ length: rows }, (_, i) => (
-        <View key={i} style={styles.row}>
-          <SkeletonBone width={40} height={40} radius={20} />
+        <View key={i} style={styles.card}>
+          <SkeletonBone width={41} height={41} radius={21} />
           <View style={styles.body}>
             <SkeletonBone width="72%" height={13} />
             <SkeletonBone width="54%" height={10} />
           </View>
-          <SkeletonBone width={48} height={10} />
+          <SkeletonBone width={52} height={20} radius={10} />
         </View>
       ))}
     </SkeletonPulse>
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(palette: InboxPalette) {
   return StyleSheet.create({
     root: {
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: 12,
+      paddingTop: spacing.sm,
+      gap: 5,
     },
-    section: { marginTop: spacing.lg, marginBottom: spacing.xs },
-    row: {
+    card: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 14,
-      gap: spacing.md,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
+      minHeight: 53,
+      paddingVertical: 5,
+      paddingHorizontal: 12,
+      gap: 13,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: palette.cardBorder,
+      backgroundColor: palette.card,
     },
     body: { flex: 1, gap: spacing.sm },
   });

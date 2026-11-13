@@ -27,6 +27,8 @@ export type AuthUser = {
   designation?: {
     id: string;
     name: string;
+    /** Used for Administration full-access check (mirrors backend leadAccess). */
+    key?: string | null;
     permissions?: unknown;
   } | null;
 };
@@ -69,7 +71,9 @@ export type LeadStatus = {
   stageOptions?: string[] | null;
 };
 
-export type LeadPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type LeadTemperature = 'COLD' | 'WARM' | 'HOT';
+/** @deprecated Use LeadTemperature */
+export type LeadPriority = LeadTemperature;
 
 export type BuyerPersonaProfile = {
   nid?: string | null;
@@ -97,8 +101,10 @@ export type LeadListItem = {
   leadSource?: { id: number; name: string } | null;
   assignedTo?: string | null;
   assignedToName?: string | null;
-  /** Lead priority (Low / Medium / High). */
-  priority?: LeadPriority | null;
+  /** Lead temperature (COLD / WARM / HOT). */
+  temperature?: LeadTemperature | null;
+  /** @deprecated Use temperature */
+  priority?: LeadTemperature | null;
   nextFollowupDate?: string | null;
   lastContactDate?: string | null;
   updatedAt?: string;
@@ -237,15 +243,30 @@ export type MobileDashboard = {
     todayFollowUps: number;
     overdueFollowUps: number;
     completedActivities: number;
+    /** Missing on old servers. */
+    callsToday?: number;
   };
+  /** Percent change; null without a baseline. Missing on old servers. */
+  trends?: {
+    leads: number | null;
+    followUps: number | null;
+    calls: number | null;
+    /** Missing on servers older than the trends themselves. */
+    completed?: number | null;
+  };
+  /** Follow-ups done per day, last 7 days, oldest first. Missing on old servers. */
+  completedByDay?: number[];
   recentLeads: Array<{
     id: number;
     name: string;
     phone: string | null;
     status: LeadStatus | null;
     source: { id: number; name: string } | null;
+    assignedTo?: string | null;
     assignedToName: string | null;
-    priority: LeadPriority | null;
+    temperature: LeadTemperature | null;
+    /** @deprecated Use temperature */
+    priority?: LeadTemperature | null;
     nextFollowupDate: string | null;
     updatedAt: string;
   }>;
@@ -314,7 +335,9 @@ export type MyFollowUp = {
     id: number;
     name: string;
     phone: string | null;
-    priority: LeadPriority | null;
+    temperature: LeadTemperature | null;
+    /** @deprecated Use temperature */
+    priority?: LeadTemperature | null;
     status: { id: number; name: string } | null;
     updatedAt?: string;
   };

@@ -2,16 +2,17 @@ import type { LeadDetail, LeadNote, LeadStatusHistoryEntry } from '@/types/api';
 
 const CALL_SYNC_MARKER_RE = /\[call-sync:[^\]]+\]/i;
 
-/** Call-channel / mobile-sync notes belong in Call History only (web parity). */
+/**
+ * Mobile call-log rows only (sync marker or `[Call] …` log line).
+ * Agent notes with channel "Call" stay in Activity / History.
+ */
 export function isCallHistoryNote(n: {
   note?: string | null;
   channel?: { name?: string | null } | null;
 }) {
-  const channel = (n.channel?.name || '').trim().toLowerCase();
-  if (channel === 'call' || channel.includes('call')) return true;
   const text = (n.note || '').trim();
-  if (/^\[call\]/i.test(text)) return true;
   if (CALL_SYNC_MARKER_RE.test(text)) return true;
+  if (/^\[call\]/i.test(text)) return true;
   return false;
 }
 
@@ -93,17 +94,16 @@ function stageLabel(h: LeadStatusHistoryEntry) {
 
 /** Newest-first History feed (status changes + non-call notes). */
 export function buildHistoryEvents(lead: LeadDetail): HistoryEvent[] {
-  const statusEvents: HistoryEvent[] = (lead.statusHistory ?? [])
-    .filter((h) => !isSystemActor(h.changedByName))
-    .map((h) => ({
-      key: `status-${h.id}`,
-      kind: 'status' as const,
-      title: 'Status Changed',
-      body: h.note,
-      by: h.changedByName,
-      date: h.changedAt,
-      meta: [h.fromStatusName, stageLabel(h)].filter(Boolean).join(' → '),
-    }));
+  // Show all status transitions — System/empty actors still belong in History.
+  const statusEvents: HistoryEvent[] = (lead.statusHistory ?? []).map((h) => ({
+    key: `status-${h.id}`,
+    kind: 'status' as const,
+    title: 'Status Changed',
+    body: h.note,
+    by: h.changedByName,
+    date: h.changedAt,
+    meta: [h.fromStatusName, stageLabel(h)].filter(Boolean).join(' → '),
+  }));
 
   const noteEvents: HistoryEvent[] = (lead.notes ?? [])
     .filter((n) => !/^\[Status Change\]/i.test(n.note ?? ''))

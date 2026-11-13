@@ -1,12 +1,13 @@
 import type { IconSvgElement } from '@hugeicons/react-native';
 
 import {
-  ApartmentIcon,
+  Calendar03Icon,
   Call02Icon,
   CancelCircleIcon,
   FileEditIcon,
   HandshakeIcon,
   Location01Icon,
+  Tick02Icon,
   TrophyIcon,
   UserAdd01Icon,
 } from '@/components/icons/hugeicons';
@@ -31,6 +32,7 @@ export function shortPipelineLabel(name: string) {
   if (/^new\/contacted$/i.test(n)) return 'New';
   if (/^qualified\/interested$/i.test(n)) return 'Qualified';
   if (/^cold calling$/i.test(n)) return 'Cold Calling';
+  if (/^qualified$/i.test(n)) return 'Qualified';
   if (/^site visit$/i.test(n)) return 'Site visit';
   if (/^negotiation$/i.test(n)) return 'Negotiation';
   if (/^booked\/won$/i.test(n)) return 'Won';
@@ -57,9 +59,10 @@ export function iconForStageName(name: string): IconSvgElement {
   if (n === 'draft') return FileEditIcon;
   if (n === 'assign') return UserAdd01Icon;
   if (n === 'cold calling' || n === 'new/contacted') return Call02Icon;
+  if (n === 'qualified' || n === 'qualified/interested') return Tick02Icon;
   if (n === 'site visit') return Location01Icon;
-  if (n === 'visited') return ApartmentIcon;
-  if (n === 'negotiation' || n === 'qualified/interested') return HandshakeIcon;
+  if (n === 'visited') return Calendar03Icon;
+  if (n === 'negotiation') return HandshakeIcon;
   if (n === 'won' || n === 'booked/won') return TrophyIcon;
   if (n === 'lost') return CancelCircleIcon;
   return HandshakeIcon;

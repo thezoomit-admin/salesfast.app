@@ -24,6 +24,8 @@ type Props = {
    * Defaults on when `showBack` and no `center` slot.
    */
   titleCentered?: boolean;
+  /** `brand`: white title and back arrow on a coloured band the screen paints. */
+  tone?: 'default' | 'brand';
 };
 
 /**
@@ -39,6 +41,7 @@ export function ScreenHeader({
   showBack = true,
   onTitlePress,
   titleCentered,
+  tone = 'default',
 }: Props) {
   const router = useRouter();
   const navigation = useNavigation();
@@ -46,6 +49,8 @@ export function ScreenHeader({
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const centered = titleCentered ?? (showBack && !center);
+  const onBrand = tone === 'brand';
+  const ink = onBrand ? colors.white : colors.text;
 
   const handleBack = () => {
     if (onBack) {
@@ -75,19 +80,28 @@ export function ScreenHeader({
       hitSlop={8}
       style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
     >
-      <Ionicons name="arrow-back" size={22} color={colors.text} />
+      <Ionicons name="arrow-back" size={onBrand ? 24 : 22} color={ink} />
     </Pressable>
   ) : null;
 
   return (
-    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
+    <View
+      style={[
+        styles.wrap,
+        onBrand && styles.wrapBrand,
+        { paddingTop: insets.top + 8 },
+      ]}
+    >
       {center || centered ? (
         <View
           style={[styles.centerSlot, { top: insets.top }]}
           pointerEvents="box-none"
         >
           {center ?? (
-            <Text style={styles.titleCentered} numberOfLines={1}>
+            <Text
+              style={[styles.titleCentered, onBrand && { color: ink }]}
+              numberOfLines={1}
+            >
               {title}
             </Text>
           )}
@@ -117,16 +131,24 @@ export function ScreenHeader({
                   ]}
                 >
                   <Text
-                    style={[styles.titleInline, !showBack && styles.titleRoot]}
+                    style={[
+                      styles.titleInline,
+                      !showBack && styles.titleRoot,
+                      onBrand && styles.titleBrand,
+                    ]}
                     numberOfLines={1}
                   >
                     {title}
                   </Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.text} />
+                  <Ionicons name="chevron-down" size={18} color={ink} />
                 </Pressable>
               ) : (
                 <Text
-                  style={[styles.titleInline, !showBack && styles.titleRoot]}
+                  style={[
+                    styles.titleInline,
+                    !showBack && styles.titleRoot,
+                    onBrand && styles.titleBrand,
+                  ]}
                   numberOfLines={1}
                 >
                   {title}
@@ -244,6 +266,11 @@ function createStyles(colors: ThemeColors) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
+    wrapBrand: {
+      backgroundColor: 'transparent',
+      borderBottomWidth: 0,
+      paddingBottom: 14,
+    },
     centerSlot: {
       position: 'absolute',
       left: 56,
@@ -330,6 +357,11 @@ function createStyles(colors: ThemeColors) {
       color: colors.text,
       flexShrink: 1,
     },
+    titleBrand: {
+      color: colors.white,
+      fontSize: 19,
+      marginLeft: 8,
+    },
     titleRoot: {
       fontSize: 20,
       lineHeight: 28,
@@ -354,16 +386,16 @@ function createStyles(colors: ThemeColors) {
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
-      minHeight: 28,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      minHeight: 36,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
       borderRadius: radii.pill,
       backgroundColor: colors.brand,
     },
     addBtnLabel: {
       ...typography.caption,
-      fontSize: 11,
-      lineHeight: 14,
+      fontSize: 13,
+      lineHeight: 16,
       fontWeight: '600',
       color: colors.white,
     },

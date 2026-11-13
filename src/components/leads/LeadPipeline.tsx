@@ -20,7 +20,8 @@ import {
   shortPipelineLabel,
   type PipelineStatus,
 } from '@/features/leads/leadPipeline';
-import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
+import { leadDetailPalette, type LeadDetailPalette } from '@/components/leads/leadDetailPalette';
+import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
 type Props = {
   statuses: PipelineStatus[];
@@ -29,7 +30,7 @@ type Props = {
   onStepPress?: (statusId: number | null) => void;
 };
 
-const NODE = 28;
+const NODE = 30;
 
 export function LeadPipeline({
   statuses,
@@ -37,8 +38,12 @@ export function LeadPipeline({
   assignedToName,
   onStepPress,
 }: Props) {
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, resolved } = useTheme();
+  const palette = useMemo(
+    () => leadDetailPalette(colors, resolved === 'dark'),
+    [colors, resolved]
+  );
+  const styles = useMemo(() => createStyles(colors, palette), [colors, palette]);
   const [width, setWidth] = useState(0);
   const steps = useMemo(() => buildPipelineSteps(statuses), [statuses]);
   const currentIdx = steps.findIndex((s) =>
@@ -56,9 +61,9 @@ export function LeadPipeline({
 
   const stepW = width > 0 ? width / steps.length : 0;
   const trackInset = stepW / 2;
-  const nodeSize = steps.length > 6 ? 24 : NODE;
-  const iconSize = steps.length > 6 ? 12 : 14;
-  const labelSize = steps.length > 6 ? 9 : 10;
+  const nodeSize = steps.length > 6 ? 26 : NODE;
+  const iconSize = steps.length > 6 ? 13 : 15;
+  const labelSize = steps.length > 6 ? 9.5 : 10.5;
 
   function onLayout(e: LayoutChangeEvent) {
     const w = e.nativeEvent.layout.width;
@@ -112,8 +117,12 @@ export function LeadPipeline({
               ? colors.danger
               : done || next
                 ? colors.brand
-                : '#D1D5DB';
-            const iconColor = done ? '#fff' : next ? nodeColor : '#9CA3AF';
+                : palette.ring;
+            const iconColor = done
+              ? '#fff'
+              : next
+                ? nodeColor
+                : palette.muted;
             const stepIcon = stepIsLost
               ? CancelCircleIcon
               : stepIsWon
@@ -160,7 +169,7 @@ export function LeadPipeline({
                       icon={stepIcon}
                       size={iconSize}
                       color={iconColor}
-                      strokeWidth={done || next ? 2 : 1.7}
+                      strokeWidth={done || next ? 1.9 : 1.6}
                     />
                   )}
                 </View>
@@ -173,7 +182,8 @@ export function LeadPipeline({
       <View style={styles.labelsRow}>
         {steps.map((step, i) => {
           const current = i === currentIdx;
-          const filled = currentIdx >= 0 && i <= currentIdx + 1;
+          const done = currentIdx >= 0 && i <= currentIdx;
+          const next = currentIdx >= 0 && i === currentIdx + 1;
           const activeTerminal =
             step.isTerminal && current
               ? step.statuses.find((s) => s.id === currentStatusId)
@@ -194,8 +204,12 @@ export function LeadPipeline({
               <Text
                 style={[
                   styles.label,
-                  { fontSize: labelSize, lineHeight: labelSize + 3 },
-                  filled ? styles.labelFilled : styles.labelMuted,
+                  { fontSize: labelSize, lineHeight: labelSize + 4 },
+                  done
+                    ? styles.labelDone
+                    : next
+                      ? styles.labelNext
+                      : styles.labelMuted,
                 ]}
                 numberOfLines={2}
               >
@@ -209,10 +223,11 @@ export function LeadPipeline({
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(colors: ThemeColors, palette: LeadDetailPalette) {
   return StyleSheet.create({
+    // Wider than the card's padding so long stage names fit their column.
     wrap: {
-      width: '100%',
+      marginHorizontal: -spacing.sm,
       paddingTop: spacing.sm,
       paddingBottom: spacing.xs,
     },
@@ -224,7 +239,7 @@ function createStyles(colors: ThemeColors) {
       position: 'absolute',
       height: 3,
       borderRadius: 999,
-      backgroundColor: '#E5E7EB',
+      backgroundColor: palette.track,
       overflow: 'hidden',
     },
     trackFill: {
@@ -251,34 +266,37 @@ function createStyles(colors: ThemeColors) {
     },
     nodeActive: {
       shadowColor: colors.brand,
-      shadowOpacity: 0.35,
-      shadowRadius: 8,
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
       shadowOffset: { width: 0, height: 0 },
-      elevation: 3,
+      elevation: 2,
     },
     labelsRow: {
       flexDirection: 'row',
-      marginTop: 6,
+      marginTop: 8,
       alignItems: 'flex-start',
       width: '100%',
     },
     labelSlot: {
       flex: 1,
       alignItems: 'center',
-      paddingHorizontal: 1,
       minWidth: 0,
     },
     label: {
       ...typography.caption,
       textAlign: 'center',
     },
-    labelFilled: {
+    labelDone: {
+      fontWeight: '600',
+      color: palette.ink,
+    },
+    labelNext: {
       fontWeight: '700',
-      color: colors.text,
+      color: colors.brand,
     },
     labelMuted: {
       fontWeight: '500',
-      color: colors.textMuted,
+      color: palette.muted,
     },
   });
 }

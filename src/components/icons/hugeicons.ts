@@ -18,6 +18,31 @@ export const Home03Icon: IconSvgElement = [
   ['path', { d: 'M15 21.5V16.5C15 15.0858 15 14.3787 14.5607 13.9393C14.1213 13.5 13.4142 13.5 12 13.5C10.5858 13.5 9.87868 13.5 9.43934 13.9393C9 14.3787 9 15.0858 9 16.5V21.5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
 ];
 
+/** Home hero pill — Home03 filled, with the door cut out. */
+export const HomeSolidIcon: IconSvgElement = [
+  ['path', { d: 'M3 11.9896V14.5C3 17.7998 3 19.4497 4.02513 20.4749C5.05025 21.5 6.70017 21.5 10 21.5H14C17.2998 21.5 18.9497 21.5 19.9749 20.4749C21 19.4497 21 17.7998 21 14.5V11.9896C21 10.3083 21 9.46773 20.6441 8.74005C20.2882 8.01237 19.6247 7.49628 18.2976 6.46411L16.2976 4.90855C14.2331 3.30285 13.2009 2.5 12 2.5C10.7991 2.5 9.76689 3.30285 7.70242 4.90855L5.70241 6.46411C4.37533 7.49628 3.71179 8.01237 3.3559 8.74005C3 9.46773 3 10.3083 3 11.9896ZM15 21.5V16.5C15 15.0858 15 14.3787 14.5607 13.9393C14.1213 13.5 13.4142 13.5 12 13.5C10.5858 13.5 9.87868 13.5 9.43934 13.9393C9 14.3787 9 15.0858 9 16.5V21.5H15Z', fill: 'currentColor', fillRule: 'evenodd', key: '0' }],
+];
+
+/** Home quick access header. */
+export const FlashSolidIcon: IconSvgElement = [
+  ['path', { d: 'M13.4 2.2L5 13.4C4.7 13.8 5 14.4 5.5 14.4H10.6L9.6 21.2C9.5 21.9 10.4 22.3 10.8 21.7L19.1 10.6C19.4 10.2 19.1 9.6 18.6 9.6H13.4L14.5 2.7C14.6 2 13.8 1.6 13.4 2.2Z', fill: 'currentColor', key: '0' }],
+];
+
+/** Home quick access — View all. */
+export const ArrowRightLongIcon: IconSvgElement = [
+  ['path', { d: 'M4 12H20M14 6L20 12L14 18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.8', key: '0' }],
+];
+
+/** Home performance — week-on-week trend. Flipped for a fall. */
+export const TrendUpIcon: IconSvgElement = [
+  ['path', { d: 'M3 17L9 11L13 15L21 7M15.5 7H21V12.5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '2.2', key: '0' }],
+];
+
+/** Home quick access — trend. Rotated for a fall. */
+export const ArrowUpIcon: IconSvgElement = [
+  ['path', { d: 'M12 20V4M5.5 10.5L12 4L18.5 10.5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '2.4', key: '0' }],
+];
+
 /** Tab — Leads (Hisab AddTeam02 people mark). */
 export const AddTeam02Icon: IconSvgElement = [
   ['path', { d: 'M3 20V17.9704C3 16.7281 3.55927 15.5099 4.68968 14.9946C6.0685 14.3661 7.72212 14 9.5 14C10.7448 14 11.9287 14.1795 13 14.5028', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
@@ -41,6 +66,17 @@ export const Calendar03Icon: IconSvgElement = [
   ['path', { d: 'M13 4H11C7.22876 4 5.34315 4 4.17157 5.17157C3 6.34315 3 8.22876 3 12V14C3 17.7712 3 19.6569 4.17157 20.8284C5.34315 22 7.22876 22 11 22H13C16.7712 22 18.6569 22 19.8284 20.8284C21 19.6569 21 17.7712 21 14V12C21 8.22876 21 6.34315 19.8284 5.17157C18.6569 4 16.7712 4 13 4Z', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
   ['path', { d: 'M3 10H21', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '2' }],
   ['path', { d: 'M11.9955 14H12.0045M11.9955 18H12.0045M15.991 14H16M8 14H8.00897M8 18H8.00897', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '2', key: '3' }],
+];
+
+/** Lead Details header — Add Note (Hugeicons PencilEdit02). */
+export const PencilEdit02Icon: IconSvgElement = [
+  ['path', { d: 'M16.4249 4.60509L17.4149 3.6151C18.2351 2.79497 19.5648 2.79497 20.3849 3.6151C21.205 4.43524 21.205 5.76493 20.3849 6.58507L19.3949 7.57506M16.4249 4.60509L9.76558 11.2644C9.25807 11.772 8.89804 12.4078 8.72397 13.1041L8 16L10.8959 15.276C11.5922 15.102 12.228 14.7419 12.7356 14.2344L19.3949 7.57506M16.4249 4.60509L19.3949 7.57506', stroke: 'currentColor', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+  ['path', { d: 'M18.9999 13.5C18.9999 16.7875 18.9999 18.4312 18.092 19.5376C17.9258 19.7401 17.7401 19.9258 17.5375 20.092C16.4312 21 14.7874 21 11.4999 21H11C7.22876 21 5.34316 21 4.17159 19.8284C3.00003 18.6569 3 16.7712 3 13V12.5C3 9.21252 3 7.56879 3.90794 6.46244C4.07417 6.2599 4.2599 6.07417 4.46244 5.90794C5.56879 5 7.21252 5 10.5 5', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
+];
+
+/** Lead Details — "Lead Journey" heading (rising bars). */
+export const ChartBarsIcon: IconSvgElement = [
+  ['path', { d: 'M4 20V16M9.33 20V12.5M14.67 20V9M20 20V5', stroke: 'currentColor', strokeLinecap: 'round', strokeWidth: '2.6', key: '0' }],
 ];
 
 /** Tab — Calls. */
@@ -221,6 +257,12 @@ export const Notification01Icon: IconSvgElement = [
   ['path', { d: 'M19.2311 18H4.76887C3.79195 18 3 17.208 3 16.2311C3 15.762 3.18636 15.3121 3.51809 14.9803L4.12132 14.3771C4.68393 13.8145 5 13.0514 5 12.2558V9.5C5 5.63401 8.13401 2.5 12 2.5C15.866 2.5 19 5.634 19 9.5V12.2558C19 13.0514 19.3161 13.8145 19.8787 14.3771L20.4819 14.9803C20.8136 15.3121 21 15.762 21 16.2311C21 17.208 20.208 18 19.2311 18Z', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '1' }],
 ];
 
+/** Inbox tab, selected — Notification01 filled. */
+export const NotificationSolidIcon: IconSvgElement = [
+  ['path', { d: 'M15.5 18C15.5 19.933 13.933 21.5 12 21.5C10.067 21.5 8.5 19.933 8.5 18', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
+  ['path', { d: 'M19.2311 18H4.76887C3.79195 18 3 17.208 3 16.2311C3 15.762 3.18636 15.3121 3.51809 14.9803L4.12132 14.3771C4.68393 13.8145 5 13.0514 5 12.2558V9.5C5 5.63401 8.13401 2.5 12 2.5C15.866 2.5 19 5.634 19 9.5V12.2558C19 13.0514 19.3161 13.8145 19.8787 14.3771L20.4819 14.9803C20.8136 15.3121 21 15.762 21 16.2311C21 17.208 20.208 18 19.2311 18Z', fill: 'currentColor', key: '1' }],
+];
+
 /** Header / activities — chat bubble. */
 export const Message01Icon: IconSvgElement = [
   ['path', { d: 'M8.5 14.5H15.5M8.5 9.5H12', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: '1.5', key: '0' }],
@@ -300,6 +342,13 @@ export const CircleCheckIcon: IconSvgElement = [
   ['path', { d: 'm9 12 2 2 4-4', ...lucide, key: '1' }],
 ];
 
+
+/** lucide Info — Home app info tile. */
+export const InfoIcon: IconSvgElement = [
+  ['circle', { cx: '12', cy: '12', r: '10', ...lucide, key: '0' }],
+  ['path', { d: 'M12 16v-4', ...lucide, key: '1' }],
+  ['path', { d: 'M12 8h.01', ...lucide, key: '2' }],
+];
 
 /** lucide Check — follow-up card checkbox. */
 export const CheckIcon: IconSvgElement = [

@@ -11,8 +11,10 @@ import {
 } from "@/components/icons/hugeicons";
 import {
   PRIORITY_META,
+  normalizeLeadTemperature,
   priorityBadgeColors,
 } from "@/features/leads/leadPriority";
+import { useAuth } from "@/features/auth/AuthContext";
 import { typography, useTheme, type ThemeColors } from "@/theme";
 import type { LeadListItem } from "@/types/api";
 import { followupWhenLabel } from "@/utils/dates";
@@ -31,9 +33,9 @@ type Props = {
 };
 
 const PRIORITY_ICON = {
-  LOW: ArrowDownDoubleIcon,
-  MEDIUM: MinusSignIcon,
-  HIGH: FlameIcon,
+  COLD: ArrowDownDoubleIcon,
+  WARM: MinusSignIcon,
+  HOT: FlameIcon,
 } as const;
 
 /** Same layout as the home "Latest leads" card. */
@@ -44,6 +46,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   onPriorityPress,
   onHistoryPress,
 }: Props) {
+  const { user } = useAuth();
   const { colors, resolved } = useTheme();
   const isDark = resolved === "dark";
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -52,13 +55,19 @@ export const LeadListItemCard = memo(function LeadListItemCard({
   const whatsapp = lead.buyerPersona?.whatsapp || phone;
   const statusName = lead.leadStatus?.name || "Lead";
   const statusColor = lead.leadStatus?.color || colors.brand;
-  const priority = lead.priority ?? null;
+  const priority = normalizeLeadTemperature(
+    lead.temperature ?? lead.priority,
+  );
   const priorityMeta = priority ? PRIORITY_META[priority] : null;
   const priorityBadge = useMemo(
     () => (priority ? priorityBadgeColors(priority, isDark) : null),
     [priority, isDark],
   );
-  const subtitle = [lead.leadSource?.name, lead.assignedToName]
+  const assignee =
+    user?.id && lead.assignedTo === user.id
+      ? user.name?.trim() || lead.assignedToName
+      : lead.assignedToName;
+  const subtitle = [lead.buyerPersona?.phone, lead.leadSource?.name, assignee]
     .filter(Boolean)
     .join(" · ");
   const when = followupWhenLabel(lead.nextFollowupDate, lead.updatedAt);
@@ -103,7 +112,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Change priority"
+            accessibilityLabel="Change temperature"
             disabled={!onPriorityPress}
             hitSlop={4}
             onPress={() => onPriorityPress?.(lead)}
@@ -134,7 +143,7 @@ export const LeadListItemCard = memo(function LeadListItemCard({
                 { color: priorityBadge?.color ?? colors.textMuted },
               ]}
             >
-              {priorityMeta?.label ?? "Priority"}
+              {priorityMeta?.label ?? "Temperature"}
             </Text>
             {onPriorityPress ? (
               <Ionicons

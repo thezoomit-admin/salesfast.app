@@ -1,4 +1,5 @@
 export {
+  blue,
   colors,
   darkColors,
   lightColors,

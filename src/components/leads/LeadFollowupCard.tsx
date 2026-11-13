@@ -2,11 +2,20 @@ import { HugeiconsIcon } from '@hugeicons/react-native';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Calendar03Icon } from '@/components/icons/hugeicons';
+import { Calendar03Icon, Clock01Icon } from '@/components/icons/hugeicons';
+import {
+  cardShadow,
+  leadDetailPalette,
+  type LeadDetailPalette,
+} from '@/components/leads/leadDetailPalette';
 import { resolveLastContactAt } from '@/features/leads/leadActivity';
-import { radii, spacing, typography, useTheme, type ThemeColors } from '@/theme';
+import { radii, spacing, useTheme, type ThemeColors } from '@/theme';
 import type { LeadDetail } from '@/types/api';
-import { formatCalendarDate, formatDateTime, parseDate } from '@/utils/dates';
+import {
+  formatCalendarDate,
+  formatClockTime,
+  parseDate,
+} from '@/utils/dates';
 
 type Tone = 'upcoming' | 'dueToday' | 'overdue' | 'empty';
 
@@ -35,37 +44,25 @@ function startOfDay(d: Date) {
   return x;
 }
 
-function toneColors(tone: Tone, colors: ThemeColors) {
+function pillColors(
+  tone: Tone,
+  colors: ThemeColors,
+  palette: LeadDetailPalette,
+  isDark: boolean
+) {
   if (tone === 'overdue') {
     return {
-      chipBg: colors.dangerSoft,
-      chipFg: colors.danger,
-      iconBg: colors.dangerSoft,
-      iconFg: colors.danger,
+      bg: isDark ? colors.dangerSoft : '#FDE7EA',
+      fg: isDark ? colors.danger : '#D92D3F',
     };
   }
   if (tone === 'dueToday') {
-    return {
-      chipBg: colors.warningSoft,
-      chipFg: colors.warning,
-      iconBg: colors.warningSoft,
-      iconFg: colors.warning,
-    };
+    return { bg: colors.warningSoft, fg: isDark ? colors.warning : '#B54708' };
   }
   if (tone === 'upcoming') {
-    return {
-      chipBg: colors.primary50,
-      chipFg: colors.brand,
-      iconBg: colors.primary50,
-      iconFg: colors.brand,
-    };
+    return { bg: colors.primary50, fg: colors.brand };
   }
-  return {
-    chipBg: colors.surfaceMuted,
-    chipFg: colors.textMuted,
-    iconBg: colors.surfaceMuted,
-    iconFg: colors.textMuted,
-  };
+  return { bg: palette.tint, fg: palette.muted };
 }
 
 function resolveFollowup(lead: LeadDetail) {
@@ -76,9 +73,9 @@ function resolveFollowup(lead: LeadDetail) {
     return {
       empty: true as const,
       tone: 'empty' as Tone,
-      subtitle: 'Tap to schedule',
+      dateLabel: 'Not scheduled',
+      detail: 'Tap to schedule',
       statusLabel: 'Not set',
-      dueRaw: null as string | null,
     };
   }
 
@@ -93,37 +90,45 @@ function resolveFollowup(lead: LeadDetail) {
   if (dayDiff < 0) {
     tone = 'overdue';
     const days = Math.abs(dayDiff);
-    statusLabel =
-      days === 1 ? '1 day overdue' : `${days} days overdue`;
+    statusLabel = days === 1 ? '1 day overdue' : `${days} days overdue`;
   } else if (dayDiff === 0) {
     tone = 'dueToday';
-    statusLabel = timed
-      ? `Due today · ${formatDateTime(due).split(', ')[1] ?? 'today'}`
-      : 'Due today';
+    statusLabel = 'Due today';
   } else if (dayDiff === 1) {
     statusLabel = 'Due tomorrow';
   } else {
     statusLabel = `Due in ${dayDiff} days`;
   }
 
-  const typeLabel = followupTypeLabel(timed?.type);
-  const when = timed ? formatDateTime(due) : formatCalendarDate(due);
-  const subtitle = [typeLabel, when].filter(Boolean).join(' · ');
+  // Timed follow-ups (visit, call…) also carry a kind and a clock time.
+  const detail = timed
+    ? [followupTypeLabel(timed.type), formatClockTime(due)]
+        .filter(Boolean)
+        .join(' · ')
+    : null;
 
   return {
     empty: false as const,
     tone,
-    subtitle,
+    dateLabel: formatCalendarDate(due),
+    detail,
     statusLabel,
-    dueRaw,
   };
 }
 
 export function LeadFollowupCard({ lead, onPress }: Props) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const { colors, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const palette = useMemo(
+    () => leadDetailPalette(colors, isDark),
+    [colors, isDark]
+  );
+  const styles = useMemo(
+    () => createStyles(palette, isDark),
+    [palette, isDark]
+  );
   const info = useMemo(() => resolveFollowup(lead), [lead]);
-  const tone = toneColors(info.tone, colors);
+  const pill = pillColors(info.tone, colors, palette, isDark);
   const lastContactAt = useMemo(() => resolveLastContactAt(lead), [lead]);
   const lastContact = lastContactAt
     ? formatCalendarDate(lastContactAt)
@@ -135,47 +140,63 @@ export function LeadFollowupCard({ lead, onPress }: Props) {
       accessibilityLabel={
         info.empty
           ? 'Schedule next follow-up'
-          : `Next follow-up ${info.subtitle}`
+          : `Next follow-up ${info.dateLabel}, ${info.statusLabel}`
       }
       disabled={!onPress}
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        info.empty && styles.cardEmpty,
         pressed && onPress ? styles.pressed : null,
       ]}
     >
       <View style={styles.header}>
-        <View
-          style={[styles.iconWrap, { backgroundColor: tone.iconBg }]}
-        >
+        <View style={styles.iconWrap}>
           <HugeiconsIcon
             icon={Calendar03Icon}
-            size={18}
-            color={tone.iconFg}
+            size={24}
+            color={info.empty ? palette.muted : colors.brand}
             strokeWidth={1.8}
           />
         </View>
         <View style={styles.headerText}>
           <Text style={styles.title}>Next Follow-up</Text>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {info.subtitle}
+          <Text
+            style={[styles.date, info.empty && styles.dateEmpty]}
+            numberOfLines={1}
+          >
+            {info.dateLabel}
           </Text>
+          {info.detail ? (
+            <Text style={styles.detail} numberOfLines={1}>
+              {info.detail}
+            </Text>
+          ) : null}
         </View>
-      </View>
-
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>Status</Text>
-        <View
-          style={[styles.statusPill, { backgroundColor: tone.chipBg }]}
-        >
-          <Text style={[styles.statusText, { color: tone.chipFg }]}>
+        <View style={[styles.statusPill, { backgroundColor: pill.bg }]}>
+          <HugeiconsIcon
+            icon={Clock01Icon}
+            size={15}
+            color={pill.fg}
+            strokeWidth={1.9}
+          />
+          <Text
+            style={[styles.statusText, { color: pill.fg }]}
+            numberOfLines={1}
+          >
             {info.statusLabel}
           </Text>
         </View>
       </View>
 
+      <View style={styles.divider} />
+
       <View style={styles.row}>
+        <HugeiconsIcon
+          icon={Clock01Icon}
+          size={18}
+          color={colors.brand}
+          strokeWidth={1.7}
+        />
         <Text style={styles.rowLabel}>Last contact</Text>
         <Text
           style={[styles.rowValue, !lastContact && styles.rowMuted]}
@@ -188,18 +209,17 @@ export function LeadFollowupCard({ lead, onPress }: Props) {
   );
 }
 
-function createStyles(colors: ThemeColors) {
+function createStyles(palette: LeadDetailPalette, isDark: boolean) {
   return StyleSheet.create({
     card: {
-      backgroundColor: colors.surface,
+      backgroundColor: palette.card,
       borderRadius: radii.lg,
       borderWidth: 1,
-      borderColor: colors.border,
-      padding: spacing.lg,
-      gap: spacing.md,
-    },
-    cardEmpty: {
-      borderStyle: 'dashed',
+      borderColor: palette.cardBorder,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.md,
+      ...cardShadow(isDark),
     },
     pressed: { opacity: 0.88 },
     header: {
@@ -209,53 +229,81 @@ function createStyles(colors: ThemeColors) {
       minWidth: 0,
     },
     iconWrap: {
-      width: 40,
-      height: 40,
+      width: 48,
+      height: 48,
       borderRadius: radii.md,
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
+      backgroundColor: palette.soft,
     },
-    headerText: { flex: 1, minWidth: 0, gap: 2 },
+    headerText: { flex: 1, minWidth: 0 },
     title: {
-      ...typography.body,
-      fontWeight: '700',
-      color: colors.text,
+      fontSize: 15,
+      lineHeight: 20,
+      fontWeight: '600',
+      color: palette.ink,
     },
-    subtitle: {
-      ...typography.caption,
-      color: colors.textSecondary,
+    date: {
+      fontSize: 20,
+      lineHeight: 26,
+      fontWeight: '700',
+      color: palette.ink,
+      fontVariant: ['tabular-nums'],
+    },
+    dateEmpty: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: palette.muted,
+    },
+    detail: {
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '500',
+      color: palette.body,
+    },
+    statusPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      borderRadius: radii.pill,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      flexShrink: 0,
+      maxWidth: '48%',
+    },
+    statusText: {
+      fontSize: 13,
+      lineHeight: 16,
+      fontWeight: '600',
+      flexShrink: 1,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: palette.divider,
+      marginVertical: spacing.md,
     },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
       gap: spacing.sm,
       minWidth: 0,
     },
     rowLabel: {
-      ...typography.caption,
-      color: colors.textMuted,
-      flexShrink: 0,
+      fontSize: 14,
+      lineHeight: 20,
+      color: palette.muted,
+      flex: 1,
     },
     rowValue: {
-      ...typography.caption,
-      color: colors.textSecondary,
+      fontSize: 15,
+      lineHeight: 20,
       fontWeight: '500',
+      color: palette.ink,
       flexShrink: 1,
       textAlign: 'right',
+      fontVariant: ['tabular-nums'],
     },
-    rowMuted: { color: colors.textMuted, fontWeight: '400' },
-    statusPill: {
-      borderRadius: radii.pill,
-      paddingHorizontal: 10,
-      paddingVertical: 3,
-      maxWidth: '70%',
-    },
-    statusText: {
-      ...typography.caption,
-      fontWeight: '700',
-      fontSize: 12,
-    },
+    rowMuted: { color: palette.muted, fontWeight: '400', fontSize: 14 },
   });
 }
