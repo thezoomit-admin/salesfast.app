@@ -12,7 +12,10 @@ export type NativeCallLogRow = {
 /** Settings of the "Is this your lead?" prompt, stored on the phone. */
 export type CallLeadPromptConfig = {
   enabled: boolean;
-  /** Do not ask about numbers saved in the phone's contacts. */
+  /**
+   * Optional: do not ask about numbers saved in the phone's contacts.
+   * CRM known leads are always skipped either way. Default false.
+   */
   skipContacts: boolean;
   /** Someone is signed in; the prompt never fires while signed out. */
   sessionActive: boolean;

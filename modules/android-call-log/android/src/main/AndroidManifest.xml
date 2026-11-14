@@ -5,6 +5,8 @@
   <!-- Optional: skip numbers saved in the user's contacts. Checked on the phone only. -->
   <uses-permission android:name="android.permission.READ_CONTACTS" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- Lets the "Add as lead?" dialog appear over the lock screen / as a heads-up. -->
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
   <application>
     <!-- Exported so the system can deliver PHONE_STATE, a protected broadcast
@@ -19,5 +21,15 @@
     <receiver
       android:name="expo.modules.androidcalllog.CallLeadActionReceiver"
       android:exported="false" />
+    <!-- Dialog popup for "Add as lead?" — opened via notification full-screen / tap. -->
+    <activity
+      android:name="expo.modules.androidcalllog.CallLeadAskActivity"
+      android:exported="false"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:launchMode="singleInstance"
+      android:theme="@android:style/Theme.Translucent.NoTitleBar"
+      android:showWhenLocked="true"
+      android:turnScreenOn="true" />
   </application>
 </manifest>

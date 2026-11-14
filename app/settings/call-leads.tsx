@@ -87,10 +87,11 @@ export default function CallLeadSettingsScreen() {
   return (
     <Screen scroll header={<ScreenHeader title="Leads from calls" />}>
       <Text style={styles.body}>
-        When a new number calls you, SalesFast asks “Is this your lead?” in a
-        notification. Tap Yes, type the name right in the notification and
-        save — the lead is created and assigned to you without opening the app.
-        Save without a name and it is saved as “Unknown”.
+        When someone calls and that number is not already a lead in SalesFast,
+        you get a clean popup: add them as your lead, or dismiss. Numbers already
+        in the CRM skip the popup — call sync attaches them to Call History
+        instead. Phone contacts do not matter; only CRM leads are treated as
+        known.
       </Text>
 
       <View style={styles.card}>
@@ -101,7 +102,7 @@ export default function CallLeadSettingsScreen() {
               {enabled
                 ? status.needsPermission
                   ? 'On, but a permission was turned off — tap Fix below.'
-                  : 'On. You will be asked when a new number calls.'
+                  : 'On. Callers not in CRM get the Add as lead popup.'
                 : 'Off'}
             </Text>
           </View>
@@ -116,11 +117,11 @@ export default function CallLeadSettingsScreen() {
 
         <View style={styles.row}>
           <View style={styles.rowText}>
-            <Text style={styles.label}>Skip saved contacts</Text>
+            <Text style={styles.label}>Skip phone contacts</Text>
             <Text style={styles.caption}>
               {skipContacts && !permissions.contacts && enabled
-                ? 'Contacts permission is off, so saved contacts are asked about too.'
-                : 'Don’t ask about numbers in your phone’s contacts.'}
+                ? 'Contacts permission is off, so address-book numbers are asked about too.'
+                : 'Optional. Ignore numbers saved in your phone book (CRM leads still sync).'}
             </Text>
           </View>
           <Switch
@@ -145,17 +146,17 @@ export default function CallLeadSettingsScreen() {
         <Text style={styles.cardTitle}>What happens on this phone</Text>
         <Text style={styles.bullet}>• Only incoming calls are checked, never outgoing</Text>
         <Text style={styles.bullet}>
-          • No prompt for numbers that are already CRM leads
+          • Already a CRM lead → no popup; Call History sync handles it
           {config?.knownCount ? ` (${config.knownCount} known)` : ''}
         </Text>
         <Text style={styles.bullet}>
-          • Contacts are only looked up on the phone, never uploaded
+          • Not in CRM → professional “Add as lead?” popup (contacts or unknown)
         </Text>
         <Text style={styles.bullet}>
-          • Nothing is sent to SalesFast until you tap Save
+          • Nothing is sent to SalesFast until you save the lead
         </Text>
         <Text style={styles.bullet}>
-          • “No” closes it and never asks about that number again
+          • “Not a lead” dismisses it and won’t ask about that number again
         </Text>
       </View>
 

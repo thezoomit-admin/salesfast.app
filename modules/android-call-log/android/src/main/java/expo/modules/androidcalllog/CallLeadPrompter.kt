@@ -89,14 +89,25 @@ internal object CallLeadPrompter {
   // ---- notification states ----
 
   fun showAsk(context: Context, phone: String, key: String, ringAt: Long): Boolean {
+    val openPopup = askActivityIntent(context, key, phone, ringAt)
     val builder =
       base(context, key, phone, ringAt)
-        .setContentTitle("Is this your lead?")
-        .setContentText("Call from $phone")
+        .setContentTitle("Add as lead?")
+        .setContentText(phone)
+        .setStyle(
+          NotificationCompat.BigTextStyle()
+            .bigText(
+              "$phone isn’t in SalesFast yet. Add this caller as a lead assigned to you?"
+            )
+        )
         .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setCategory(NotificationCompat.CATEGORY_CALL)
+        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         .setTimeoutAfter(PROMPT_TTL_MS)
-        .addAction(0, "Yes", actionIntent(context, ACTION_YES, key, phone, ringAt))
-        .addAction(0, "No", actionIntent(context, ACTION_NO, key, phone, ringAt))
+        .setContentIntent(openPopup)
+        .setFullScreenIntent(openPopup, true)
+        .addAction(0, "Add lead", openPopup)
+        .addAction(0, "Not a lead", actionIntent(context, ACTION_NO, key, phone, ringAt))
     return notify(context, key, builder.build())
   }
 
@@ -201,7 +212,10 @@ internal object CallLeadPrompter {
     if (manager.getNotificationChannel(CHANNEL_ID) != null) return
     val channel =
       NotificationChannel(CHANNEL_ID, "Leads from calls", NotificationManager.IMPORTANCE_HIGH)
-    channel.description = "Asks whether a call from a new number is a lead"
+    channel.description =
+      "Professional alert when someone not already in SalesFast calls you"
+    channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+    channel.setShowBadge(true)
     manager.createNotificationChannel(channel)
   }
 
@@ -236,6 +250,7 @@ internal object CallLeadPrompter {
     return NotificationCompat.Builder(context, CHANNEL_ID)
       .setSmallIcon(smallIcon(context))
       .setColor(BRAND_COLOR)
+      .setColorized(true)
       .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
       .setWhen(ringAt)
       .setShowWhen(true)
@@ -243,6 +258,27 @@ internal object CallLeadPrompter {
       .setAutoCancel(false)
       // Updates (Yes → name → saving) must not ring again.
       .setOnlyAlertOnce(true)
+  }
+
+  /** Opens the branded dialog popup (preferred over inline Yes). */
+  private fun askActivityIntent(
+    context: Context,
+    key: String,
+    phone: String,
+    ringAt: Long,
+  ): PendingIntent {
+    val intent =
+      Intent(context, CallLeadAskActivity::class.java)
+        .putExtra(EXTRA_KEY, key)
+        .putExtra(EXTRA_PHONE, phone)
+        .putExtra(EXTRA_RING_AT, ringAt)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    return PendingIntent.getActivity(
+      context,
+      notificationId(key) + 40,
+      intent,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
   }
 
   private fun actionIntent(

@@ -71,7 +71,9 @@ internal object CallLeadPromptStore {
     val p = prefs(context)
     return Config(
       enabled = p.getBoolean(ENABLED, false),
-      skipContacts = p.getBoolean(SKIP_CONTACTS, true),
+      // Default false: phone contacts do not suppress the prompt — CRM known
+      // leads do. Users can still opt into skipping the address book.
+      skipContacts = p.getBoolean(SKIP_CONTACTS, false),
       sessionActive = p.getBoolean(SESSION_ACTIVE, false),
       configuredAt = p.getLong(CONFIGURED_AT, 0L),
       knownCount = p.getStringSet(KNOWN_KEYS, null)?.size ?: 0,
@@ -87,7 +89,7 @@ internal object CallLeadPromptStore {
     return p.getBoolean(ENABLED, false) && p.getBoolean(SESSION_ACTIVE, false)
   }
 
-  fun skipContacts(context: Context) = prefs(context).getBoolean(SKIP_CONTACTS, true)
+  fun skipContacts(context: Context) = prefs(context).getBoolean(SKIP_CONTACTS, false)
 
   fun setConfig(context: Context, enabled: Boolean, skipContacts: Boolean) {
     prefs(context)
