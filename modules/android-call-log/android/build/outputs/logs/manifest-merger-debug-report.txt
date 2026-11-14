@@ -1,7 +1,7 @@
 -- Merging decision tree log ---
 manifest
-ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:1-3:12
-INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:1-3:12
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:1-23:12
+INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:1:1-23:12
 	package
 		INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml
 	xmlns:android
@@ -10,6 +10,38 @@ uses-permission#android.permission.READ_CALL_LOG
 ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:3-70
 	android:name
 		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:2:20-67
+uses-permission#android.permission.READ_PHONE_STATE
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:4:3-73
+	android:name
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:4:20-70
+uses-permission#android.permission.READ_CONTACTS
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:6:3-70
+	android:name
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:6:20-67
+uses-permission#android.permission.POST_NOTIFICATIONS
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:7:3-75
+	android:name
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:7:20-72
+application
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:9:3-22:17
+receiver#expo.modules.androidcalllog.IncomingCallReceiver
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:12:5-18:16
+	android:exported
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:14:7-30
+	android:name
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:13:7-70
+intent-filter#action:name:android.intent.action.PHONE_STATE
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:15:7-17:23
+action#android.intent.action.PHONE_STATE
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:16:9-68
+	android:name
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:16:17-65
+receiver#expo.modules.androidcalllog.CallLeadActionReceiver
+ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:19:5-21:34
+	android:exported
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:21:7-31
+	android:name
+		ADDED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml:20:7-72
 uses-sdk
 INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from D:\ZOOMIT\SalesFast\salesfast.app\modules\android-call-log\android\src\main\AndroidManifest.xml
