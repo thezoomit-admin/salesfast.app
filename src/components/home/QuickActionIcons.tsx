@@ -244,6 +244,28 @@ export const QuickActionIcons = {
   'follow-ups': makeIcon(
     calendar('follow', ['#17BB81', '#0A9F6B'], '#0E8F62', ['#C4F1E0', '#8FE3C6'], '#35C795'),
   ),
+  tasks: makeIcon(
+    <>
+      <Defs>
+        {gradient('tasks-board', '#F59E0B', '#D97706')}
+        {gradient('tasks-tick', '#17C672', '#04A856')}
+      </Defs>
+      <Rect x="5" y="4" width="38" height="40" rx="7" fill="url(#tasks-board)" />
+      <Rect x="12" y="12" width="16" height="3.6" rx="1.8" fill="#FFFFFF" opacity={0.92} />
+      <Rect x="12" y="20.5" width="22" height="3.6" rx="1.8" fill="#FFFFFF" opacity={0.72} />
+      <Rect x="12" y="29" width="14" height="3.6" rx="1.8" fill="#FFFFFF" opacity={0.55} />
+      <Circle cx="35" cy="34" r="9.5" fill="#FFFFFF" />
+      <Circle cx="35" cy="34" r="7.6" fill="url(#tasks-tick)" />
+      <Path
+        d="M31.6 34.2L33.8 36.4L38.6 31.4"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>,
+  ),
   calls: makeIcon(
     <>
       <Defs>{gradient('calls', '#17C672', '#04A856')}</Defs>
@@ -392,6 +414,7 @@ export const QuickActionTints: Record<
   'all-leads': { light: '#DFE9FD', dark: '#1E7BFF33' },
   'add-lead': { light: '#DAE9FE', dark: '#0A7AFC33' },
   'follow-ups': { light: '#DAF4EF', dark: '#0AAB7533' },
+  tasks: { light: '#FEF0C7', dark: '#D9770633' },
   calls: { light: '#DFF7E7', dark: '#01B86133' },
   search: { light: blue.skySoft, dark: '#0B8FE033' },
   activities: { light: '#E7E4FD', dark: '#6766DE33' },

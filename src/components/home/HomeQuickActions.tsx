@@ -53,6 +53,7 @@ const BASE_TILES: Tile[] = [
   { key: 'leads', label: 'My Leads', href: '/(tabs)/my-leads' },
   { key: 'add-lead', label: 'Add Lead', href: '/leads/new' },
   { key: 'follow-ups', label: 'Follow-ups', href: '/(tabs)/follow-ups' },
+  { key: 'tasks', label: 'My Tasks', href: '/tasks' },
   { key: 'calls', label: 'Calls', href: '/(tabs)/calls' },
   {
     key: 'search',
