@@ -16,6 +16,12 @@ export function isCallHistoryNote(n: {
   return false;
 }
 
+/** A synced WhatsApp call (the server writes "Synced from WhatsApp"). */
+export function isWhatsAppCallNote(note?: string | null) {
+  const text = note ?? '';
+  return /^Synced from WhatsApp$/im.test(text) || /\[call-sync:whatsapp:/i.test(text);
+}
+
 export function isSystemActor(name?: string | null) {
   const n = String(name ?? '').trim();
   if (!n) return true;

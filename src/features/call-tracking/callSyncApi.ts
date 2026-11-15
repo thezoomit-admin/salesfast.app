@@ -14,6 +14,8 @@ export type CallSyncUploadItem = {
   direction: CallSyncDirection;
   startedAt: string;
   durationSec: number;
+  /** Omitted = the phone line (what older servers expect). */
+  channel?: 'PHONE' | 'WHATSAPP';
 };
 
 export type CallSyncUploadResult = {

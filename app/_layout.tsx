@@ -105,6 +105,10 @@ function ThemedStack() {
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
+          name="tasks"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
           name="call-sync/setup"
           options={{ animation: 'slide_from_right' }}
         />
@@ -115,6 +119,10 @@ function ThemedStack() {
         />
         <Stack.Screen
           name="settings/call-leads"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="settings/whatsapp-calls"
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen

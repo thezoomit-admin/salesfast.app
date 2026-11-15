@@ -28,7 +28,8 @@ type TabNavigation = {
   dispatch: (action: ReturnType<typeof CommonActions.preload>) => void;
 };
 
-/** Nearest to Home first. Profile last: only the Home header opens it. */
+/** Nearest to Home first. Profile last: only the Home header opens it.
+ *  All Leads stays warm for managers (opened from Home, not the tab bar). */
 function warmOrder(canViewAll: boolean) {
   return canViewAll
     ? ['follow-ups', 'calls', 'my-leads', 'leads', 'notifications', 'profile']
@@ -139,15 +140,14 @@ export default function TabLayout() {
         focus: () => setTabNavigation((current) => current ?? navigation),
       })}
     >
-      {/* Declaration order is the pager order — keep it aligned with getTabOrder.
-          Profile comes last: a page with the bar but no bar item, opened
-          from the Home header. */}
+      {/* Declaration order is the pager order — keep it aligned with TAB_ORDER.
+          `leads` (All Leads) and Profile have no bar item; Home opens them. */}
       <TopTabs.Screen name="my-leads" options={{ title: 'My Leads' }} />
-      <TopTabs.Screen name="leads" options={{ title: 'Leads' }} />
       <TopTabs.Screen name="follow-ups" options={{ title: 'Follow-ups' }} />
       <TopTabs.Screen name="index" options={{ title: 'Home' }} />
       <TopTabs.Screen name="calls" options={{ title: 'Calls' }} />
       <TopTabs.Screen name="notifications" options={{ title: 'Notifications' }} />
+      <TopTabs.Screen name="leads" options={{ title: 'All Leads' }} />
       <TopTabs.Screen name="profile" options={{ title: 'Profile' }} />
     </TopTabs>
   );

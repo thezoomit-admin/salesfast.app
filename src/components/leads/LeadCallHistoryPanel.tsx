@@ -19,6 +19,7 @@ import {
   callBody,
   callKind,
   callNotesOf,
+  isWhatsAppCallNote,
   type CallKind,
 } from '@/features/leads/leadActivity';
 import { spacing, typography, useThemeColors, type ThemeColors } from '@/theme';
@@ -144,6 +145,9 @@ export function LeadCallHistoryPanel({ lead }: Props) {
                               color={kindColor(kind, colors)}
                               strokeWidth={1.5}
                             />
+                            {isWhatsAppCallNote(n.note) ? (
+                              <Text style={styles.meta}>· WhatsApp</Text>
+                            ) : null}
                           </View>
                         </View>
                         <View style={styles.right}>

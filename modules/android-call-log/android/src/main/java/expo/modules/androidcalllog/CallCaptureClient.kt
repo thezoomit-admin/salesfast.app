@@ -50,6 +50,8 @@ internal object CallCaptureClient {
           .put("phone", lead.phone)
           .put("fullName", lead.name ?: JSONObject.NULL)
           .put("ringAt", lead.ringAt)
+          // Older servers ignore it (unknown fields are dropped).
+          .put("channel", lead.channel.wire)
       connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
 
       val code = connection.responseCode

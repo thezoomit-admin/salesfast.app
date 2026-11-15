@@ -3,6 +3,7 @@ import {
   callBody,
   callKind,
   isCallHistoryNote,
+  isWhatsAppCallNote,
   type CallKind,
 } from '@/features/leads/leadActivity';
 
@@ -43,7 +44,7 @@ const TRAILING_BLOCK_RE = /\n\n\[[^\]\n]+\](?!\()/;
 const LEADING_TAG_RE = /^\[([^\]\n]+)\](?!\()\s*/;
 const CLIP_LINK_RE = /\[[^\]\n]+\]\(https?:[^)\s]+\)/g;
 const SYNC_LINES_RE =
-  /\[call-sync:[^\]]+\]|^Synced from mobile$|^EmployeePhone:\s*.+$/gim;
+  /\[call-sync:[^\]]+\]|^Synced from (?:mobile|WhatsApp)$|^EmployeePhone:\s*.+$/gim;
 
 function parseBody(raw: string) {
   const body = raw.split(TRAILING_BLOCK_RE)[0] ?? '';
@@ -91,7 +92,9 @@ export function describeActivity(n: NoteInput): ActivityView {
     const type = callKind(raw);
     return {
       kind: type === 'missed' || type === 'failed' ? 'callMissed' : 'call',
-      label: CALL_LABEL[type],
+      label: isWhatsAppCallNote(raw)
+        ? `WhatsApp ${CALL_LABEL[type].toLowerCase()}`
+        : CALL_LABEL[type],
       text: call.duration && !/^0\s*s?$/i.test(call.duration) ? call.duration : null,
       hasVoiceNote,
     };

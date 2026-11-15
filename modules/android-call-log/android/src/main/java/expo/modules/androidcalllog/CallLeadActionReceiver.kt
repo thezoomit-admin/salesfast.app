@@ -14,9 +14,10 @@ class CallLeadActionReceiver : BroadcastReceiver() {
     val key = CallLeadPromptStore.phoneKey(intent.getStringExtra(CallLeadPrompter.EXTRA_KEY)) ?: return
     val phone = intent.getStringExtra(CallLeadPrompter.EXTRA_PHONE)?.trim().orEmpty()
     val ringAt = intent.getLongExtra(CallLeadPrompter.EXTRA_RING_AT, System.currentTimeMillis())
+    val channel = CallChannel.from(intent.getStringExtra(CallLeadPrompter.EXTRA_CHANNEL))
 
     when (intent.action) {
-      CallLeadPrompter.ACTION_YES -> CallLeadPrompter.showNameEntry(app, phone, key, ringAt)
+      CallLeadPrompter.ACTION_YES -> CallLeadPrompter.showNameEntry(app, phone, key, ringAt, channel)
 
       // Not a lead: close it and never ask about this number again.
       CallLeadPrompter.ACTION_NO -> {
@@ -38,7 +39,7 @@ class CallLeadActionReceiver : BroadcastReceiver() {
             ?.toString()
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
-        val lead = CallLeadPromptStore.PendingLead(key, phone, typed, ringAt)
+        val lead = CallLeadPromptStore.PendingLead(key, phone, typed, ringAt, channel)
         CallLeadPromptStore.putPending(app, lead)
         saveInBackground(app, lead)
       }
@@ -46,7 +47,7 @@ class CallLeadActionReceiver : BroadcastReceiver() {
       CallLeadPrompter.ACTION_RETRY -> {
         val lead =
           CallLeadPromptStore.pending(app, key)
-            ?: CallLeadPromptStore.PendingLead(key, phone, null, ringAt)
+            ?: CallLeadPromptStore.PendingLead(key, phone, null, ringAt, channel)
         saveInBackground(app, lead)
       }
     }

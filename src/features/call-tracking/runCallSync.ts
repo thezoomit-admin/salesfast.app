@@ -2,6 +2,7 @@ import { PermissionsAndroid, Platform } from 'react-native';
 
 import {
   getRecentCalls,
+  getWhatsAppCalls,
   hasCallLogPermission,
   isCallLogModuleAvailable,
 } from 'android-call-log';
@@ -15,6 +16,7 @@ import {
 } from './callSyncApi';
 import { keepLeadCalls } from './leadCallFilter';
 import { mapAndroidCallType } from './mapCallDirection';
+import { isWhatsAppSyncOn, whatsAppUploadItem } from './whatsAppCalls';
 import {
   loadCallSyncPrefs,
   saveCallSyncPrefs,
@@ -85,14 +87,17 @@ export async function runCallSync(options?: {
     );
   }
 
+  // WhatsApp calls (own switch, this phone only) need no call-log permission.
+  const whatsAppOn = await isWhatsAppSyncOn();
   const granted = await ensureCallLogPermission();
-  if (!granted) {
+  if (!granted && !whatsAppOn) {
     return empty('Call log permission was denied.');
   }
 
   // Match against recent device call history (no enable-time cutoff).
   // Native module caps at 300 rows; unmatched personal numbers are never uploaded.
-  const rows = await getRecentCalls(300, 0);
+  const rows = granted ? await getRecentCalls(300, 0) : [];
+  const whatsAppRows = whatsAppOn ? await getWhatsAppCalls(300, 0) : [];
   const directory = await getCallMatchDirectory({ fresh: options?.force });
 
   const payload: CallSyncUploadItem[] = [];
@@ -107,13 +112,19 @@ export async function runCallSync(options?: {
       durationSec: Math.max(0, Number(row.durationSec) || 0),
     });
   }
+  // Same privacy gate: only WhatsApp calls with CRM lead numbers leave the phone.
+  for (const { row } of keepLeadCalls(whatsAppRows, directory.entries)) {
+    const item = whatsAppUploadItem(row);
+    if (!options?.force && confirmedCallIds.has(item.deviceCallId)) continue;
+    payload.push(item);
+  }
 
   if (!payload.length) {
     await saveCallSyncPrefs({ lastSyncedAt: new Date().toISOString() });
     return {
       ok: true,
       message: `No matched lead calls in recent history (${directory.count} lead numbers watched).`,
-      scanned: rows.length,
+      scanned: rows.length + whatsAppRows.length,
       matched: 0,
       created: 0,
       duplicates: 0,
@@ -152,7 +163,7 @@ export async function runCallSync(options?: {
         : duplicates > 0
           ? 'Calls already synced — nothing new.'
           : 'No new matched calls to upload.',
-    scanned: rows.length,
+    scanned: rows.length + whatsAppRows.length,
     matched: payload.length,
     created,
     duplicates,

@@ -200,6 +200,29 @@ export const QuickActionIcons = {
       />
     </>,
   ),
+  'all-leads': makeIcon(
+    <>
+      <Defs>
+        {gradient('all-leads', '#2F6BFF', '#1B4FE0')}
+        {gradient('all-leads-side', '#5B8CFF', '#3A6FF0')}
+      </Defs>
+      <Ellipse cx="10" cy="15" rx="5.8" ry="7" fill="url(#all-leads-side)" />
+      <Path
+        d="M1.5 35C1.5 29 5.5 25.5 10.5 25.5C12 25.5 13.2 25.8 14.2 26.3C11 28.8 9.2 32.5 9.2 37.5H4C2.4 37.5 1.5 36.4 1.5 35Z"
+        fill="url(#all-leads-side)"
+      />
+      <Ellipse cx="38" cy="15" rx="5.8" ry="7" fill="url(#all-leads-side)" />
+      <Path
+        d="M46.5 35C46.5 29 42.5 25.5 37.5 25.5C36 25.5 34.8 25.8 33.8 26.3C37 28.8 38.8 32.5 38.8 37.5H44C45.6 37.5 46.5 36.4 46.5 35Z"
+        fill="url(#all-leads-side)"
+      />
+      <Circle cx="24" cy="13" r="8" fill="url(#all-leads)" />
+      <Path
+        d="M11 37C11 29.5 16.5 25 24 25C31.5 25 37 29.5 37 37C37 39.6 35.4 41.2 32.8 41.2H15.2C12.6 41.2 11 39.6 11 37Z"
+        fill="url(#all-leads)"
+      />
+    </>,
+  ),
   'add-lead': makeIcon(
     <>
       <Defs>
@@ -220,6 +243,28 @@ export const QuickActionIcons = {
   ),
   'follow-ups': makeIcon(
     calendar('follow', ['#17BB81', '#0A9F6B'], '#0E8F62', ['#C4F1E0', '#8FE3C6'], '#35C795'),
+  ),
+  tasks: makeIcon(
+    <>
+      <Defs>
+        {gradient('tasks-board', '#F59E0B', '#D97706')}
+        {gradient('tasks-tick', '#17C672', '#04A856')}
+      </Defs>
+      <Rect x="5" y="4" width="38" height="40" rx="7" fill="url(#tasks-board)" />
+      <Rect x="12" y="12" width="16" height="3.6" rx="1.8" fill="#FFFFFF" opacity={0.92} />
+      <Rect x="12" y="20.5" width="22" height="3.6" rx="1.8" fill="#FFFFFF" opacity={0.72} />
+      <Rect x="12" y="29" width="14" height="3.6" rx="1.8" fill="#FFFFFF" opacity={0.55} />
+      <Circle cx="35" cy="34" r="9.5" fill="#FFFFFF" />
+      <Circle cx="35" cy="34" r="7.6" fill="url(#tasks-tick)" />
+      <Path
+        d="M31.6 34.2L33.8 36.4L38.6 31.4"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </>,
   ),
   calls: makeIcon(
     <>
@@ -366,8 +411,10 @@ export const QuickActionTints: Record<
   { light: string; dark: string }
 > = {
   leads: { light: '#EAE8FE', dark: '#6B63F733' },
+  'all-leads': { light: '#DFE9FD', dark: '#1E7BFF33' },
   'add-lead': { light: '#DAE9FE', dark: '#0A7AFC33' },
   'follow-ups': { light: '#DAF4EF', dark: '#0AAB7533' },
+  tasks: { light: '#FEF0C7', dark: '#D9770633' },
   calls: { light: '#DFF7E7', dark: '#01B86133' },
   search: { light: blue.skySoft, dark: '#0B8FE033' },
   activities: { light: '#E7E4FD', dark: '#6766DE33' },

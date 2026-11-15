@@ -9,8 +9,9 @@ import {
 
 import { useAuth } from '@/features/auth/AuthContext';
 
-import { loadCallSyncPrefs } from './syncPreferences';
 import { runCallSync } from './runCallSync';
+import { loadCallSyncPrefs } from './syncPreferences';
+import { newestWhatsAppCallId } from './whatsAppCalls';
 
 /** How often to push matched call-log rows while the app is in the foreground. */
 const FOREGROUND_SYNC_MS = 30_000;
@@ -21,10 +22,20 @@ const FOREGROUND_SYNC_MS = 30_000;
 const FULL_SYNC_MAX_AGE_MS = 5 * 60_000;
 
 /** Identity of the newest call-log row, or null when it can't be read cheaply. */
-async function newestCallKey() {
+async function newestPhoneCallKey() {
   if (!isCallLogModuleAvailable() || !(await hasCallLogPermission())) return null;
   const [row] = await getRecentCalls(1, 0);
   return row ? `${row.id}:${row.dateMs}:${row.type}` : 'empty';
+}
+
+/** Changes when a phone or WhatsApp call is added; null = can't tell. */
+async function newestCallKey() {
+  const [phone, whatsApp] = await Promise.all([
+    newestPhoneCallKey(),
+    newestWhatsAppCallId().catch(() => null),
+  ]);
+  if (phone == null && whatsApp == null) return null;
+  return `${phone ?? '-'}|${whatsApp ?? '-'}`;
 }
 
 /** Foreground sync for consented Android installs. */

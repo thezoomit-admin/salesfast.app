@@ -21,6 +21,7 @@ import { APP_NAME, APP_VERSION } from '@/constants/config';
 import { useAuth } from '@/features/auth/AuthContext';
 import type { SavedMobileAccount } from '@/features/auth/savedAccounts';
 import { useCallLeadPromptStatus } from '@/features/call-tracking/callLeadPrompt';
+import { useWhatsAppCallStatus } from '@/features/call-tracking/whatsAppCalls';
 import { useCallSyncStatus } from '@/features/call-tracking/useCallSyncStatus';
 import { usePendingWriteCount } from '@/lib/accountWrites';
 import {
@@ -206,9 +207,11 @@ function ProfileScreen() {
   const styles = useMemo(() => createStyles(more), [more]);
   const callSync = useCallSyncStatus();
   const callLeads = useCallLeadPromptStatus();
+  const whatsAppCalls = useWhatsAppCallStatus();
   const pendingSetup = useSettingsPendingCount();
   const { refresh: refreshCallSync } = callSync;
   const { refresh: refreshCallLeads } = callLeads;
+  const { refresh: refreshWhatsAppCalls } = whatsAppCalls;
   const [accounts, setAccounts] = useState<SavedMobileAccount[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
@@ -224,8 +227,9 @@ function ProfileScreen() {
     useCallback(() => {
       void refreshCallSync();
       void refreshCallLeads();
+      void refreshWhatsAppCalls();
       void refreshAccounts();
-    }, [refreshCallSync, refreshCallLeads, refreshAccounts])
+    }, [refreshCallSync, refreshCallLeads, refreshWhatsAppCalls, refreshAccounts])
   );
 
   const displayName = user?.name?.trim() || APP_NAME;
@@ -371,6 +375,13 @@ function ProfileScreen() {
       ? 'Needs permission'
       : 'On';
 
+  const whatsAppCallsLabel =
+    !whatsAppCalls.config?.syncEnabled && !whatsAppCalls.config?.promptEnabled
+      ? 'Off'
+      : whatsAppCalls.needsAccess
+        ? 'Needs access'
+        : 'On';
+
   const sections: MenuSectionData[] = useMemo(
     () => [
       {
@@ -406,6 +417,18 @@ function ProfileScreen() {
                   href: '/settings/call-leads' as const,
                   value: callLeadsLabel,
                   badge: pendingSetup.items.includes('call-leads') ? 1 : 0,
+                },
+              ]
+            : []),
+          ...(whatsAppCalls.available
+            ? [
+                {
+                  key: 'whatsAppCalls',
+                  label: 'WhatsApp calls',
+                  icon: 'logo-whatsapp' as const,
+                  href: '/settings/whatsapp-calls' as const,
+                  value: whatsAppCallsLabel,
+                  badge: whatsAppCalls.needsAccess ? 1 : 0,
                 },
               ]
             : []),
@@ -477,7 +500,17 @@ function ProfileScreen() {
         ],
       },
     ],
-    [callSync.label, callLeads.available, callLeadsLabel, mode, accountsValue, pendingSetup.items]
+    [
+      callSync.label,
+      callLeads.available,
+      callLeadsLabel,
+      whatsAppCalls.available,
+      whatsAppCalls.needsAccess,
+      whatsAppCallsLabel,
+      mode,
+      accountsValue,
+      pendingSetup.items,
+    ]
   );
 
   const searchItems: SettingsSearchItem[] = useMemo(
