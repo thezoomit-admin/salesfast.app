@@ -13,3 +13,8 @@ android {
     versionName "1.0.0"
   }
 }
+
+dependencies {
+  // JVM unit tests of the WhatsApp call rules (not shipped in the APK).
+  testImplementation 'junit:junit:4.13.2'
+}
