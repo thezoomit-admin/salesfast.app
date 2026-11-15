@@ -23,10 +23,52 @@ const credDir = join(appDir, 'credentials', 'android');
 const releaseDir = join(appDir, 'release');
 const versionCodeFile = join(credDir, 'versionCode');
 const PROD_API = 'https://salesfastapi.thezoomit.com/api';
+/** Windows NDK+CMake break when ANDROID_HOME has spaces (CLANG_~1 drops libc++). */
+const ANDROID_SDK_NOSPACE = 'C:\\AndroidSdk';
 
 const fail = (msg) => {
   console.error(`\n✖ ${msg}\n`);
   process.exit(1);
+};
+
+const resolveAndroidSdkEnv = () => {
+  const home = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || '';
+  if (process.platform === 'win32' && (home.includes(' ') || existsSync(ANDROID_SDK_NOSPACE))) {
+    if (!existsSync(ANDROID_SDK_NOSPACE)) {
+      fail(
+        [
+          `Android SDK path has a space ("${home}"), which breaks local C++ linking on Windows.`,
+          '',
+          'One-time fix (Admin not required):',
+          `  cmd /c mklink /J ${ANDROID_SDK_NOSPACE} "${home}"`,
+          '',
+          'Then re-run pnpm build-aab',
+        ].join('\n')
+      );
+    }
+    console.log(`✔ ANDROID_HOME → ${ANDROID_SDK_NOSPACE} (avoid path spaces)`);
+    return {
+      ANDROID_HOME: ANDROID_SDK_NOSPACE,
+      ANDROID_SDK_ROOT: ANDROID_SDK_NOSPACE,
+    };
+  }
+  return {};
+};
+
+const writeLocalProperties = (sdkEnv) => {
+  const sdk = sdkEnv.ANDROID_HOME || process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+  if (!sdk) return;
+  const ndkRoot = join(sdk, 'ndk');
+  let ndkDir = '';
+  if (existsSync(ndkRoot)) {
+    const versions = readdirSync(ndkRoot).filter((n) => existsSync(join(ndkRoot, n, 'source.properties')));
+    versions.sort();
+    if (versions.length) ndkDir = join(ndkRoot, versions[versions.length - 1]);
+  }
+  const escape = (p) => p.replace(/\\/g, '\\\\');
+  const lines = [`sdk.dir=${escape(sdk)}`];
+  if (ndkDir) lines.push(`ndk.dir=${escape(ndkDir)}`);
+  writeFileSync(join(appDir, 'android', 'local.properties'), lines.join('\n') + '\n');
 };
 
 const run = (cmd, args, opts = {}) => {
@@ -83,9 +125,11 @@ writeFileSync(versionCodeFile, String(versionCode) + '\n');
 console.log(`✔ versionName ${versionName}  versionCode ${versionCode}`);
 console.log(`✔ API ${PROD_API}`);
 
+const sdkEnv = resolveAndroidSdkEnv();
 const env = {
   EXPO_PUBLIC_API_URL: PROD_API,
   ANDROID_VERSION_CODE: String(versionCode),
+  ...sdkEnv,
 };
 
 if (!process.argv.includes('--skip-typecheck')) {
@@ -100,8 +144,12 @@ if (!skipPrebuild) {
   run('npx', prebuildArgs, { env });
 }
 
+writeLocalProperties(sdkEnv);
+
 const gradlew = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
 const task = artifact === 'aab' ? 'bundleRelease' : 'assembleRelease';
+// Drop stale CMake dirs that may still embed the spaced SDK path.
+run(gradlew, ['clean'], { cwd: join(appDir, 'android'), env });
 run(gradlew, [task], { cwd: join(appDir, 'android'), env });
 
 const outRoot =
