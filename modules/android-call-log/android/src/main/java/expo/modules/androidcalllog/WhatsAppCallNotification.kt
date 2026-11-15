@@ -63,6 +63,8 @@ internal object WhatsAppCallNotification {
     )
   private val ONGOING_RE =
     Regex("ongoing (voice |video )?call|in call|চলমান|কলে আছেন", RegexOption.IGNORE_CASE)
+  private val INCOMING_RE =
+    Regex("incoming (voice |video )?call|ইনকামিং", RegexOption.IGNORE_CASE)
   private val VIDEO_RE = Regex("video|ভিডিও", RegexOption.IGNORE_CASE)
   private val PHONE_RE = Regex("\\+?\\d[\\d\\s\\-().]{5,}\\d")
 
@@ -111,6 +113,8 @@ internal object WhatsAppCallNotification {
         chronometer -> Kind.CONNECTED
         fullScreen -> Kind.RINGING_IN
         ONGOING_RE.containsMatchIn(allText) -> Kind.CONNECTED
+        // WhatsApp open on screen: the ring may come without a full-screen intent.
+        INCOMING_RE.containsMatchIn(allText) -> Kind.RINGING_IN
         else -> Kind.DIALING
       }
 
