@@ -24,9 +24,12 @@ if (salesfastKeystorePropertiesFile.exists()) {
 
     contents = contents.replace(/android\s*\{/, `${preamble}\nandroid {`);
 
-    contents = contents.replace(
-      /signingConfigs\s*\{\s*debug\s*\{/,
-      `signingConfigs {
+    // Insert release signingConfig before the debug config (do not touch buildTypes yet).
+    if (!contents.includes('signingConfigs {\n        release') &&
+        !contents.includes('signingConfigs {\r\n        release')) {
+      contents = contents.replace(
+        /signingConfigs\s*\{\s*debug\s*\{/,
+        `signingConfigs {
         release {
             if (salesfastKeystorePropertiesFile.exists()) {
                 keyAlias salesfastKeystoreProperties['keyAlias']
@@ -36,10 +39,13 @@ if (salesfastKeystorePropertiesFile.exists()) {
             }
         }
         debug {`
-    );
+      );
+    }
 
+    // Only rewrite signingConfig inside buildTypes.release (not signingConfigs.release
+    // and not buildTypes.debug — a naive /release\{.../ regex matches the wrong block).
     contents = contents.replace(
-      /(release\s*\{[\s\S]*?)signingConfig signingConfigs\.debug/,
+      /(buildTypes\s*\{[\s\S]*?\bdebug\s*\{[\s\S]*?\}\s*\brelease\s*\{[\s\S]*?)signingConfig signingConfigs\.debug/,
       `$1signingConfig salesfastKeystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug`
     );
 

@@ -5,7 +5,7 @@
  *   node scripts/build-android-local.mjs aab
  *   node scripts/build-android-local.mjs apk
  *
- * Output → release/salesfast-crm-{version}.{aab|apk}
+ * Output → release/salesfast-crm-v{version}-{versionCode}.{aab|apk}
  *
  * Requires once:
  *   credentials/android/upload-keystore.jks
@@ -115,9 +115,12 @@ const versionName = pkg.version;
 if (!versionName) fail('package.json version is missing');
 
 // Auto-bump local versionCode (Play requires each upload to be higher).
+// Override: ANDROID_VERSION_CODE=7 pnpm build-aab
 mkdirSync(credDir, { recursive: true });
-let versionCode = 12;
-if (existsSync(versionCodeFile)) {
+let versionCode = 7;
+if (process.env.ANDROID_VERSION_CODE && Number(process.env.ANDROID_VERSION_CODE) > 0) {
+  versionCode = Number(process.env.ANDROID_VERSION_CODE);
+} else if (existsSync(versionCodeFile)) {
   const n = Number(readFileSync(versionCodeFile, 'utf8').trim());
   if (Number.isFinite(n) && n > 0) versionCode = n + 1;
 }
@@ -146,6 +149,23 @@ if (!skipPrebuild) {
 
 writeLocalProperties(sdkEnv);
 
+// Keep version in sync even when skipping prebuild (Play + filename both use this).
+const appGradle = join(appDir, 'android', 'app', 'build.gradle');
+if (existsSync(appGradle)) {
+  let gradle = readFileSync(appGradle, 'utf8');
+  gradle = gradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
+  gradle = gradle.replace(/versionName\s+"[^"]+"/, `versionName "${versionName}"`);
+  // Hard-fail if release still points at debug (common plugin-regex footgun).
+  if (/buildTypes\s*\{[\s\S]*?\brelease\s*\{[\s\S]*?signingConfig signingConfigs\.debug/.test(gradle)) {
+    gradle = gradle.replace(
+      /(buildTypes\s*\{[\s\S]*?\bdebug\s*\{[\s\S]*?\}\s*\brelease\s*\{[\s\S]*?)signingConfig signingConfigs\.debug/,
+      `$1signingConfig salesfastKeystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug`
+    );
+  }
+  writeFileSync(appGradle, gradle);
+  console.log(`✔ android/app/build.gradle → versionCode ${versionCode}, Play release signing`);
+}
+
 const gradlew = process.platform === 'win32' ? 'gradlew.bat' : './gradlew';
 const task = artifact === 'aab' ? 'bundleRelease' : 'assembleRelease';
 // Drop stale CMake dirs that may still embed the spaced SDK path.
@@ -163,9 +183,63 @@ const built = readdirSync(outRoot).find((f) => f.endsWith(artifact === 'aab' ? '
 if (!built) fail(`No ${artifact} found in ${outRoot}`);
 
 mkdirSync(releaseDir, { recursive: true });
-const destName = `salesfast-crm-${versionName}.${artifact}`;
+const destName = `salesfast-crm-v${versionName}-${versionCode}.${artifact}`;
 const dest = join(releaseDir, destName);
 copyFileSync(join(outRoot, built), dest);
+
+// Fail loud if release still got the debug key (Play rejects it).
+const DEBUG_SHA1 = '5E8F16062EA3CD2C4A0D547876BAA6F38CABF625';
+const EXPECTED_SHA1 = '2F44F0455B3412FE589142A3C24E1A6AF9851CEA';
+const props = readFileSync(keystoreProps, 'utf8');
+const getProp = (k) => {
+  const m = props.match(new RegExp(`^${k}=(.+)$`, 'm'));
+  return m ? m[1].trim() : '';
+};
+const keytool = spawnSync(
+  'keytool',
+  [
+    '-list',
+    '-printcert',
+    '-jarfile',
+    dest,
+  ],
+  { encoding: 'utf8', shell: true }
+);
+const certOut = `${keytool.stdout || ''}\n${keytool.stderr || ''}`;
+const sha1Match = certOut.match(/SHA1:\s*([0-9A-F:]+)/i);
+const sha1 = sha1Match ? sha1Match[1].replace(/:/g, '').toUpperCase() : '';
+if (sha1 === DEBUG_SHA1) {
+  fail(
+    `AAB is signed with the DEBUG key (${sha1Match[1]}). Release signing did not apply — fix android/app/build.gradle signingConfig.`
+  );
+}
+if (sha1 && sha1 !== EXPECTED_SHA1) {
+  console.warn(`⚠ Signer SHA1 ${sha1Match[1]} (expected Play upload key ${EXPECTED_SHA1.match(/.{2}/g).join(':')})`);
+} else if (sha1) {
+  console.log(`✔ Signed with Play upload key (${sha1Match[1]})`);
+} else {
+  // Fallback: keytool -printcert on the upload keystore itself proves credentials exist;
+  // jarfile listing can fail on some JDKs for .aab.
+  const list = spawnSync(
+    'keytool',
+    [
+      '-list',
+      '-v',
+      '-keystore',
+      keystoreJks,
+      '-alias',
+      getProp('keyAlias'),
+      '-storepass',
+      getProp('storePassword'),
+    ],
+    { encoding: 'utf8', shell: true }
+  );
+  const listOut = `${list.stdout || ''}\n${list.stderr || ''}`;
+  if (!/2F:44:F0:45:5B:34:12:FE:58:91:42:A3:C2:4E:1A:6A:F9:85:1C:EA/i.test(listOut)) {
+    fail('Upload keystore SHA1 does not match Play expected key. Re-run pnpm keystore:setup.');
+  }
+  console.log('✔ Upload keystore matches Play expected SHA1 (AAB cert listing unavailable on this JDK)');
+}
 
 console.log(`\n✔ Built ${resolve(dest)}`);
 console.log(`  Upload this file to Play Console → Production (or testing track).\n`);
