@@ -89,6 +89,9 @@ internal object CallLeadPromptStore {
     return p.getBoolean(ENABLED, false) && p.getBoolean(SESSION_ACTIVE, false)
   }
 
+  /** Someone is signed in (shared by the phone and WhatsApp prompts). */
+  fun isSessionActive(context: Context) = prefs(context).getBoolean(SESSION_ACTIVE, false)
+
   fun skipContacts(context: Context) = prefs(context).getBoolean(SKIP_CONTACTS, false)
 
   fun setConfig(context: Context, enabled: Boolean, skipContacts: Boolean) {
@@ -174,9 +177,15 @@ internal object CallLeadPromptStore {
 
   // ---- leads waiting for the server ----
 
-  data class PendingLead(val key: String, val phone: String, val name: String?, val ringAt: Long) {
+  data class PendingLead(
+    val key: String,
+    val phone: String,
+    val name: String?,
+    val ringAt: Long,
+    val channel: CallChannel = CallChannel.PHONE,
+  ) {
     /** Same key the app's capture screen sends, so the server dedupes the two. */
-    val idempotencyKey get() = "call-lead:$key:$ringAt"
+    val idempotencyKey get() = "${channel.idempotencyPrefix}:$key:$ringAt"
   }
 
   @Synchronized
@@ -187,7 +196,8 @@ internal object CallLeadPromptStore {
       JSONObject()
         .put("phone", lead.phone)
         .put("name", lead.name ?: JSONObject.NULL)
-        .put("ringAt", lead.ringAt),
+        .put("ringAt", lead.ringAt)
+        .put("channel", lead.channel.wire),
     )
     prefs(context).edit().putString(PENDING, all.toString()).commit()
   }
@@ -215,6 +225,7 @@ internal object CallLeadPromptStore {
       phone = json.optString("phone"),
       name = if (json.isNull("name")) null else json.optString("name"),
       ringAt = json.optLong("ringAt"),
+      channel = CallChannel.from(json.optString("channel")),
     )
 
   private fun pendingJson(context: Context): JSONObject =
@@ -292,5 +303,16 @@ internal object CallLeadPromptStore {
 
   fun recordPrompt(context: Context, key: String, now: Long) {
     prefs(context).edit().putString(LAST_PROMPT_KEY, key).putLong(LAST_PROMPT_AT, now).commit()
+  }
+}
+
+/** Where a call came from: the phone line, or WhatsApp. */
+internal enum class CallChannel(val wire: String, val idempotencyPrefix: String) {
+  PHONE("PHONE", "call-lead"),
+  WHATSAPP("WHATSAPP", "wa-call-lead");
+
+  companion object {
+    fun from(raw: String?): CallChannel =
+      if (raw.equals(WHATSAPP.wire, ignoreCase = true)) WHATSAPP else PHONE
   }
 }
