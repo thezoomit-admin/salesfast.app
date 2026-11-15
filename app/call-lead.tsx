@@ -25,6 +25,7 @@ import {
   parseRingAt,
   pickCallLeadSourceId,
 } from '@/features/call-tracking/callLeadLogic';
+import { parseCallLeadChannel } from '@/features/call-tracking/whatsAppCallLogic';
 import {
   checkLeadPhone,
   createLead,
@@ -46,16 +47,26 @@ export default function CallLeadScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   // `name`: typed in the notification before saving had to finish here.
-  const params = useLocalSearchParams<{ phone?: string; at?: string; name?: string }>();
+  const params = useLocalSearchParams<{
+    phone?: string;
+    at?: string;
+    name?: string;
+    /** "whatsapp" when the prompt followed a WhatsApp call. */
+    channel?: string;
+  }>();
   const phone = (Array.isArray(params.phone) ? params.phone[0] : params.phone)?.trim() ?? '';
   const ringAt = parseRingAt(params.at);
+  const channel = parseCallLeadChannel(params.channel);
 
   const sources = useQuery(leadSourcesQuery);
   const sourceList = useMemo(
     () => (Array.isArray(sources.data) ? sources.data : []),
     [sources.data]
   );
-  const defaultSourceId = useMemo(() => pickCallLeadSourceId(sourceList), [sourceList]);
+  const defaultSourceId = useMemo(
+    () => pickCallLeadSourceId(sourceList, channel),
+    [sourceList, channel]
+  );
 
   const [fullName, setFullName] = useState(() =>
     (Array.isArray(params.name) ? params.name[0] : params.name)?.trim() ?? ''
@@ -99,8 +110,14 @@ export default function CallLeadScreen() {
     setSaving(true);
     try {
       const lead = await createLead(
-        { fullName: callLeadName(fullName), phone, leadSourceId: sourceId },
-        { idempotencyKey: callLeadIdempotencyKey(phone, ringAt) }
+        {
+          fullName: callLeadName(fullName),
+          phone,
+          leadSourceId: sourceId,
+          // They called on WhatsApp, so this number is on WhatsApp.
+          ...(channel === 'whatsapp' ? { whatsapp: phone } : {}),
+        },
+        { idempotencyKey: callLeadIdempotencyKey(phone, ringAt, channel) }
       );
       void markLeadPhoneKnown(phone);
       void queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -136,7 +153,9 @@ export default function CallLeadScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader title="New lead from call" />
+      <ScreenHeader
+        title={channel === 'whatsapp' ? 'New lead from WhatsApp call' : 'New lead from call'}
+      />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 36 }]}
         keyboardShouldPersistTaps="handled"
@@ -144,12 +163,19 @@ export default function CallLeadScreen() {
       >
         <View style={styles.callCard}>
           <View style={styles.callIcon}>
-            <Ionicons name="call" size={20} color={colors.brand} />
+            <Ionicons
+              name={channel === 'whatsapp' ? 'logo-whatsapp' : 'call'}
+              size={20}
+              color={colors.brand}
+            />
           </View>
           <View style={styles.callText}>
             <Text style={styles.callNumber}>{formatPhoneDisplay(phone)}</Text>
             <Text style={styles.caption}>
-              {callTime ? `Incoming call at ${callTime}` : 'Incoming call'}
+              {(() => {
+                const label = channel === 'whatsapp' ? 'WhatsApp call' : 'Incoming call';
+                return callTime ? `${label} at ${callTime}` : label;
+              })()}
             </Text>
           </View>
         </View>

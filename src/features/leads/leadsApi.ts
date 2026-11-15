@@ -423,6 +423,7 @@ export async function createLead(
     leadSourceId: number;
     email?: string | null;
     inquiryNote?: string | null;
+    whatsapp?: string | null;
   },
   options: { idempotencyKey?: string } = {}
 ) {
