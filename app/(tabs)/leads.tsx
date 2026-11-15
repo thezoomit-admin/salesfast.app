@@ -6,8 +6,8 @@ import { canViewAllLeads } from '@/features/auth/leadAccess';
 import { LeadsListScreen } from '@/features/leads/LeadsListScreen';
 
 /**
- * All Leads — every lead in scope. Hidden from the tab bar when the account
- * lacks All Leads access; deep links then fall back to My Leads.
+ * All Leads — every lead in scope. Opened from Home (not the tab bar).
+ * Accounts without All Leads access fall back to My Leads.
  */
 function AllLeadsTab() {
   const { user } = useAuth();

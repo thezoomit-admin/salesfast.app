@@ -18,6 +18,8 @@ import {
   type QuickActionIconKey,
 } from '@/components/home/QuickActionIcons';
 import { ArrowDown01Icon } from '@/components/icons/hugeicons';
+import { useAuth } from '@/features/auth/AuthContext';
+import { canViewAllLeads } from '@/features/auth/leadAccess';
 import { requestTabIntent, type TabIntent } from '@/lib/tabIntent';
 import { spacing, typography, useTheme, type ThemeColors } from '@/theme';
 
@@ -47,7 +49,7 @@ const TOGGLE_OVERLAP = TILE / 2 + 32;
 const PEEK_OPACITY = 0.22;
 const TOGGLE_MS = 280;
 
-const TILES: Tile[] = [
+const BASE_TILES: Tile[] = [
   { key: 'leads', label: 'My Leads', href: '/(tabs)/my-leads' },
   { key: 'add-lead', label: 'Add Lead', href: '/leads/new' },
   { key: 'follow-ups', label: 'Follow-ups', href: '/(tabs)/follow-ups' },
@@ -87,8 +89,17 @@ const TILES: Tile[] = [
   },
 ];
 
-const MAIN_TILES = TILES.slice(0, COLLAPSED_COUNT);
-const EXTRA_TILES = TILES.slice(COLLAPSED_COUNT);
+const ALL_LEADS_TILE: Tile = {
+  key: 'all-leads',
+  label: 'All Leads',
+  href: '/(tabs)/leads',
+};
+
+function buildTiles(showAllLeads: boolean): Tile[] {
+  if (!showAllLeads) return BASE_TILES;
+  // Sit All Leads right beside My Leads.
+  return [BASE_TILES[0], ALL_LEADS_TILE, ...BASE_TILES.slice(1)];
+}
 
 /**
  * Home scroll insets the sheet by spacing.lg, and each icon is centered in
@@ -160,6 +171,11 @@ function TileGrid({
 function HomeQuickActionsBase() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { user } = useAuth();
+  const showAllLeads = canViewAllLeads(user);
+  const tiles = useMemo(() => buildTiles(showAllLeads), [showAllLeads]);
+  const mainTiles = tiles.slice(0, COLLAPSED_COUNT);
+  const extraTiles = tiles.slice(COLLAPSED_COUNT);
   const bleed = sideBleed(useWindowDimensions().width);
   const [expanded, setExpanded] = useState(false);
   const [extraHeight, setExtraHeight] = useState(ONE_ROW_HEIGHT);
@@ -179,7 +195,7 @@ function HomeQuickActionsBase() {
 
   return (
     <View style={[styles.root, { marginHorizontal: -bleed }]}>
-      <TileGrid tiles={MAIN_TILES} />
+      <TileGrid tiles={mainTiles} />
 
       <Animated.View
         pointerEvents={expanded ? 'auto' : 'none'}
@@ -204,7 +220,7 @@ function HomeQuickActionsBase() {
           style={styles.extraContent}
           onLayout={(event) => setExtraHeight(event.nativeEvent.layout.height)}
         >
-          <TileGrid tiles={EXTRA_TILES} />
+          <TileGrid tiles={extraTiles} />
         </View>
       </Animated.View>
 

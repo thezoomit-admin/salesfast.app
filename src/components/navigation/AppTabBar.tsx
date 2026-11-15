@@ -26,25 +26,25 @@ import {
   Notification01Icon,
   PermanentJobIcon,
 } from '@/components/icons/hugeicons';
-import { useAuth } from '@/features/auth/AuthContext';
-import { canViewAllLeads } from '@/features/auth/leadAccess';
 import { useTheme, type ThemeColors } from '@/theme';
 
-/** Visual tab order — Home centered. Also the page order of the pager. */
-export function getTabOrder(canViewAll: boolean): readonly string[] {
-  return canViewAll
-    ? ['my-leads', 'leads', 'follow-ups', 'index', 'calls', 'notifications']
-    : ['my-leads', 'follow-ups', 'index', 'calls', 'notifications'];
-}
+/** Visual tab order — Home centered. All Leads lives on Home, not the bar. */
+export const TAB_ORDER = [
+  'my-leads',
+  'follow-ups',
+  'index',
+  'calls',
+  'notifications',
+] as const;
 
-/** Default order for warm/prefetch when auth is not ready yet. */
-export const TAB_ORDER = getTabOrder(false);
+export function getTabOrder(): readonly string[] {
+  return TAB_ORDER;
+}
 
 type HugeIconData = ComponentProps<typeof HugeiconsIcon>['icon'];
 
 const TAB_ICONS: Record<string, HugeIconData> = {
   'my-leads': PermanentJobIcon,
-  leads: PermanentJobIcon,
   'follow-ups': Calendar03Icon,
   index: Home03Icon,
   calls: CallIcon,
@@ -53,7 +53,6 @@ const TAB_ICONS: Record<string, HugeIconData> = {
 
 const TAB_LABELS: Record<string, string> = {
   'my-leads': 'My Leads',
-  leads: 'Leads',
   'follow-ups': 'Follow-ups',
   index: 'Home',
   calls: 'Calls',
@@ -74,9 +73,7 @@ export function AppTabBar({
   badges,
 }: AppTabBarProps) {
   const { colors } = useTheme();
-  const { user } = useAuth();
-  const canViewAll = canViewAllLeads(user);
-  const tabOrder = useMemo(() => getTabOrder(canViewAll), [canViewAll]);
+  const tabOrder = TAB_ORDER;
   // Real system inset only — edge-to-edge paints brand under the nav buttons.
   const systemInset = insets.bottom;
   const styles = useMemo(
