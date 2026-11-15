@@ -25,6 +25,7 @@ class CallLeadAskActivity : Activity() {
   private lateinit var phone: String
   private lateinit var key: String
   private var ringAt: Long = 0L
+  private var channel: CallChannel = CallChannel.PHONE
 
   private lateinit var root: LinearLayout
   private lateinit var card: LinearLayout
@@ -39,6 +40,7 @@ class CallLeadAskActivity : Activity() {
         return
       }
     ringAt = intent.getLongExtra(CallLeadPrompter.EXTRA_RING_AT, System.currentTimeMillis())
+    channel = CallChannel.from(intent.getStringExtra(CallLeadPrompter.EXTRA_CHANNEL))
 
     window.setBackgroundDrawable(ColorDrawable(Color.parseColor("#990B1220")))
     window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
@@ -78,7 +80,12 @@ class CallLeadAskActivity : Activity() {
   private fun showAskStep() {
     card.removeAllViews()
     card.addView(
-      label("NEW CALLER", muted = true, sizeSp = 11f, weight = Typeface.BOLD).also {
+      label(
+        if (channel == CallChannel.WHATSAPP) "NEW WHATSAPP CALLER" else "NEW CALLER",
+        muted = true,
+        sizeSp = 11f,
+        weight = Typeface.BOLD,
+      ).also {
         it.letterSpacing = 0.08f
       }
     )
@@ -150,7 +157,7 @@ class CallLeadAskActivity : Activity() {
     card.addView(
       primaryButton("Save lead") {
         val typed = nameField?.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }
-        val lead = CallLeadPromptStore.PendingLead(key, phone, typed, ringAt)
+        val lead = CallLeadPromptStore.PendingLead(key, phone, typed, ringAt, channel)
         CallLeadPromptStore.putPending(this, lead)
         CallLeadSaver.save(this, lead, quiet = false)
         finish()

@@ -8,7 +8,25 @@
   <!-- Lets the "Add as lead?" dialog appear over the lock screen / as a heads-up. -->
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
+  <!-- WhatsApp call tracking: see whether WhatsApp / WhatsApp Business is installed (Android 11+). -->
+  <queries>
+    <package android:name="com.whatsapp" />
+    <package android:name="com.whatsapp.w4b" />
+  </queries>
+
   <application>
+    <!-- WhatsApp call tracking. Does nothing until the user grants
+         Notification access to SalesFast and turns it on in Settings. It
+         reads only WhatsApp call notifications; message text is never kept. -->
+    <service
+      android:name="expo.modules.androidcalllog.WhatsAppCallListener"
+      android:label="SalesFast WhatsApp call tracking"
+      android:exported="true"
+      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+      <intent-filter>
+        <action android:name="android.service.notification.NotificationListenerService" />
+      </intent-filter>
+    </service>
     <!-- Exported so the system can deliver PHONE_STATE, a protected broadcast
          that only the system may send. -->
     <receiver

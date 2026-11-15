@@ -46,6 +46,8 @@ internal object CallLeadPrompter {
   const val EXTRA_KEY = "phoneKey"
   const val EXTRA_PHONE = "phone"
   const val EXTRA_RING_AT = "ringAt"
+  /** [CallChannel.wire]; missing = a phone call (notifications from older builds). */
+  const val EXTRA_CHANNEL = "channel"
   const val REMOTE_INPUT_NAME = "leadName"
 
   /** Must match `scheme` in app.config.ts. */
@@ -59,45 +61,71 @@ internal object CallLeadPrompter {
   /** One notification per number; a second call from it updates the first. */
   fun notificationId(key: String) = key.hashCode()
 
-  /** Called off the main thread (contacts lookup does disk IO). */
-  fun maybePrompt(context: Context, rawNumber: String, ringAt: Long) {
+  /**
+   * Called off the main thread (contacts lookup does disk IO). Phone calls
+   * ask while ringing; WhatsApp calls ask once the call is over.
+   */
+  fun maybePrompt(
+    context: Context,
+    rawNumber: String,
+    ringAt: Long,
+    channel: CallChannel = CallChannel.PHONE,
+  ) {
     val app = context.applicationContext
     val key = CallLeadPromptStore.phoneKey(rawNumber) ?: return
+    // Only the phone prompt tracks a ring in progress.
+    val markRing = { if (channel == CallChannel.PHONE) CallLeadPromptStore.markRingPrompted(app) }
     synchronized(lock) {
-      if (!CallLeadPromptStore.isActive(app)) return
+      val active =
+        when (channel) {
+          CallChannel.PHONE -> CallLeadPromptStore.isActive(app)
+          CallChannel.WHATSAPP -> WhatsAppCallStore.promptActive(app)
+        }
+      if (!active) return
       val now = System.currentTimeMillis()
       if (CallLeadPromptStore.wasJustPrompted(app, key, now)) {
-        CallLeadPromptStore.markRingPrompted(app)
+        markRing()
         return
       }
       if (CallLeadPromptStore.isKnownOrIgnored(app, key)) {
         // Already a lead, or the user said "No" before.
-        CallLeadPromptStore.markRingPrompted(app)
+        markRing()
         return
       }
       if (CallLeadPromptStore.skipContacts(app) && isSavedContact(app, rawNumber)) {
-        CallLeadPromptStore.markRingPrompted(app)
+        markRing()
         return
       }
-      if (showAsk(app, rawNumber.trim(), key, ringAt)) {
+      if (showAsk(app, rawNumber.trim(), key, ringAt, channel)) {
         CallLeadPromptStore.recordPrompt(app, key, now)
-        CallLeadPromptStore.markRingPrompted(app)
+        markRing()
       }
     }
   }
 
   // ---- notification states ----
 
-  fun showAsk(context: Context, phone: String, key: String, ringAt: Long): Boolean {
-    val openPopup = askActivityIntent(context, key, phone, ringAt)
+  fun showAsk(
+    context: Context,
+    phone: String,
+    key: String,
+    ringAt: Long,
+    channel: CallChannel = CallChannel.PHONE,
+  ): Boolean {
+    val openPopup = askActivityIntent(context, key, phone, ringAt, channel)
+    val whatsApp = channel == CallChannel.WHATSAPP
     val builder =
-      base(context, key, phone, ringAt)
-        .setContentTitle("Add as lead?")
-        .setContentText(phone)
+      base(context, key, phone, ringAt, channel = channel)
+        .setContentTitle(if (whatsApp) "WhatsApp caller — add as lead?" else "Add as lead?")
+        .setContentText(if (whatsApp) "WhatsApp · $phone" else phone)
         .setStyle(
           NotificationCompat.BigTextStyle()
             .bigText(
-              "$phone isn’t in SalesFast yet. Add this caller as a lead assigned to you?"
+              if (whatsApp) {
+                "$phone called you on WhatsApp and isn’t in SalesFast yet. Add as a lead assigned to you?"
+              } else {
+                "$phone isn’t in SalesFast yet. Add this caller as a lead assigned to you?"
+              }
             )
         )
         .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -107,24 +135,30 @@ internal object CallLeadPrompter {
         .setContentIntent(openPopup)
         .setFullScreenIntent(openPopup, true)
         .addAction(0, "Add lead", openPopup)
-        .addAction(0, "Not a lead", actionIntent(context, ACTION_NO, key, phone, ringAt))
+        .addAction(0, "Not a lead", actionIntent(context, ACTION_NO, key, phone, ringAt, channel))
     return notify(context, key, builder.build())
   }
 
-  fun showNameEntry(context: Context, phone: String, key: String, ringAt: Long) {
+  fun showNameEntry(
+    context: Context,
+    phone: String,
+    key: String,
+    ringAt: Long,
+    channel: CallChannel = CallChannel.PHONE,
+  ) {
     val nameInput =
       RemoteInput.Builder(REMOTE_INPUT_NAME).setLabel("Customer name").build()
     val typeName =
       NotificationCompat.Action.Builder(
           0,
           "Type name",
-          actionIntent(context, ACTION_SAVE, key, phone, ringAt, mutable = true),
+          actionIntent(context, ACTION_SAVE, key, phone, ringAt, channel, mutable = true),
         )
         .addRemoteInput(nameInput)
         .setAllowGeneratedReplies(false)
         .build()
     val builder =
-      base(context, key, phone, ringAt)
+      base(context, key, phone, ringAt, channel = channel)
         .setContentTitle("Lead name for $phone")
         .setContentText("Type the name, or tap Save to save it as Unknown.")
         .setStyle(
@@ -137,14 +171,14 @@ internal object CallLeadPrompter {
         .setTimeoutAfter(PROMPT_TTL_MS)
         .addAction(typeName)
         // Its own request code: same action string, but no text box, so it saves "Unknown".
-        .addAction(0, "Save", actionIntent(context, ACTION_SAVE, key, phone, ringAt, requestOffset = 1))
-        .addAction(0, "Close", actionIntent(context, ACTION_CLOSE, key, phone, ringAt))
+        .addAction(0, "Save", actionIntent(context, ACTION_SAVE, key, phone, ringAt, channel, requestOffset = 1))
+        .addAction(0, "Close", actionIntent(context, ACTION_CLOSE, key, phone, ringAt, channel))
     notify(context, key, builder.build())
   }
 
   fun showSaving(context: Context, lead: CallLeadPromptStore.PendingLead) {
     val builder =
-      base(context, lead.key, lead.phone, lead.ringAt)
+      base(context, lead.key, lead.phone, lead.ringAt, channel = lead.channel)
         .setContentTitle("Saving lead…")
         .setContentText(lead.name ?: lead.phone)
         .setProgress(0, 0, true)
@@ -179,26 +213,38 @@ internal object CallLeadPrompter {
   /** [retry]: offer a Retry button (the lead stays queued). */
   fun showFailed(context: Context, lead: CallLeadPromptStore.PendingLead, message: String, retry: Boolean) {
     val builder =
-      base(context, lead.key, lead.phone, lead.ringAt, lead.name)
+      base(context, lead.key, lead.phone, lead.ringAt, lead.name, lead.channel)
         .setContentTitle("Couldn't save the lead")
         .setContentText(message)
         .setStyle(NotificationCompat.BigTextStyle().bigText("$message Tap to finish in SalesFast."))
         .setTimeoutAfter(PROMPT_TTL_MS)
     if (retry) {
-      builder.addAction(0, "Retry", actionIntent(context, ACTION_RETRY, lead.key, lead.phone, lead.ringAt))
+      builder.addAction(
+        0,
+        "Retry",
+        actionIntent(context, ACTION_RETRY, lead.key, lead.phone, lead.ringAt, lead.channel),
+      )
     }
-    builder.addAction(0, "Close", actionIntent(context, ACTION_CLOSE, lead.key, lead.phone, lead.ringAt))
+    builder.addAction(
+      0,
+      "Close",
+      actionIntent(context, ACTION_CLOSE, lead.key, lead.phone, lead.ringAt, lead.channel),
+    )
     notify(context, lead.key, builder.build())
   }
 
   /** No usable sign-in on the phone: the app saves it (queued) once opened. */
   fun showNeedsApp(context: Context, lead: CallLeadPromptStore.PendingLead) {
     val builder =
-      base(context, lead.key, lead.phone, lead.ringAt, lead.name)
+      base(context, lead.key, lead.phone, lead.ringAt, lead.name, lead.channel)
         .setContentTitle("Open SalesFast to finish")
         .setContentText("The lead for ${lead.phone} is saved when you open SalesFast.")
         .setTimeoutAfter(PROMPT_TTL_MS)
-        .addAction(0, "Close", actionIntent(context, ACTION_CLOSE, lead.key, lead.phone, lead.ringAt))
+        .addAction(
+          0,
+          "Close",
+          actionIntent(context, ACTION_CLOSE, lead.key, lead.phone, lead.ringAt, lead.channel),
+        )
     notify(context, lead.key, builder.build())
   }
 
@@ -231,6 +277,7 @@ internal object CallLeadPrompter {
     phone: String,
     ringAt: Long,
     name: String? = null,
+    channel: CallChannel = CallChannel.PHONE,
   ): NotificationCompat.Builder {
     val link =
       Uri.Builder()
@@ -239,6 +286,7 @@ internal object CallLeadPrompter {
         .appendQueryParameter("phone", phone)
         .appendQueryParameter("at", ringAt.toString())
         .apply { if (!name.isNullOrBlank()) appendQueryParameter("name", name) }
+        .apply { if (channel == CallChannel.WHATSAPP) appendQueryParameter("channel", "whatsapp") }
         .build()
     val open =
       PendingIntent.getActivity(
@@ -266,12 +314,14 @@ internal object CallLeadPrompter {
     key: String,
     phone: String,
     ringAt: Long,
+    channel: CallChannel,
   ): PendingIntent {
     val intent =
       Intent(context, CallLeadAskActivity::class.java)
         .putExtra(EXTRA_KEY, key)
         .putExtra(EXTRA_PHONE, phone)
         .putExtra(EXTRA_RING_AT, ringAt)
+        .putExtra(EXTRA_CHANNEL, channel.wire)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
     return PendingIntent.getActivity(
       context,
@@ -287,6 +337,7 @@ internal object CallLeadPrompter {
     key: String,
     phone: String,
     ringAt: Long,
+    channel: CallChannel,
     mutable: Boolean = false,
     requestOffset: Int = 0,
   ): PendingIntent {
@@ -296,6 +347,7 @@ internal object CallLeadPrompter {
         .putExtra(EXTRA_KEY, key)
         .putExtra(EXTRA_PHONE, phone)
         .putExtra(EXTRA_RING_AT, ringAt)
+        .putExtra(EXTRA_CHANNEL, channel.wire)
     // Inline reply needs a mutable intent (the system adds the typed text);
     // it is explicit (our own receiver), as Android 14 requires.
     val mutability =
