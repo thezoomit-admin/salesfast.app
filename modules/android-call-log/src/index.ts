@@ -37,6 +37,40 @@ export type CallCaptureStatus = {
   expiresAtMs: number;
 };
 
+/** WhatsApp call tracking on this phone (each phone has its own switches). */
+export type WhatsAppCallConfig = {
+  /** Add WhatsApp calls with CRM leads to Call History. */
+  syncEnabled: boolean;
+  /** "Is this your lead?" after a WhatsApp call from a number not in the CRM. */
+  promptEnabled: boolean;
+  /** Which apps to follow: WhatsApp (com.whatsapp) / WhatsApp Business (com.whatsapp.w4b). */
+  trackWhatsApp: boolean;
+  trackBusiness: boolean;
+  configuredAtMs: number;
+  /** Last WhatsApp call event seen on this phone; 0 = none yet. */
+  lastEventAtMs: number;
+  /** Finished WhatsApp calls kept on the phone (last 30 days / 300). */
+  callCount: number;
+  /** Calls whose number could not be worked out (e.g. name only, group call). */
+  unresolvedCount: number;
+  /** Notification access is granted to SalesFast in Android settings. */
+  accessGranted: boolean;
+  whatsAppInstalled: boolean;
+  businessInstalled: boolean;
+  sessionActive: boolean;
+};
+
+export type NativeWhatsAppCallRow = {
+  /** Stable per call: `<app>:<startedAt>:<last10>`. */
+  id: string;
+  app: string;
+  number: string;
+  direction: 'INCOMING' | 'OUTGOING' | 'MISSED' | 'UNKNOWN';
+  dateMs: number;
+  durationSec: number;
+  video: boolean;
+};
+
 type AndroidCallLogNative = {
   getRecentCalls(limit: number, minDateMs: number): Promise<NativeCallLogRow[]>;
   hasPermission(): Promise<boolean>;
@@ -57,6 +91,17 @@ type AndroidCallLogNative = {
   markLeadPhoneKnown(phone: string): Promise<void>;
   ignoreLeadPhone(phone: string): Promise<void>;
   clearIgnoredLeadPhones(): Promise<void>;
+  getWhatsAppCallConfig(): Promise<WhatsAppCallConfig>;
+  setWhatsAppCallConfig(
+    syncEnabled: boolean,
+    promptEnabled: boolean,
+    trackWhatsApp: boolean,
+    trackBusiness: boolean
+  ): Promise<void>;
+  openNotificationAccessSettings(): Promise<boolean>;
+  getWhatsAppCalls(limit: number, minDateMs: number): Promise<NativeWhatsAppCallRow[]>;
+  getWhatsAppDiagnostics(): Promise<string[]>;
+  clearWhatsAppCalls(): Promise<void>;
 };
 
 let cached: AndroidCallLogNative | null | undefined;
@@ -159,4 +204,51 @@ export async function clearIgnoredLeadPhones() {
 /** False on APKs built before the call prompt existed. */
 export function isCallLeadPromptAvailable() {
   return typeof getNative()?.getCallLeadPromptConfig === 'function';
+}
+
+// ---- WhatsApp calls ----
+// Like the call prompt: safe no-ops when the native side is missing
+// (web, Expo Go, an APK built before WhatsApp tracking).
+
+/** False on APKs built before WhatsApp call tracking existed. */
+export function isWhatsAppCallTrackingAvailable() {
+  return typeof getNative()?.getWhatsAppCallConfig === 'function';
+}
+
+export async function getWhatsAppCallConfig(): Promise<WhatsAppCallConfig | null> {
+  return (await getNative()?.getWhatsAppCallConfig?.()) ?? null;
+}
+
+export async function setWhatsAppCallConfig(input: {
+  syncEnabled: boolean;
+  promptEnabled: boolean;
+  trackWhatsApp: boolean;
+  trackBusiness: boolean;
+}) {
+  await getNative()?.setWhatsAppCallConfig?.(
+    input.syncEnabled,
+    input.promptEnabled,
+    input.trackWhatsApp,
+    input.trackBusiness
+  );
+}
+
+/** Android's Notification access page. False when no page could be opened. */
+export async function openNotificationAccessSettings() {
+  return (await getNative()?.openNotificationAccessSettings?.()) ?? false;
+}
+
+/** Finished WhatsApp calls on this phone, newest first. Every number — filter before use. */
+export async function getWhatsAppCalls(limit = 300, minDateMs = 0) {
+  return (
+    (await getNative()?.getWhatsAppCalls?.(Math.min(Math.max(limit, 1), 300), minDateMs)) ?? []
+  );
+}
+
+export async function getWhatsAppDiagnostics() {
+  return (await getNative()?.getWhatsAppDiagnostics?.()) ?? [];
+}
+
+export async function clearWhatsAppCalls() {
+  await getNative()?.clearWhatsAppCalls?.();
 }

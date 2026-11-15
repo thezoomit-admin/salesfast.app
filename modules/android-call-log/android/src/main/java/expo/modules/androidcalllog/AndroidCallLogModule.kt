@@ -1,8 +1,13 @@
 package expo.modules.androidcalllog
 
 import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.CallLog
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
@@ -170,5 +175,98 @@ class AndroidCallLogModule : Module() {
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
       CallLeadPromptStore.clearIgnored(context)
     }
+
+    // ---- WhatsApp calls (notification listener; this phone only) ----
+
+    AsyncFunction("getWhatsAppCallConfig") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val config = WhatsAppCallStore.config(context)
+      mapOf(
+        "syncEnabled" to config.syncEnabled,
+        "promptEnabled" to config.promptEnabled,
+        "trackWhatsApp" to config.trackWhatsApp,
+        "trackBusiness" to config.trackBusiness,
+        "configuredAtMs" to config.configuredAt.toDouble(),
+        "lastEventAtMs" to config.lastEventAt.toDouble(),
+        "callCount" to config.finishedCount,
+        "unresolvedCount" to config.unresolvedCount,
+        "accessGranted" to WhatsAppCallListener.isAccessGranted(context),
+        "whatsAppInstalled" to isInstalled(context, WhatsAppCallStore.PKG_WHATSAPP),
+        "businessInstalled" to isInstalled(context, WhatsAppCallStore.PKG_BUSINESS),
+        "sessionActive" to CallLeadPromptStore.isSessionActive(context)
+      )
+    }
+
+    AsyncFunction("setWhatsAppCallConfig") {
+      syncEnabled: Boolean, promptEnabled: Boolean, trackWhatsApp: Boolean, trackBusiness: Boolean ->
+      val context = appContext.reactContext?.applicationContext ?: throw Exceptions.ReactContextLost()
+      WhatsAppCallStore.setConfig(context, syncEnabled, promptEnabled, trackWhatsApp, trackBusiness)
+      if (promptEnabled) CallLeadPrompter.ensureChannel(context)
+      if (syncEnabled || promptEnabled) WhatsAppCallListener.requestRebind(context)
+    }
+
+    /** Opens Android's Notification access page (SalesFast's own switch where supported). */
+    AsyncFunction("openNotificationAccessSettings") {
+      val context = appContext.currentActivity ?: appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val component = WhatsAppCallListener.component(context).flattenToString()
+      val intents =
+        buildList {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            add(
+              Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, component)
+            )
+          }
+          add(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+      for (intent in intents) {
+        try {
+          if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          context.startActivity(intent)
+          return@AsyncFunction true
+        } catch (_: ActivityNotFoundException) {
+          // Try the general page.
+        } catch (_: SecurityException) {
+          // Some phones guard the detail page.
+        }
+      }
+      false
+    }
+
+    /** Finished WhatsApp calls kept on this phone, newest first (all numbers; the app filters). */
+    AsyncFunction("getWhatsAppCalls") { limit: Int, minDateMs: Double ->
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      WhatsAppCallStore.finishedCalls(context, limit.coerceIn(1, 300), minDateMs.toLong()).map {
+        mapOf(
+          "id" to it.id,
+          "app" to it.packageName,
+          "number" to it.number,
+          "direction" to it.direction,
+          "dateMs" to it.startedAt.toDouble(),
+          "durationSec" to it.durationSec,
+          "video" to it.video
+        )
+      }
+    }
+
+    /** Shape of recent WhatsApp call notifications (no names / numbers), for support. */
+    AsyncFunction("getWhatsAppDiagnostics") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      WhatsAppCallStore.diagnostics(context)
+    }
+
+    AsyncFunction("clearWhatsAppCalls") {
+      val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      WhatsAppCallStore.clearFinished(context)
+    }
   }
+
+  private fun isInstalled(context: Context, packageName: String): Boolean =
+    try {
+      @Suppress("DEPRECATION")
+      context.packageManager.getPackageInfo(packageName, 0)
+      true
+    } catch (_: PackageManager.NameNotFoundException) {
+      false
+    }
 }

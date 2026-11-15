@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Alert, Linking, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { clearCallCaptureCredentials, clearIgnoredLeadPhones } from 'android-call-log';
+import {
+  clearCallCaptureCredentials,
+  clearIgnoredLeadPhones,
+  getWhatsAppCallConfig,
+} from 'android-call-log';
 
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
@@ -58,7 +62,9 @@ export default function CallLeadSettingsScreen() {
         await syncCallLeadPrompt(user.id, { force: true });
         await refresh();
       } else if (!nextEnabled) {
-        await clearCallCaptureCredentials();
+        // The WhatsApp prompt saves leads with the same token.
+        const whatsApp = await getWhatsAppCallConfig();
+        if (!whatsApp?.promptEnabled) await clearCallCaptureCredentials();
       }
     } finally {
       setSaving(false);

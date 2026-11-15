@@ -5,6 +5,7 @@ import {
   flushPendingCallLeads,
   getCallCaptureStatus,
   getCallLeadPromptConfig,
+  getWhatsAppCallConfig,
   isCallLeadPromptAvailable,
   setCallCaptureCredentials,
   setCallLeadSessionActive,
@@ -71,7 +72,9 @@ export async function syncCallLeadPrompt(userId: string, options?: { force?: boo
   if (Platform.OS !== 'android' || !isCallLeadPromptAvailable()) return;
   const force = !!options?.force;
   const config = await getCallLeadPromptConfig();
-  if (!config?.enabled) return;
+  // The WhatsApp prompt uses the same token and known-lead list.
+  const whatsApp = await getWhatsAppCallConfig();
+  if (!config?.enabled && !whatsApp?.promptEnabled) return;
   await Promise.allSettled([
     // A server without the call-capture route (not deployed yet) fails here;
     // the notification then sends the user to the app to finish.
