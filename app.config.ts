@@ -56,7 +56,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: 'com.salesfast.crm',
-    versionCode: 9,
+    // Local builds: scripts/build-android-local.mjs sets ANDROID_VERSION_CODE.
+    versionCode: Number(process.env.ANDROID_VERSION_CODE || 12),
     adaptiveIcon: {
       // Match the blue plate in salesfast-app-logo.png (corners under Android mask).
       backgroundColor: '#3A83F7',
@@ -150,6 +151,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     './plugins/withAndroidReleaseSize.js',
     // APK/AAB → SalesFast-CRM-v{version}.apk (version from app.config.ts)
     './plugins/withSalesFastApkName.js',
+    // Play upload key from credentials/android/keystore.properties
+    './plugins/withAndroidReleaseSigning.js',
   ],
   experiments: {
     typedRoutes: true,

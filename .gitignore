@@ -19,6 +19,14 @@ expo-env.d.ts
 *.mobileprovision
 .keystore-export/
 
+# Local Play signing + store artifacts (never commit secrets/binaries)
+credentials/android/*
+!credentials/android/keystore.properties.example
+!credentials/android/README.md
+release/*.aab
+release/*.apk
+
+
 # Metro
 .metro-health-check*
 
